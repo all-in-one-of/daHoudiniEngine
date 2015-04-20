@@ -1,0 +1,7 @@
+Houdini engine module for Omegalib
+
+requires osg, (cyclops ?)
+
+requires houdini engine v1.9+ in houdini 14.201+
+
+
