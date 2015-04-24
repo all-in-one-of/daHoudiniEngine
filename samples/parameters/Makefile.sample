@@ -1,0 +1,156 @@
+# Usage:
+# To build a debug version:
+#     make -f Makefile.sample
+# To build an optimized version:
+#     make -f Makefile.sample MAKETYPE=Release
+# To clean:
+#     make -f Makefile.sample clean
+
+# List the C++ files to be compiled here:
+CXXFILES = \
+	   parameters.C
+
+# Give the name of the program to create here:
+PROGNAME = parameters
+
+# This Makefile can be used to create a shared library by unsetting PROGNAME
+# and seting LIBNAME instead.
+#LIBNAME = simple_hapi_host
+
+#---------------------------------------------------------------------------
+
+# Detect the OS
+UNAME := $(shell uname)
+ifneq ($(findstring Linux, $(UNAME)),)
+    OS = Linux
+else ifneq ($(findstring CYGWIN, $(UNAME)),)
+    OS = Cygwin
+endif
+
+ifeq ($(OS), Linux)
+    SOEXTENSION = .so
+    BINEXTENSION =
+else ifeq ($(OS), Cygwin)
+    SOEXTENSION = .dll
+    BINEXTENSION = .exe
+endif
+SONAME = $(LIBNAME)$(SOEXTENSION)
+BINNAME = $(PROGNAME)$(BINEXTENSION)
+
+ifeq ($(OS), Cygwin)
+    # Find Visual C++ 2010
+    MSVC_SDK := $(shell cygpath -m -s -f "/proc/registry32/HKEY_LOCAL_MACHINE/SOFTWARE/Microsoft/VisualStudio/SxS/VC7/10.0" 2> /dev/null)
+
+    # Windows SDK 7.0: standalone
+    # Windows SDK 7.0a: included in Visual Studio 2010
+    WIN32_SDK := $(or \
+	    $(shell cygpath -m -s -f "/proc/registry32/HKEY_LOCAL_MACHINE/SOFTWARE/Microsoft/Microsoft SDKs/Windows/v7.0/InstallationFolder" 2> /dev/null), \
+	    $(shell cygpath -m -s -f "/proc/registry32/HKEY_LOCAL_MACHINE/SOFTWARE/Microsoft/Microsoft SDKs/Windows/v7.0A/InstallationFolder" 2> /dev/null), \
+	    )
+
+    # Visual C++
+    MSVC_SDK_BIN = $(MSVC_SDK)/bin/amd64
+    MSVC_SDK_INCLUDE = $(MSVC_SDK)/include
+    MSVC_SDK_LIB = $(MSVC_SDK)/lib/amd64
+
+    # Windows SDK
+    WIN32_SDK_INCLUDE = $(WIN32_SDK)/Include
+    WIN32_SDK_LIB = $(WIN32_SDK)/Lib/x64
+endif
+
+# Find command-line tools
+ifeq ($(OS), Linux)
+    CXX = g++
+    LD = g++
+else ifeq ($(OS), Cygwin)
+    CXX = $(MSVC_SDK_BIN)/cl
+    LD = $(MSVC_SDK_BIN)/link
+endif
+
+# Set Houdini flags
+CPPFLAGS += -I$(HFS)/toolkit/include
+ifeq ($(OS), Linux)
+    LDFLAGS += -Wl,-rpath,$(HFS)/dsolib
+    LDLIBS += -L$(HFS)/dsolib -lHAPI
+else ifeq ($(OS), Cygwin)
+    LDLIBS += -LIBPATH:$(HFS)/custom/houdini/dsolib libHAPI.a
+endif
+
+# Add general flags
+ifeq ($(OS), Linux)
+    CXXFLAGS += -W -Wall -m64 -pthread -fPIC
+    LDFLAGS += -Wl,-Bsymbolic
+else ifeq ($(OS), Cygwin)
+    CXXFLAGS += -nologo
+    LDFLAGS += -nologo
+
+    CPPFLAGS += -I$(MSVC_SDK_INCLUDE) -I$(WIN32_SDK_INCLUDE)
+    CXXFLAGS += -EHsc
+    LDLIBS += -LIBPATH:$(MSVC_SDK_LIB) -LIBPATH:$(WIN32_SDK_LIB) -DEFAULTLIB:USER32.lib
+endif
+
+# debug/release flags
+ifeq ($(OS), Linux)
+    ifeq ($(MAKETYPE),)
+	CXXFLAGS += -g
+    else ifeq ($(MAKETYPE),Release)
+	CXXFLAGS += -O3
+    endif
+else ifeq ($(OS), Cygwin)
+    ifeq ($(MAKETYPE),)
+	CXXFLAGS += -Od -MDd -Zi
+	LDFLAGS += -DEBUG
+    else ifeq ($(MAKETYPE),Release)
+	CXXFLAGS += -O2 -MD
+    endif
+endif
+
+OBJ_DIR = .obj
+
+OBJFILES = $(patsubst %.C, $(OBJ_DIR)/%.o, $(CXXFILES))
+DEPFILES = $(patsubst %.C, $(OBJ_DIR)/%.d, $(CXXFILES))
+
+ifeq ($(BINNAME),)
+all: $(SONAME)
+else
+all: $(BINNAME)
+endif
+
+$(SONAME): $(OBJFILES)
+	@mkdir -p $(dir $(@))
+ifeq ($(OS), Linux)
+	$(LD) -shared $(LDFLAGS) -o $(@) $(OBJFILES) $(LDLIBS)
+else ifeq ($(OS), Cygwin)
+	$(LD) -DLL $(LDFLAGS) -OUT:$(@) $(OBJFILES) $(LDLIBS)
+endif
+
+$(BINNAME): $(OBJFILES)
+	@mkdir -p $(dir $(@))
+ifeq ($(OS), Linux)
+	$(LD) $(LDFLAGS) -o $(@) $(OBJFILES) $(LDLIBS)
+else ifeq ($(OS), Cygwin)
+	$(LD) $(LDFLAGS) -OUT:$(@) $(OBJFILES) $(LDLIBS)
+endif
+
+$(OBJ_DIR)/%.o: %.C
+	@mkdir -p $(dir $(@))
+ifeq ($(OS), Linux)
+	$(CXX) -c -MMD -MP -MT $(@) $(CPPFLAGS) $(CXXFLAGS) -o $(@) $(<)
+else ifeq ($(OS), Cygwin)
+	$(CXX) -c -showIncludes $(CPPFLAGS) $(CXXFLAGS) -Fo$(@) -Tp$(<) > $(@).log; \
+	    compileStatus=$$?; \
+	    cat $(@).log | ./clShowIncludesToMake $(@); \
+	    rm -f $(@).log; \
+	    exit $$compileStatus
+endif
+
+-include $(DEPFILES)
+
+.PHONY: clean
+clean:
+	rm -f $(SONAME) $(BINNAME)
+ifeq ($(OS), Cygwin)
+	rm -f $(LIBNAME).lib $(LIBNAME).exp
+endif
+	rm -f $(OBJFILES)
+	rm -f $(DEPFILES)
