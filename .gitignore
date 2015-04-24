@@ -1,6 +1,9 @@
 /.obj/enginesimplehostcpp.d
 /.obj/enginesimplehostcpp.o
 /enginesimplehostcpp
+/libsimple_hapi_host.so
+/sample/objects/objects
+/sample/parameters/parameters
 /backup
 **/*.d
 **/*.o
