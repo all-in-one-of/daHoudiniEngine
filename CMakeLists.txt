@@ -2,9 +2,9 @@ request_dependency(cyclops)
 
 #directory for HAPI
 include_directories(/opt/hfs14.0.201.13/toolkit/include)
+include_directories(.)
 link_directories(/opt/hfs14.0.201.13/dsolib)
 link_directories(./)
-
 
 # Source files
 SET( srcs
@@ -21,6 +21,8 @@ SET( headers
 
 #######################################################################################################################
 # Setup compile info
+
+add_subdirectory(examples/daOsgHEngine)
 
 add_executable(daHoudiniEngine ${srcs} ${headers})
 # target_link_libraries(daHoudiniEngine omega cyclops HAPI simple_hapi_host)
