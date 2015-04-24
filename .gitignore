@@ -1,3 +1,6 @@
 /.obj/enginesimplehostcpp.d
 /.obj/enginesimplehostcpp.o
 /enginesimplehostcpp
+/backup
+**/*.d
+**/*.o
