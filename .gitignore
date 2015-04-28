@@ -7,3 +7,4 @@
 /backup
 **/*.d
 **/*.o
+/otl/backup/*
