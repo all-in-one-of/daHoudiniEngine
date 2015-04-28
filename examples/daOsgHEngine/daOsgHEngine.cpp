@@ -331,7 +331,7 @@ void HelloApplication::process_geo_part(const hapi::Part &part)
     cout << "Vertex Indices into Points array:\n";
     int curr_index = 0;
 
-	hg->setVertexListSize(pointCount);
+// 	hg->setVertexListSize(pointCount);
 
 	int prev_faceCount = face_counts[0];
     int prev_faceCountIndex = 0;
@@ -344,9 +344,10 @@ void HelloApplication::process_geo_part(const hapi::Part &part)
         for( int jj=0; jj < face_counts[ii]; jj++ )
         {
 
-			hg->setVertex(curr_index,points[vertex_list[ curr_index ]]);
+// 			hg->setVertex(curr_index,points[vertex_list[ curr_index ]]);
+			hg->addVertex(points[vertex_list[ curr_index ]]);
 			if (has_normals) {
-				hg->addNormal(-normals[vertex_list[ curr_index ]]));
+				hg->addNormal(-normals[vertex_list[ curr_index ]]);
 	            cout << "normal :" << curr_index << ", belonging to face: " << ii <<", index: "
 	                << vertex_list[ curr_index ] << " of normals array, being:" <<
 	                hg->getNormal(curr_index) << "\n";
