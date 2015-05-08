@@ -212,14 +212,13 @@ HelloApplication::HelloApplication():
     try
     {
 
-		const char *otl_file; // = "test_asset.otl";
+		const char *otl_file = "/tmp/switch_asset.otl";
 
 		ofmsg("file is %1%", %sOtl_file);
 
 
 		if (sOtl_file == "") {
-			owarn ("using test_asset.otl");
-			otl_file = "test_asset.otl";
+			ofwarn ("using otl: %1%", %otl_file);
 		} else {
 			otl_file = sOtl_file.c_str();
 		}
@@ -233,11 +232,13 @@ HelloApplication::HelloApplication():
 		/*use_cooking_thread=*/true,
 		/*cooking_thread_max_size=*/-1));
 
-	    if (HAPI_LoadAssetLibraryFromFile(
+	    HAPI_Result hr = HAPI_LoadAssetLibraryFromFile(
 	            otl_file,
-	            &library_id) != HAPI_RESULT_SUCCESS)
+	            &library_id);
+	    if (hr != HAPI_RESULT_SUCCESS)
 	    {
 	        ofwarn("Could not load %1%", %otl_file);
+	        ofwarn("Result is %1%", %hr);
 	        exit(1);
 	    }
 
@@ -299,9 +300,10 @@ void HelloApplication::process_assets(const hapi::Asset &asset)
 		    for (int part_index=0; part_index < int(parts.size()); ++part_index)
 			{
 
-				String s = "geo" + part_index;
+				String s = ostr("geo%1%", %part_index);
 
 				if (mySceneManager->getModel(s) == NULL) {
+					ofmsg("making hg %1%", %s);
 					hg = HoudiniGeometry::create(s);
 					geoNames.push_back(s);
 					mySceneManager->addModel(hg);
@@ -624,9 +626,12 @@ void HelloApplication::initialize()
     process_assets(*myAsset);
 
 	for (int i = 0; i < geoNames.size(); ++i) {
+		ofmsg("making instance %1%", %geoNames[i]);
 		StaticObject* hgGeoInstance = new StaticObject(mySceneManager, geoNames[i]);
+		hgGeoInstance->setPosition(Vector3f(0, 2, -4));
 // 		getEngine()->getScene()->addChild(hgGeoInstance);
-// 		sn->addChild(hgGeoInstance);
+//  		sn->addChild(hgGeoInstance);
+// 		ofmsg("added instance %1%", %geoNames[i]);
 	}
 	myEditor->addNode(sn);
 
