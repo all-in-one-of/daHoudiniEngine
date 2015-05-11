@@ -120,6 +120,7 @@ public:
 	virtual void updateSharedData(SharedIStream& in);
 
 	bool ready;
+	bool cooked;
 
 	void cook();
 
@@ -148,6 +149,10 @@ HEngineApp::HEngineApp():
 {
 	enableSharedData();
 
+	if (!SystemManager::instance()->isMaster()) {
+		return;
+	}
+
     try
     {
 
@@ -172,6 +177,8 @@ HEngineApp::HEngineApp():
 		/*use_cooking_thread=*/true,
 		/*cooking_thread_max_size=*/-1));
 
+		omsg("HAPI Loaded");
+
 	    if (HAPI_LoadAssetLibraryFromFile(
 	            otl_file,
 	            &library_id) != HAPI_RESULT_SUCCESS)
@@ -180,7 +187,7 @@ HEngineApp::HEngineApp():
 	        exit(1);
 	    }
 
-		cout << "HAPI load asset from file " << otl_file << endl;
+		ofmsg("HAPI load asset from file %1%",  %otl_file);
 
 	    HAPI_StringHandle asset_name_sh;
 	    ENSURE_SUCCESS( HAPI_GetAvailableAssets( library_id, &asset_name_sh, 1 ) );
@@ -211,12 +218,16 @@ HEngineApp::HEngineApp():
 
 HEngineApp::~HEngineApp() {
 
-	delete myAsset;
+	if (SystemManager::instance()->isMaster()) {
+		if (myAsset != NULL) delete myAsset;
+	}
 
     try
     {
-	    ENSURE_SUCCESS(HAPI_Cleanup());
-		cout << "done HAPI" << endl;
+		if (SystemManager::instance()->isMaster()) {
+		    ENSURE_SUCCESS(HAPI_Cleanup());
+			cout << "done HAPI" << endl;
+		}
     }
     catch (hapi::Failure &failure)
     {
@@ -260,13 +271,18 @@ void HEngineRenderPass::initialize()
 	myApplication->myFaceColors[4] = Color::Red;
 	myApplication->myFaceColors[5] = Color::Yellow;
 
-	myApplication->cook();
+
+	if (SystemManager::instance()->isMaster()) {
+		myApplication->cook();
+
+	}
 
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void HEngineRenderPass::render(Renderer* client, const DrawContext& context)
 {
+
 	if(context.task == DrawContext::SceneDrawTask )
 	{
 		client->getRenderer()->beginDraw3D(context);
@@ -344,6 +360,7 @@ void HEngineApp::cook()
 	myAsset->cook();
 
 	wait_for_cook();
+	cooked = true;
 
     cout << "new parm values: " <<
 	    size_parm.getFloatValue(0) << ", " <<
@@ -381,7 +398,7 @@ void HEngineApp::handleEvent(const Event& evt)
 	// switch between different objects
 	if (evt.isKeyDown('0')) {
 		mySwitch = (mySwitch + 1) % 4; // number of switches.. how get a var
-		cout << "switch count: " << myAsset->parmMap()["switchCount"].getIntValue(0) << endl;
+// 		cout << "switch count: " << myAsset->parmMap()["switchCount"].getIntValue(0) << endl;
 		update = true;
 	}
 
@@ -437,7 +454,7 @@ void HEngineApp::handleEvent(const Event& evt)
 	}
 
 	// cook only if a change
-	if (update) {
+	if (update && SystemManager::instance()->isMaster()) {
 		cook();
 	}
 
@@ -446,13 +463,68 @@ void HEngineApp::handleEvent(const Event& evt)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void HEngineApp::commitSharedData(SharedOStream& out)
 {
-	out << myYaw << myPitch << myScale << myTx << myTy << myTz << mySwitch;
+
+	out << cooked;
+
+	int vertSize = myVertices.size(); // NOTE: myVertices.size() != int
+	int faceSize = myFaces.size();
+
+	out <<
+		myYaw << myPitch << myScale <<
+		myTx << myTy << myTz <<
+		mySwitch;
+
+	if (!cooked) {
+		return;
+	}
+
+	out << vertSize;
+		if (myVertices.size() > 0) {
+			for (int i = 0; i < myVertices.size(); ++i) {
+  				out << myVertices[i][0] << myVertices[i][1] << myVertices[i][2];
+			}
+		}
+		out << faceSize;
+		for (int i = 0; i < myFaces.size(); ++i) {
+			out << (int) myFaces[i].size();
+			out << myFaces[i][0] << myFaces[i][1] << myFaces[i][2];
+		}
+
+	cooked = false;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void HEngineApp::updateSharedData(SharedIStream& in)
 {
- 	in >> myYaw >> myPitch >> myScale >> myTx >> myTy >> myTz >> mySwitch;
+	int vertSize = 0;
+	int facesSize = 0;
+	int blah = 0;
+
+ 	in >> cooked >> myYaw >> myPitch >> myScale >>
+		myTx >> myTy >> myTz >>
+		mySwitch;
+
+	if (!cooked) {
+		return;
+	}
+
+	in >> vertSize;
+	if (vertSize > 0) {
+		myVertices.resize(vertSize);
+		for (int i = 0; i < myVertices.size(); ++i) {
+			in >> myVertices[i][0] >> myVertices[i][1] >> myVertices[i][2];
+		}
+	}
+
+	in >> facesSize;
+	if (facesSize > 0) {
+		myFaces.resize(facesSize);
+		for (int i = 0; i < facesSize; ++i) {
+			in >> faceCount;
+			myFaces[i].resize(faceCount);
+			in >> myFaces[i][0] >> myFaces[i][1] >> myFaces[i][2];
+		}
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
