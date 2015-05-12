@@ -248,6 +248,8 @@ HelloApplication::HelloApplication():
 	    ENSURE_SUCCESS( HAPI_GetAvailableAssets( library_id, &asset_name_sh, 1 ) );
 	    std::string asset_name = get_string( asset_name_sh );
 
+		ofwarn("instantiating asset: %1%", %asset_name);
+
 	    ENSURE_SUCCESS(HAPI_InstantiateAsset(
 	            asset_name.c_str(),
 	            /* cook_on_load */ true,

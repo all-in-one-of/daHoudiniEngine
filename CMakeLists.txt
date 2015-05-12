@@ -6,6 +6,8 @@ include_directories(.)
 link_directories(/opt/hfs14.0.201.13/dsolib)
 link_directories(./)
 
+include_directories(${OSG_INCLUDES})
+
 add_subdirectory(examples/daOsgHEngine)
 add_subdirectory(examples/daHoudiniEngine)
 
@@ -16,9 +18,10 @@ add_library(${MODULE_NAME} MODULE
 )
 
 target_link_libraries(${MODULE_NAME}
-	cyclops
-	omegaOsg
 	omega
+	omegaToolkit
+	omegaOsg
+	cyclops
 	HAPI
 )
 

@@ -27,757 +27,805 @@
  *		new class, HelloServer, that reads mouse events and uses it to rotate the rendered object.
  *		HelloServer also implements SharedObject to synchronize rotation data across all nodes.
  *********************************************************************************************************************/
-#include <omega.h>
-#include <omegaGl.h>
-// #include "enginesimplehostcpp.h"
-#include "HAPI_CPP.h"
-#include <stdlib.h>
 
-using namespace omega;
+#include <daHoudiniEngine/daHEngine.h>
 
-#define ENSURE_SUCCESS(result) \
-    if ((result) != HAPI_RESULT_SUCCESS) \
-    { \
-	ofmsg("failure at %1%:%2%", %__FILE__ %__LINE__); \
-	ofmsg("%1%", %hapi::Failure::lastErrorMessage());\
-	exit(1); \
-    }
-
-#define ENSURE_COOK_SUCCESS(result) \
-    if ((result) != HAPI_STATE_READY) \
-    { \
-	ofmsg("failure at %1%:%2%", %__FILE__ %__LINE__); \
-	ofmsg("%1%", %hapi::Failure::lastErrorMessage());\
-	exit(1); \
-    }
-
-
-class HelloApplication;
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-class HelloRenderPass: public RenderPass
-{
-public:
-	HelloRenderPass(Renderer* client, HelloApplication* app): RenderPass(client, "HelloRenderPass"), myApplication(app) {}
-	virtual void initialize();
-	virtual void render(Renderer* client, const DrawContext& context);
-
-private:
-	HelloApplication* myApplication;
-
-	Vector3s myNormals[6];
-	Vector4i myFaces[6];
-	Vector3s myVertices[8];
-	Color myFaceColors[6];
-};
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-class HelloApplication: public EngineModule
-{
-public:
-	HelloApplication(): EngineModule("HelloApplication") { enableSharedData(); }
-
-	~HelloApplication() {
-	    try
-	    {
-			omsg("about to clean up HAPI");
-		    ENSURE_SUCCESS(HAPI_Cleanup());
-			omsg("done HAPI");
-	    }
-	    catch (hapi::Failure &failure)
+namespace houdiniEngine {
+	class HoudiniGeometry : public ModelGeometry
+	{
+	public:
+		static HoudiniGeometry* create(const String& name)
 		{
-			ofmsg("%1%", %failure.lastErrorMessage());
-			throw;
-	    }
-	}
-
-	virtual void initializeRenderer(Renderer* r)
-	{
-		r->addRenderPass(new HelloRenderPass(r, this));
-	}
-
-	float getYaw() { return myYaw; }
-	float getPitch() { return myPitch; }
-
-	virtual void handleEvent(const Event& evt);
-	virtual void commitSharedData(SharedOStream& out);
-	virtual void updateSharedData(SharedIStream& in);
-
-private:
-	float myYaw;
-	float myPitch;
-};
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void HelloRenderPass::initialize()
-{
-    try
-    {
-// 		load_asset_and_print_info("test_asset.otl");
-		omsg("about to cookOptionsCreate");
-	    HAPI_CookOptions cook_options = HAPI_CookOptions_Create();
-		omsg("about to HAPI");
-
-	    ENSURE_SUCCESS(HAPI_Initialize(
-		/*otl_search_path=*/NULL,
-		/*dso_search_path=*/NULL,
-	        &cook_options,
-		/*use_cooking_thread=*/true,
-		/*cooking_thread_max_size=*/-1));
-
-		omsg("about to read otl");
-	    int library_id;
-	    int asset_id;
-	    if (HAPI_LoadAssetLibraryFromFile(
-	            "test_asset.otl",
-	            &library_id) != HAPI_RESULT_SUCCESS)
-	    {
-	        ofmsg("Could not load %1%", %"test_asset.otl");
-	        exit(1);
-	    }
-    }
-    catch (hapi::Failure &failure)
-	{
-		ofmsg("%1%", %failure.lastErrorMessage());
-		throw;
-    }
-	RenderPass::initialize();
-
-	// Initialize cube normals.
-	myNormals[0] = Vector3s(-1, 0, 0);
-	myNormals[1] = Vector3s(0, 1, 0);
-	myNormals[2] = Vector3s(1, 0, 0);
-	myNormals[3] = Vector3s(0, -1, 0);
-	myNormals[4] = Vector3s(0, 0, 1);
-	myNormals[5] = Vector3s(0, 0, -1);
-
-	// Initialize cube face indices.
-	myFaces[0] = Vector4i(0, 1, 2, 3);
-	myFaces[1] = Vector4i(3, 2, 6, 7);
-	myFaces[2] = Vector4i(7, 6, 5, 4);
-	myFaces[3] = Vector4i(4, 5, 1, 0);
-	myFaces[4] = Vector4i(5, 6, 2, 1);
-	myFaces[5] = Vector4i(7, 4, 0, 3);
-
-	// Initialize cube face colors.
-	myFaceColors[0] = Color::Aqua;
-	myFaceColors[1] = Color::Orange;
-	myFaceColors[2] = Color::Olive;
-	myFaceColors[3] = Color::Navy;
-	myFaceColors[4] = Color::Red;
-	myFaceColors[5] = Color::Yellow;
-
-	// Setup cube vertex data
-	float size = 0.2f;
-	myVertices[0][0] = myVertices[1][0] = myVertices[2][0] = myVertices[3][0] = -size;
-	myVertices[4][0] = myVertices[5][0] = myVertices[6][0] = myVertices[7][0] = size;
-	myVertices[0][1] = myVertices[1][1] = myVertices[4][1] = myVertices[5][1] = -size;
-	myVertices[2][1] = myVertices[3][1] = myVertices[6][1] = myVertices[7][1] = size;
-	myVertices[0][2] = myVertices[3][2] = myVertices[4][2] = myVertices[7][2] = size;
-	myVertices[1][2] = myVertices[2][2] = myVertices[5][2] = myVertices[6][2] = -size;
-
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void HelloRenderPass::render(Renderer* client, const DrawContext& context)
-{
-	if(context.task == DrawContext::SceneDrawTask)
-	{
-		client->getRenderer()->beginDraw3D(context);
-
-		// Enable depth testing and lighting.
-		glEnable(GL_DEPTH_TEST);
-		glEnable(GL_LIGHTING);
-
-		// Setup light.
-		glEnable(GL_LIGHT0);
-		glEnable(GL_COLOR_MATERIAL);
-		glLightfv(GL_LIGHT0, GL_DIFFUSE, Color(1.0, 1.0, 1.0).data());
-		glLightfv(GL_LIGHT0, GL_POSITION, Vector3s(0.0f, 0.0f, 1.0f).data());
-
-		// Draw a rotating teapot.
-		glTranslatef(0, 2, -2);
-		glRotatef(10, 1, 0, 0);
-		glRotatef(myApplication->getYaw(), 0, 1, 0);
-		glRotatef(myApplication->getPitch(), 1, 0, 0);
-
-		// Draw a box
-		for (int i = 0; i < 6; i++)
-		{
-			glBegin(GL_QUADS);
-			glColor3fv(myFaceColors[i].data());
-			glNormal3fv(myNormals[i].data());
-			glVertex3fv(myVertices[myFaces[i][0]].data());
-			glVertex3fv(myVertices[myFaces[i][1]].data());
-			glVertex3fv(myVertices[myFaces[i][2]].data());
-			glVertex3fv(myVertices[myFaces[i][3]].data());
-			glEnd();
+			return new HoudiniGeometry(name);
 		}
 
-		client->getRenderer()->endDraw();
+		int addNormal(const Vector3f& v);
+		void setNormal(int index, const Vector3f& v);
+		Vector3f getNormal(int index);
+		virtual void clear();
+
+		void dirty();
+
+	public:
+		HoudiniGeometry(const String& name): ModelGeometry(name) {
+	// 		osg::VertexBufferObject* vboP = myGeometry->getOrCreateVertexBufferObject();
+	// 		vboP->setUsage(GL_DYNAMIC_DRAW);
+		}
+	private:
+		Ref<osg::Vec3Array> myNormals;
+
+	};
+};
+
+using namespace houdiniEngine;
+
+///////////////////////////////////////////////////////////////////////////////
+void HoudiniGeometry::clear()
+{
+	if (myColors != NULL) myColors->clear();
+	if (myVertices != NULL) myVertices->clear();
+	if (myNormals != NULL) myNormals->clear();
+	myGeometry->removePrimitiveSet(0, myGeometry->getNumPrimitiveSets());
+	myGeometry->dirtyBound();
+}
+
+///////////////////////////////////////////////////////////////////////////////
+void HoudiniGeometry::dirty()
+{
+	if (myColors != NULL) myColors->dirty();
+	if (myVertices != NULL) myVertices->dirty();
+	if (myNormals != NULL) myNormals->dirty();
+}
+
+///////////////////////////////////////////////////////////////////////////////
+int HoudiniGeometry::addNormal(const Vector3f& v)
+{
+	if(myNormals == NULL) {
+		myNormals = new osg::Vec3Array();
+		myGeometry->setNormalArray(myNormals);
+		myGeometry->setNormalBinding(osg::Geometry::BIND_PER_VERTEX);
 	}
+
+	myNormals->push_back(osg::Vec3d(v[0], v[1], v[2]));
+// 	myGeometry->dirtyBound();
+	return myNormals->size() - 1;
 }
 
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void HelloApplication::handleEvent(const Event& evt)
+///////////////////////////////////////////////////////////////////////////////
+void HoudiniGeometry::setNormal(int index, const Vector3f& v)
 {
-	if(evt.getServiceType() == Service::Pointer)
-	{
-		// Normalize the mouse position using the total display resolution,
-		// then multiply to get 180 degree rotations
-		DisplaySystem* ds = getEngine()->getDisplaySystem();
-		Vector2i resolution = ds->getDisplayConfig().getCanvasRect().size();
-		myYaw = (evt.getPosition().x() / resolution[0]) * 180;
-		myPitch = (evt.getPosition().y() / resolution[1]) * 180;
-	}
+	oassert(myNormals->size() > index);
+	osg::Vec3f& c = myNormals->at(index);
+	c[0] = v[0];
+	c[1] = v[1];
+	c[2] = v[2];
+	myNormals->dirty();
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void HelloApplication::commitSharedData(SharedOStream& out)
+///////////////////////////////////////////////////////////////////////////////
+Vector3f HoudiniGeometry::getNormal(int index)
 {
-	out << myYaw << myPitch;
+	oassert(myNormals->size() > index);
+	const osg::Vec3f& c = myNormals->at(index);
+	return Vector3f(c[0], c[1], c[2]);
 }
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void HelloApplication::updateSharedData(SharedIStream& in)
-{
- 	in >> myYaw >> myPitch;
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// ApplicationBase entry point
-int main(int argc, char** argv)
-{
-	Application<HelloApplication> app("ohello2");
-//     try
-//     {
-// // 		load_asset_and_print_info("test_asset.otl");
-// 		omsg("about to cookOptionsCreate");
-// 	    HAPI_CookOptions cook_options = HAPI_CookOptions_Create();
-// 		omsg("about to HAPI");
-//
-// 	    ENSURE_SUCCESS(HAPI_Initialize(
-// 		/*otl_search_path=*/NULL,
-// 		/*dso_search_path=*/NULL,
-// 	        &cook_options,
-// 		/*use_cooking_thread=*/true,
-// 		/*cooking_thread_max_size=*/-1));
-//
-// 		omsg("about to read otl");
-// 	    int library_id;
-// 	    int asset_id;
-// 	    if (HAPI_LoadAssetLibraryFromFile(
-// 	            "test_asset.otl",
-// 	            &library_id) != HAPI_RESULT_SUCCESS)
-// 	    {
-// 	        ofmsg("Could not load %1%", %"test_asset.otl");
-// 	        exit(1);
-// 	    }
-// 		omsg("about to clean up HAPI");
-// 	    ENSURE_SUCCESS(HAPI_Cleanup());
-// 		omsg("done HAPI");
-//     }
-//     catch (hapi::Failure &failure)
-// 	{
-// 		ofmsg("%1%", %failure.lastErrorMessage());
-// 		throw;
-//     }
-    return omain(app, argc, argv);
-}
-/*
-#include <omega.h>
-#include <omegaGl.h>
-
-using namespace omega;
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//! Contains data for a single animation frame.
-struct Frame: public ReferenceType
-{
-	Ref<ImageUtils::LoadImageAsyncTask> imageLoader;
-	int frameNumber;
-	//float deadline;
-};
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//! omegalib module implementing a flipbook-style animation player.
-class FlipbookPlayer: public EngineModule
-{
-public:
-	//! Convenience method to create the module, register and initialize it.
-	static FlipbookPlayer* createAndInitialize();
-
-	FlipbookPlayer();
-
-	//! Called for each frame.
-	virtual void update(const UpdateContext& context);
-	//! Called when a new renderer is being initialized (i.e. for a new gl window)
-	virtual void initializeRenderer(Renderer* r);
-	virtual void dispose();
-
-	//! Start loading an animation.
-	void load(const String& framePath, int totalFrames, int startFrame);
-	void loadMultidir(const String& framePath, int totalFrames, int startFrame, int filesPerDir, int startDirIndex);
-
-	//! Begin playing an animation.
-	void play();
-	//! Pause animation
-	void pause();
-	// Stop and rewind animation
-	void stop();
-	void loop(bool value) { myLoop = value; }
-	void setCurrentFrameNumber(int frameNumber);
-
-	//! Adds the next frame to the buffering queue.
-	void queueNextFrame();
-	//! Returns the number of consecutive frames that finished buffering and are ready to display.
-	int getNumReadyFrames();
-	int getNumBufferedFrames() { return myBufferedFrames.size(); }
-	int getTotalFrames() { return myTotalFrames; }
-
-	// Return the current frame.
-	Frame* getCurrentFrame() { return myCurrentFrame; }
-
-	//! Sets / gets the number of frames to keep in the buffer
-	int getFramesToBuffer() { return myFramesToBuffer; }
-	void setFramesToBuffer(int value) { myFramesToBuffer = value; }
-
-	void setFrameTime(float value) { myFrameTime = value; }
-	float getFrameTime() { return myFrameTime; }
-
-	void setPlaybackBarVisible(bool value) { myPlaybackBarVisible = value; }
-	bool isPlaybackBarVisible() { return myPlaybackBarVisible; }
-
-	void setNumGpuBuffers(int num) { myNumGpuBuffers = num; }
-	int getNumGpuBuffers() { return myNumGpuBuffers; }
-
-private:
-	//! Frame file name. Should contain a printf-style placeholder
-	//! that will be replaced with the frame number.
-	String myFramePath;
-
-	//! Total frames for this animation
-	int myTotalFrames;
-	//! Start frame index for this animation
-	int myStartFrame;
-	//! When true use multiple subdirectories for movie segments.
-	bool myIsMultidir;
-	//! Number of files per directory
-	int myFramesPerDir;
-	int myStartDirIndex;
-
-	//! Number of frames that we should keep in the loading queue.
-	int myFramesToBuffer;
-
-	//! Number of frames that should be fully loaded at any time during playback.
-	//! If loaded frames go under this threshold, play goes into 'buffering mode' and will
-	//! resume when enough frames have loaded.
-	int myFrameBufferThreshold;
-
-	//! Time each frame should be displayed, in seconds.
-	float myFrameTime;
-
-	//! Total playback time.
-	float myPlaybackTime;
-
-	//! When set to true playback will start again once over.
-	bool myLoop;
-	//! True when the animation is playing (even when buffering)
-	bool myPlaying;
-	//! True when the animation play is suspended because not enough frames are in the queue.
-	bool myBuffering;
-	//! True when we are loading new frames
-	bool myLoading;
-
-	//! Current frame.
-	Ref<Frame> myCurrentFrame;
-	float myCurrentFrameTime;
-	int myCurrentFrameIndex;
-
-	//! Buffer of frames that are loading or ar ready to view.
-	List< Ref<Frame> > myBufferedFrames;
-
-	bool myPlaybackBarVisible;
-
-	int myNumGpuBuffers;
-};
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//! Render pass for the flipbook player
-class FlipbookRenderPass: public RenderPass
-{
-public:
-	FlipbookRenderPass(FlipbookPlayer* player, Renderer* client):
-		myPlayer(player), RenderPass(client, "FlipbookRenderPass"), myActiveTextureIndex(0) {}
-	virtual ~FlipbookRenderPass() { omsg("~FlipbookRenderPass"); }
-	//! Drawing happens here.
-	virtual void render(Renderer* client, const DrawContext& context);
-
-private:
-	//! Draw a youtube-style playback bar. Useful for debugging buffering performance.
-	void drawPlaybackBar(DrawInterface* di, int x, int y, int width, int height);
-
-private:
-	Ref<PixelData> myPixelBuffer[16];
-	Ref<Texture> myFrameTexture;
-	int myActiveTextureIndex;
-	FlipbookPlayer* myPlayer;
-	Ref<Frame> myLastFrame;
-};
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-// Python wrapper code.
-#ifdef OMEGA_USE_PYTHON
-#include "omega/PythonInterpreterWrapper.h"
-BOOST_PYTHON_MODULE(flipbookPlayer)
+HoudiniEngine* HoudiniEngine::createAndInitialize()
 {
-	// FlipbookPlayer
-	PYAPI_REF_BASE_CLASS(FlipbookPlayer)
-		PYAPI_STATIC_REF_GETTER(FlipbookPlayer, createAndInitialize)
-		PYAPI_METHOD(FlipbookPlayer, load)
-		PYAPI_METHOD(FlipbookPlayer, loadMultidir)
-		PYAPI_METHOD(FlipbookPlayer, play)
-		PYAPI_METHOD(FlipbookPlayer, pause)
-		PYAPI_METHOD(FlipbookPlayer, stop)
-		PYAPI_METHOD(FlipbookPlayer, loop)
-		PYAPI_METHOD(FlipbookPlayer, getFramesToBuffer)
-		PYAPI_METHOD(FlipbookPlayer, setFramesToBuffer)
-		PYAPI_METHOD(FlipbookPlayer, getFrameTime)
-		PYAPI_METHOD(FlipbookPlayer, setFrameTime)
-		PYAPI_METHOD(FlipbookPlayer, setCurrentFrameNumber)
-		PYAPI_METHOD(FlipbookPlayer, setPlaybackBarVisible)
-		PYAPI_METHOD(FlipbookPlayer, isPlaybackBarVisible)
-		PYAPI_METHOD(FlipbookPlayer, getNumGpuBuffers)
-		PYAPI_METHOD(FlipbookPlayer, setNumGpuBuffers)
-		;
-}
-#endif
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-FlipbookPlayer* FlipbookPlayer::createAndInitialize()
-{
-	// Initialize and register the flipbook player module.
-	FlipbookPlayer* instance = new FlipbookPlayer();
+	// Initialize and register the HoudiniEngine module.
+	HoudiniEngine* instance = new HoudiniEngine();
 	ModuleServices::addModule(instance);
 	instance->doInitialize(Engine::instance());
 	return instance;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-FlipbookPlayer::FlipbookPlayer():
-	EngineModule("FlipbookPlayer"),
-	myPlaying(false),
-	myPlaybackBarVisible(true),
-	myLoop(false)
+HoudiniEngine::HoudiniEngine():
+	EngineModule("HoudiniEngine"),
+	mySceneManager(NULL)
 {
-	myFramesToBuffer = 100;
-	myFrameTime = 0.2f;
-	myNumGpuBuffers = 2;
+    try
+    {
+		enableSharedData();
+
+	    HAPI_CookOptions cook_options = HAPI_CookOptions_Create();
+
+	    ENSURE_SUCCESS(HAPI_Initialize(
+		getenv("$HOME"),
+		/*dso_search_path=*/NULL,
+	        &cook_options,
+		/*use_cooking_thread=*/true,
+		/*cooking_thread_max_size=*/-1));
+    }
+    catch (hapi::Failure &failure)
+    {
+		ofwarn("%1%", %failure.lastErrorMessage());
+	throw;
+    }
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-void FlipbookPlayer::load(const String& filePath, int totalFrames, int startFrame)
-{
-	myFramePath = filePath;
-	myTotalFrames = totalFrames;
-	myStartFrame = startFrame;
-	myLoading = true;
-	myIsMultidir = false;
+HoudiniEngine::~HoudiniEngine() {
+
+	delete myAsset;
+	if (hg != NULL) delete hg;
+
+    try
+    {
+	    ENSURE_SUCCESS(HAPI_Cleanup());
+		olog(Verbose, "done HAPI");
+    }
+    catch (hapi::Failure &failure)
+    {
+		ofwarn("%1%", %failure.lastErrorMessage());
+		throw;
+    }
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-void FlipbookPlayer::loadMultidir(const String& filePath, int totalFrames, int startFrame, int framesPerDir, int startDirIndex)
+int HoudiniEngine::loadAssetLibraryFromFile(const String& otlFile)
 {
-	myFramePath = filePath;
-	myTotalFrames = totalFrames;
-	myStartFrame = startFrame;
-	myLoading = true;
-	myIsMultidir = true;
-	myFramesPerDir = framesPerDir;
-	myStartDirIndex = startDirIndex;
+
+    int assetCount = -1;
+
+    HAPI_Result hr = HAPI_LoadAssetLibraryFromFile(
+            otlFile.c_str(),
+            &library_id);
+    if (hr != HAPI_RESULT_SUCCESS)
+    {
+        ofwarn("Could not load %1%", %otlFile);
+        ofwarn("Result is %1%", %hr);
+		return assetCount;
+    }
+
+    ENSURE_SUCCESS( HAPI_GetAvailableAssetCount( library_id, &assetCount ) );
+
+	ofmsg("%1% assets available", %assetCount);
+
+    return assetCount;
+
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-void FlipbookPlayer::play()
+int HoudiniEngine::instantiateAsset(const String& assetName)
 {
-	myPlaying = true;
-	myBuffering = true;
-	myCurrentFrame = NULL;
-	myPlaybackTime = 0;
+	// this is code to instantiate an asset
+    HAPI_StringHandle asset_name_sh;
+    ENSURE_SUCCESS( HAPI_GetAvailableAssets( library_id, &asset_name_sh, 1 ) );
+    std::string asset_name = get_string( asset_name_sh );
 
-	// The initial buffering threshold is half the maximum queued frames.
-	myFrameBufferThreshold = myFramesToBuffer / 2;
-	myCurrentFrameTime = 0;
-}
+    ENSURE_SUCCESS(HAPI_InstantiateAsset(
+            asset_name.c_str(),
+            /* cook_on_load */ true,
+            &asset_id ));
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-void FlipbookPlayer::pause()
-{
-	myPlaying = false;
-	myCurrentFrame = NULL;
-}
+	wait_for_cook();
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-void FlipbookPlayer::stop()
-{
-	myPlaying = false;
-	myLoading = true;
-	myBufferedFrames.clear();
-}
+//     HAPI_AssetInfo asset_info;
+//
+//     ENSURE_SUCCESS( HAPI_GetAssetInfo( asset_id, &asset_info ) );
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-void FlipbookPlayer::setCurrentFrameNumber(int frameNumber)
-{
-	// not implemented.... would be fairly complex given way playback is currently implemented.
-	// Need to rethink playback frame timing & buffering first.
-}
+	myAsset = new hapi::Asset(asset_id); // make this a ref pointer later
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-void FlipbookPlayer::update(const UpdateContext& context)
-{
-	if(myLoading)
-	{
-		// Do we need to queue more frames?
-		while(myBufferedFrames.size() < myFramesToBuffer && myLoading) queueNextFrame();
-	}
-	if(myBuffering)
-	{
-		if(!myLoading || getNumReadyFrames() >= myFrameBufferThreshold)
-		{
-			// If we are out here it means that we buffered enough frames, or there are no
-			// more frames we can possibly buffer.
-			myBuffering = false;
-			// Reduce frame buffer threshold to 75% so we don't keep switching back and forth
-			// in buffering
-			myFrameBufferThreshold *= 0.75;
-		}
-		else
-		{
-			// If we are in buffering mode, wait until we have enough frames buffered
-			while(myLoading && getNumReadyFrames() < myFrameBufferThreshold)
-			{
-				osleep(100);
-				// Do we need to queue more frames?
-				while(myBufferedFrames.size() < myFramesToBuffer && myLoading) queueNextFrame();
+    process_assets(*myAsset);
+
+	// load only the params in the DA Folder
+	// first find the index of the folder, then iterate through the list of params
+	// from there onwards
+	const char* daFolderName = "daFolder_0";
+
+	int daFolderIndex = 0;
+	if (myAsset->parmMap().count(daFolderName) > 0) {
+		HAPI_ParmId daFolderId = myAsset->parmMap()[daFolderName].info().id;
+	// 	cout << "folder id: " << daFolderId << endl;
+		while (daFolderIndex < myAsset->parms().size()) {
+			if (myAsset->parmMap()[daFolderName].info().id == myAsset->parms()[daFolderIndex].info().id) {
+				break;
 			}
-		}
-	}
-	else if(myPlaying)
-	{
-		// If the current frame is still valid, keep displaying it...
-		if(myCurrentFrame.isNull() || myCurrentFrameTime >= myFrameTime)
-		{
-			if(myBufferedFrames.size() == 0)
-			{
-					myCurrentFrame = NULL;
-			}
-			else
-			{
-				myCurrentFrame = myBufferedFrames.front();
-				myBufferedFrames.pop_front();
-				myCurrentFrameTime = 0;
-				myCurrentFrameIndex = myCurrentFrame->frameNumber;
-			}
-		}
-
-		//myPlaybackTime += context.dt;
-		//ofmsg("dt %1%", %context.dt);
-
-		if(!myCurrentFrame.isNull())
-		{
-			// Increment the playback time
-			myPlaybackTime += context.dt;
-			myCurrentFrameTime += context.dt;
-		}
-		else
-		{
-			omsg("Finished playback");
-			myPlaying = false;
-			if(myLoop)
-			{
-				stop();
-				play();
-			}
-		}
-
-		// If we dont have enough frames left to continue playback, switch to buffering mode and increase
-		// buffering thresholds.
-		int readyFrames = getNumReadyFrames();
-		if(myLoading && readyFrames < myFrameBufferThreshold)
-		{
-			myBuffering = true;
-			myFrameBufferThreshold *= 2;
-			myFramesToBuffer *= 2;
-			ofmsg("BUFFERING: ready frames: %1%    frames to buffer:%2%    frames to queue:%3%", %readyFrames %myFrameBufferThreshold %myFramesToBuffer);
+			daFolderIndex ++;
 		}
 	}
-}
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-void FlipbookPlayer::queueNextFrame()
-{
-	// Get the last buffered frame number
-	int lastBufferedFrame = -1;
-	if(myBufferedFrames.size() > 0) lastBufferedFrame = myBufferedFrames.back()->frameNumber;
+	for (int i = daFolderIndex; i < myAsset->parms().size(); i++) {
+// 	for (int i = 0; i < myAsset->parms().size(); i++) {
+		hapi::Parm* parm = &myAsset->parms()[i];
 
-	// Increment it, to get the frame number for the next frame.
-	lastBufferedFrame++;
+// 		cout << parm->name() << "Parm type: " << parm->info().type << endl;
 
-	// Do we still have frames to load?
-	if(lastBufferedFrame < myTotalFrames)
-	{
-		// Create a new frame object to hold the frame.
-		Frame* nextFrame = new Frame();
-		nextFrame->frameNumber = lastBufferedFrame;
+		if (parm->info().invisible) continue;
 
-		// Compute the time at which this frame should be displayed (useful for dropping frames)
-		//if(nextFrame->frameNumber == 0) nextFrame->deadline = 0;
-		//else nextFrame->deadline = myBufferedFrames.back()->deadline + myFrameTime;
+		MenuItem* mi = NULL;
 
-		int nextFrameIndex = nextFrame->frameNumber + myStartFrame;
+		Menu* menu = MenuManager::instance()->getMainMenu();
 
-		// Get the path to the frame image file.
-		String framePath = "";
-		if(myIsMultidir)
-		{
-			int dirIndex = myStartDirIndex + nextFrameIndex / myFramesPerDir;
-			framePath = ostr(myFramePath, %dirIndex %nextFrameIndex);
-		}
-		else
-		{
-			framePath = ostr(myFramePath, %nextFrameIndex);
-		}
+		mi = menu->addItem(MenuItem::Label);
+		mi->setText(parm->label());
 
-		// Load the frame image asynchronously. This call queues the image loading and
-		// returns a handle to check on the image load status.
-		nextFrame->imageLoader = ImageUtils::loadImageAsync(framePath);
+// 		if (parm->info().size == 1) {
+// 			if (parm->info().type == HAPI_PARMTYPE_INT) {
+// 				int val = parm->getIntValue(0);
+// 				mi->setText(parm->label() + ": " + ostr("%1%", %val));
+// 				mi->setUserTag("label." + parm->name());
+// 				MenuItem* miLabel = mi;
+// 				mi = menu->addSlider(parm->info().max + 1, "");
+// 				mi->getSlider()->setValue(val);
+// 				mi->setUserData(miLabel);
+// 			} else if (parm->info().type == HAPI_PARMTYPE_FLOAT) {
+// 				float val = parm->getFloatValue(0);
+// 				mi->setText(parm->label() + ": " + ostr("%1%", %val));
+// 				mi->setUserTag("label." + parm->name());
+// 				MenuItem* miLabel = mi;
+// 				mi = menu->addSlider(100 * (parm->info().max), "");
+// 				mi->getSlider()->setValue(int(val) * 100);
+// 				mi->setUserData(miLabel);
+// 			}
+// 		}
+// 		mi->setUserTag(parm->name());
+// 		mi->setListener(this);
 
-		// Add the frame to the list of currently buffering frames.
-		myBufferedFrames.push_back(nextFrame);
-	}
-	else
-	{
-		omsg("Finished loading movie frames");
-		myLoading = false;
-	}
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-int FlipbookPlayer::getNumReadyFrames()
-{
-	// Count the number of consecutive frames whose image data has been loaded.
-	int readyFrames = 0;
-	foreach(Frame* frame, myBufferedFrames)
-	{
-		if(frame->imageLoader->isComplete()) readyFrames++;
-		else break;
-	}
-	return readyFrames;
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-void FlipbookPlayer::initializeRenderer(Renderer* r)
-{
-	// Add our custom render pass to the renderer.
-	r->addRenderPass(new FlipbookRenderPass(this, r));
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-void FlipbookPlayer::dispose()
-{
-	getEngine()->removeRenderPass("FlipbookRenderPass");
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-void FlipbookRenderPass::render(Renderer* renderer, const DrawContext& context)
-{
-	if(context.task == DrawContext::SceneDrawTask)
-	{
-		// Get the current frame data from the player
-		Frame* frame = myPlayer->getCurrentFrame();
-		if(frame != NULL)
-		{
-			PixelData* pixels = frame->imageLoader->getData().image;
-
-			// If we did not initialize a texture for rendering, let's do it now.
-			if(myFrameTexture == NULL)
-			{
-				myFrameTexture = renderer->createTexture();
-				myFrameTexture->initialize(pixels->getWidth(), pixels->getHeight());
+		if (parm->info().size == 1) {
+			if (parm->info().type == HAPI_PARMTYPE_INT) {
+				int val = parm->getIntValue(0);
+				mi->setText(parm->label() + ": " + ostr("%1%", %val));
+				mi->setUserTag("label." + parm->name());
+				MenuItem* miLabel = mi;
+				mi = menu->addSlider(parm->info().max + 1, "");
+				mi->getSlider()->setValue(val);
+				mi->setUserData(miLabel);
+			} else if (parm->info().type == HAPI_PARMTYPE_FLOAT) {
+				float val = parm->getFloatValue(0);
+				mi->setText(parm->label() + ": " + ostr("%1%", %val));
+				mi->setUserTag("label." + parm->name());
+				MenuItem* miLabel = mi;
+				mi = menu->addSlider(100 * (parm->info().max), "");
+				mi->getSlider()->setValue(int(val) * 100);
+				mi->setUserData(miLabel);
 			}
-
-			if(myPixelBuffer[myActiveTextureIndex] == NULL)
-			{
-				myPixelBuffer[myActiveTextureIndex] = new PixelData(pixels->getFormat(), pixels->getWidth(), pixels->getHeight(), NULL, PixelData::PixelBufferObject);
-			}
-
-			if(frame != myLastFrame)
-			{
-				int nextIndex = myActiveTextureIndex + 1;
-				if(nextIndex == myPlayer->getNumGpuBuffers()) nextIndex = 0;
-
-				myFrameTexture->writePixels(myPixelBuffer[nextIndex]);
-
-				// Copy the frame pixels to the texture
-				myPixelBuffer[myActiveTextureIndex]->copyFrom(pixels);
-
-				myLastFrame = frame;
-
-				// Swap textures
-				myActiveTextureIndex = nextIndex;
-			}
-		}
-
-		if(myFrameTexture != NULL)
-		{
-			// Draw the current frame.
-			//if(context.task == DrawContext::OverlayDrawTask && context.eye == DrawContext::EyeCyclop)
-			{
-				DrawInterface* di = renderer->getRenderer();
-				di->beginDraw2D(context);
-				glColor4f(1, 1, 1, 1);
-
-				const DisplayTileConfig* tile = context.tile;
-				float cx = tile->offset.x();
-				float cy = tile->offset.y();
-				float sx = tile->pixelSize.x();
-				float sy = tile->pixelSize.y();
-
-				di->drawRectTexture(myFrameTexture, Vector2f(cx, cy), Vector2f(sx, sy));
-
-				if(myPlayer->isPlaybackBarVisible()) drawPlaybackBar(di, cx + 5, cy + sy - 25, sx - 10, 20);
-
-				di->endDraw();
+			mi->setUserTag(parm->name());
+			mi->setListener(this);
+		} else {
+			if (parm->info().type == HAPI_PARMTYPE_FLOAT) {
+				mi->setText(parm->label());
+				mi->setUserTag("label." + parm->name());
+				MenuItem* miLabel = mi;
+				for (int j = 0; j < parm->info().size; ++j) {
+					float val = parm->getFloatValue(j);
+					mi = menu->addSlider(100 * (parm->info().max), "");
+					mi->getSlider()->setValue(int(val) * 100);
+					mi->setUserData(miLabel);
+					mi->setUserTag(parm->name() + ostr(" %1%", %j));
+					mi->setListener(this);
+					miLabel->setText(ostr("%1% %2%", %miLabel->getText() %val));
+				}
 			}
 		}
 	}
+
+	return 0;
+}
+
+void HoudiniEngine::instantiateGeometry(const String& asset, const int geoNum, const int partNum)
+{
+	for (int i = 0; i < geoNames.size(); ++i) {
+		ofmsg("making instance %1%", %geoNames[i]);
+		StaticObject* hgGeoInstance = new StaticObject(mySceneManager, geoNames[i]);
+		hgGeoInstance->setPosition(Vector3f(0, 2, -4));
+// 		getEngine()->getScene()->addChild(hgGeoInstance);
+//  		sn->addChild(hgGeoInstance);
+// 		ofmsg("added instance %1%", %geoNames[i]);
+	}
+}
+
+void HoudiniEngine::process_assets(const hapi::Asset &asset)
+{
+    vector<hapi::Object> objects = asset.objects();
+    for (int object_index=0; object_index < int(objects.size()); ++object_index)
+    {
+		vector<hapi::Geo> geos = objects[object_index].geos();
+
+		for (int geo_index=0; geo_index < int(geos.size()); ++geo_index)
+		{
+		    vector<hapi::Part> parts = geos[geo_index].parts();
+
+		    for (int part_index=0; part_index < int(parts.size()); ++part_index)
+			{
+
+				String s = ostr("geo%1%", %part_index);
+
+				if (mySceneManager->getModel(s) == NULL) {
+					ofmsg("making hg %1%", %s);
+					hg = HoudiniGeometry::create(s);
+					geoNames.push_back(s);
+					mySceneManager->addModel(hg);
+				} else {
+					hg->clear();
+				}
+				process_geo_part(parts[part_index]);
+
+			}
+		}
+    }
+}
+
+void HoudiniEngine::process_geo_part(const hapi::Part &part)
+{
+//     cout << "object " << part.geo.object.id << ", geo " << part.geo.id
+// 	<< ", part " << part.id << endl;
+
+	vector<Vector3f> points;
+	vector<Vector3f> normals;
+	vector<Vector3f> colors;
+
+	bool has_point_normals = false;
+	bool has_vertex_normals = false;
+	bool has_point_colors = false;
+	bool has_vertex_colors = false;
+	bool has_primitive_colors = false;
+
+	//  attrib owners:
+	// 	HAPI_ATTROWNER_VERTEX
+	// 	HAPI_ATTROWNER_POINT
+	// 	HAPI_ATTROWNER_PRIM
+	// 	HAPI_ATTROWNER_DETAIL
+	// 	HAPI_ATTROWNER_MAX
+
+	// attributes:
+	// 	HAPI_ATTRIB_COLOR 		"Cd"
+	// 	HAPI_ATTRIB_NORMAL		"N"
+	// 	HAPI_ATTRIB_POSITION	"P" // usually on point
+	// 	HAPI_ATTRIB_TANGENT		"tangentu"
+	// 	HAPI_ATTRIB_TANGENT2	"tangentv"
+	// 	HAPI_ATTRIB_UV			"uv"
+	// 	HAPI_ATTRIB_UV2			"uv2"
+
+    // Print the list of point attribute names.
+//     cout << "point attributes:" << endl;
+    vector<std::string> point_attrib_names = part.attribNames(
+	HAPI_ATTROWNER_POINT);
+    for (int attrib_index=0; attrib_index < int(point_attrib_names.size());
+	    ++attrib_index) {
+// 		cout << "    " << point_attrib_names[attrib_index] << endl;
+		if (point_attrib_names[attrib_index] == "P") {
+// 		    cout << "point positions:" << endl;
+		    process_float_attrib(part, HAPI_ATTROWNER_POINT, "P", points);
+		}
+		if (point_attrib_names[attrib_index] == "N") {
+// 		    cout << "point normals:" << endl;
+			has_point_normals = true;
+		    process_float_attrib(part, HAPI_ATTROWNER_POINT, "N", normals);
+		}
+		if (point_attrib_names[attrib_index] == "Cd") {
+// 		    cout << "point colors:" << endl;
+			has_point_colors = true;
+		    process_float_attrib(part, HAPI_ATTROWNER_POINT, "Cd", colors);
+		}
+	}
+
+    // Print the list of point attribute names.
+//     cout << "vertex attributes:" << endl;
+    vector<std::string> vertex_attrib_names = part.attribNames(
+	HAPI_ATTROWNER_VERTEX);
+    for (int attrib_index=0; attrib_index < int(vertex_attrib_names.size());
+	    ++attrib_index) {
+// 		cout << "    " << vertex_attrib_names[attrib_index] << endl;
+		if (vertex_attrib_names[attrib_index] == "N") {
+// 		    cout << "vertex normals:" << endl;
+			has_vertex_normals = true;
+		    process_float_attrib(part, HAPI_ATTROWNER_VERTEX, "N", normals);
+		}
+	}
+
+    // Print the list of point attribute names.
+//     cout << "primitive attributes:" << endl;
+    vector<std::string> primitive_attrib_names = part.attribNames(
+	HAPI_ATTROWNER_PRIM);
+    for (int attrib_index=0; attrib_index < int(primitive_attrib_names.size());
+	    ++attrib_index) {
+// 		cout << "    " << primitive_attrib_names[attrib_index] << endl;
+		if (primitive_attrib_names[attrib_index] == "Cd") {
+// 		    cout << "primitive colors:" << endl;
+			has_primitive_colors = true;
+		    process_float_attrib(part, HAPI_ATTROWNER_PRIM, "Cd", colors);
+		}
+	}
+
+//     cout << "Number of faces: " << part.info().faceCount << endl;
+    int * face_counts = new int[ part.info().faceCount ];
+    ENSURE_SUCCESS( HAPI_GetFaceCounts(
+		part.geo.object.asset.id,
+		part.geo.object.id,
+		part.geo.id,
+        part.id,
+		face_counts,
+		0,
+		part.info().faceCount
+	) );
+
+    int * vertex_list = new int[ part.info().vertexCount ];
+    ENSURE_SUCCESS( HAPI_GetVertexList(
+		part.geo.object.asset.id,
+		part.geo.object.id,
+		part.geo.id,
+        part.id,
+		vertex_list, 0, part.info().vertexCount ) );
+//     cout << "Vertex Indices into Points array:\n";
+    int curr_index = 0;
+
+	int prev_faceCount = face_counts[0];
+    int prev_faceCountIndex = 0;
+
+	// TODO: get primitive set working for different triangles..
+
+	// primitives with sides > 4 can't use drawArrays, as it thinks all points are part
+	// of the triangle_fan. should use drawMultipleArrays, but osg doesn't have it?
+	// instead, make a primitive set for each primitive > 4 facecount.
+	// it has something better: drawArrayLengths(osgPrimitiveType(TRIANGLE_FAN), start index, length)
+	// may use next iteration over this
+
+	osg::PrimitiveSet::Mode myType;
+
+	// objects with primitives of different side count > 4 don't get rendered well. get around this
+	// by triangulating meshes on houdini engine side.
+
+    for( int ii=0; ii < part.info().faceCount; ii++ )
+    {
+
+		// add primitive group if face count is different from previous
+		if (face_counts[ii] != prev_faceCount) {
+
+			if (prev_faceCount == 3) {
+				myType = osg::PrimitiveSet::TRIANGLES;
+			} else if (prev_faceCount == 4) {
+				myType = osg::PrimitiveSet::QUADS;
+			}
+
+// 			cout << "making primitive set for " << prev_faceCount << ", from " <<
+// 				prev_faceCountIndex << " plus " <<
+// 				curr_index - prev_faceCountIndex << endl;
+
+			hg->addPrimitiveOsg(myType, prev_faceCountIndex, curr_index - prev_faceCountIndex);
+
+			prev_faceCountIndex = curr_index;
+			prev_faceCount = face_counts[ii];
+		} else if ((ii > 0) && (prev_faceCount > 4)) {
+// 			cout << "making primitive set for " << prev_faceCount << ", plus " <<
+// 				prev_faceCountIndex << " to " <<
+// 				curr_index - prev_faceCountIndex << endl;
+			hg->addPrimitiveOsg(osg::PrimitiveSet::TRIANGLE_FAN,
+				prev_faceCountIndex,
+			    curr_index - prev_faceCountIndex);
+
+			prev_faceCountIndex = curr_index;
+			prev_faceCount = face_counts[ii];
+		}
+
+// 		cout << "face (" << face_counts[ii] << "): " << ii << " ";
+        for( int jj=0; jj < face_counts[ii]; jj++ )
+        {
+
+			int myIndex = curr_index + (face_counts[ii] - jj) % face_counts[ii];
+// 			cout << "i: " << vertex_list[myIndex] << " ";
+
+			int lastIndex = hg->addVertex(points[vertex_list[ myIndex ]]);
+
+			if (has_point_normals) {
+				hg->addNormal(normals[vertex_list[ myIndex ]]);
+			} else if (has_vertex_normals) {
+				hg->addNormal(normals[myIndex]);
+			}
+			if(has_point_colors) {
+				hg->addColor(Color(
+					colors[vertex_list[ myIndex ]][0],
+					colors[vertex_list[ myIndex ]][1],
+					colors[vertex_list[ myIndex ]][2],
+					1.0
+				));
+			} else if (has_primitive_colors) {
+				hg->addColor(Color(
+					colors[ii][0],
+					colors[ii][1],
+					colors[ii][2],
+					1.0
+				));
+			}
+
+//             cout << "v:" << myIndex << ", i: "
+// 				<< hg->getVertex(lastIndex) << endl; //" ";
+        }
+
+        curr_index += face_counts[ii];
+
+    }
+
+	if (prev_faceCount == 3) {
+		myType = osg::PrimitiveSet::TRIANGLES;
+	} else if (prev_faceCount == 4) {
+		myType = osg::PrimitiveSet::QUADS;
+	}
+	if (prev_faceCount > 4) {
+// 		cout << "face count is " << prev_faceCount << endl;
+		myType = osg::PrimitiveSet::TRIANGLE_FAN;
+	}
+
+// 	cout << "making final primitive set for " << prev_faceCount << ", from " <<
+// 		prev_faceCountIndex << " plus " <<
+// 		curr_index - prev_faceCountIndex << endl;
+
+	hg->addPrimitiveOsg(myType, prev_faceCountIndex, curr_index - prev_faceCountIndex);
+
+	hg->dirty();
+
+    delete[] face_counts;
+    delete[] vertex_list;
+
+}
+
+
+void HoudiniEngine::process_float_attrib(
+    const hapi::Part &part, HAPI_AttributeOwner attrib_owner,
+    const char *attrib_name, vector<Vector3f>& points)
+{
+	// useHAPI_AttributeInfo::storage for the data type
+
+    // Get the attribute values.
+    HAPI_AttributeInfo attrib_info = part.attribInfo(attrib_owner, attrib_name);
+    float *attrib_data = part.getNewFloatAttribData(attrib_info, attrib_name);
+
+	points.clear();
+	points.resize(attrib_info.count);
+    for (int elem_index=0; elem_index < attrib_info.count; ++elem_index)
+    {
+
+		Vector3f v;
+		for (int tuple_index=0; tuple_index < attrib_info.tupleSize;
+			++tuple_index)
+		{
+
+			v[tuple_index] = attrib_data[elem_index * attrib_info.tupleSize + tuple_index ];
+
+// 		    cout << attrib_data[
+// 			    elem_index * attrib_info.tupleSize + tuple_index]
+// 			<< " ";
+		}
+// 		cout << endl;
+		points[elem_index] = v;
+    }
+
+    delete [] attrib_data;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-void FlipbookRenderPass::drawPlaybackBar(DrawInterface* di, int x, int y, int width, int height)
+void HoudiniEngine::initialize()
 {
-	Frame* frame = myPlayer->getCurrentFrame();
+	// Create and initialize the cyclops scene manager.
+	mySceneManager = SceneManager::createAndInitialize();
 
-	int totalFrames = myPlayer->getTotalFrames();
-	int currentFrame = (frame != NULL ? frame->frameNumber : 0);
-	int bufferedFrames = myPlayer->getNumBufferedFrames() + currentFrame;
-	int readyFrames = myPlayer->getNumReadyFrames() + currentFrame;
+	// Create the scene editor and add our loaded object to it.
+	myEditor = SceneEditorModule::createAndInitialize();
+// 	myEditor->addNode(myObject);
+	myEditor->setEnabled(false);
 
-	int bufferedFramesLength = width * bufferedFrames / totalFrames;
-	int readyFramesLength = width * readyFrames / totalFrames;
-	int currentFrameLength = width * currentFrame / totalFrames;
+	// Create and initialize the menu manager
+	myMenuManager = MenuManager::createAndInitialize();
 
-	Color borderColor = Color(1, 1, 1);
-	Color backColor = Color(0, 0, 0, 0.8f);
-	Color currentFrameColor = Color(1, 0.2f, 0.2f);
-	Color bufferedFramesColor = Color(0.3f, 0.3f, 0.3f);
-	Color readyFramesColor = Color(0.5f, 0.5f, 0.5f);
+	// Create the root menu
+	ui::Menu* menu = myMenuManager->createMenu("menu");
+	myMenuManager->setMainMenu(menu);
 
-	di->drawRect(Vector2f(x, y), Vector2f(width, height), backColor);
-	di->drawRect(Vector2f(x, y), Vector2f(bufferedFramesLength, height), bufferedFramesColor);
-	di->drawRect(Vector2f(x, y), Vector2f(readyFramesLength, height), readyFramesColor);
-	di->drawRect(Vector2f(x, y), Vector2f(currentFrameLength, height), currentFrameColor);
-	di->drawRectOutline(Vector2f(x, y), Vector2f(width, height), borderColor);
+	sn = SceneNode::create("myOtl");
+	myEditor->addNode(sn);
+
+
+	// Add the 'quit' menu item. Menu items can either run callbacks when activated, or they can
+	// run script commands. In this case, we make the menu item call the 'oexit' script command.
+	// oexit is the standard omegalib script command used to terminate the application.
+	// Using scripting with menu items can be extremely powerful and flexible, and limits the amount
+	// of callback code that needs to be written to handle ui events.
+	myQuitMenuItem = menu->addItem(MenuItem::Button);
+	myQuitMenuItem->setText("Quit");
+	myQuitMenuItem->setCommand("oexit()");
 }
-*/
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+void HoudiniEngine::update(const UpdateContext& context)
+{
+// 	// If we are not in editing mode, Animate our loaded object.
+// 	if(!myEditor->isEnabled())
+// 	{
+// 		myObject->setPosition(0, 2 + Math::sin(context.time) * 0.5f + 0.5f, -2);
+// 		myObject->pitch(context.dt);
+// 		myObject->yaw(context.dt);
+// 	}
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+void HoudiniEngine::onMenuItemEvent(MenuItem* mi)
+{
+	bool update = false;
+
+	// is this event generated by the 'manipulate object' menu item?
+	if(mi == myEditorMenuItem)
+	{
+		myEditor->setEnabled(myEditorMenuItem->isChecked());
+	}
+	cout << "parameter: " << mi->getUserTag() << endl;
+
+	int z = mi->getUserTag().find_last_of(" ");
+	cout << "first parameter: " << mi->getUserTag().substr(0, z) << endl;
+	cout << "last parameter: " << mi->getUserTag().substr(z + 1) << endl;
+// 	if (myAsset->parmMap()[mi->getUserTag()].info().size == 1) {
+// 		if (myAsset->parmMap()[mi->getUserTag()].info().type == HAPI_PARMTYPE_INT) {
+// 			myAsset->parmMap()[mi->getUserTag()].setIntValue(0, mi->getSlider()->getValue());
+//
+// 			((MenuItem*)mi->getUserData())->setText(myAsset->parmMap()[mi->getUserTag()].label() + ": " +
+// 			ostr("%1%", %mi->getSlider()->getValue()));
+//
+// 			update = true;
+//
+// 		} else if (myAsset->parmMap()[mi->getUserTag()].info().type == HAPI_PARMTYPE_FLOAT) {
+// 			myAsset->parmMap()[mi->getUserTag()].setFloatValue(0, 0.01 * mi->getSlider()->getValue());
+//
+// 			((MenuItem*)mi->getUserData())->setText(myAsset->parmMap()[mi->getUserTag()].label() + ": " +
+// 			ostr("%1%", %(mi->getSlider()->getValue() * 0.01)));
+//
+// 			update = true;
+//
+// 		}
+// 	}
+
+	hapi::Parm* parm = &(myAsset->parmMap()[mi->getUserTag().substr(0, z)]);
+	int index = atoi(mi->getUserTag().substr(z + 1).c_str());
+
+// 	for (int i = 0; i < parm->info().size; ++i) {
+	if (parm->info().type == HAPI_PARMTYPE_INT) {
+		parm->setIntValue(index, mi->getSlider()->getValue());
+
+		((MenuItem*)mi->getUserData())->setText(parm->label() + ": " +
+		ostr("%1%", %mi->getSlider()->getValue()));
+
+		update = true;
+
+	} else if (parm->info().type == HAPI_PARMTYPE_FLOAT) {
+		parm->setFloatValue(index, 0.01 * mi->getSlider()->getValue());
+
+		((MenuItem*)mi->getUserData())->setText(parm->label() + ": " +
+		ostr("%1%", %(mi->getSlider()->getValue() * 0.01)));
+
+		update = true;
+
+	}
+// 	}
+
+	if (update) {
+		myAsset->cook();
+		wait_for_cook();
+		process_assets(*myAsset);
+	}
+
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+void HoudiniEngine::onSelectedChanged(SceneNode* source, bool value)
+{
+// 	if(source == myObject)
+// 	{
+// 		if(myObject->isSelected())
+// 		{
+// 			// Color the object yellow when selected.
+// 			myObject->setEffect("colored -d #ffff30 -g 1.0 -s 20.0");
+// 		}
+// 		else
+// 		{
+// 			// Color the object gray when not selected.
+// 			myObject->setEffect("colored -d #303030 -g 1.0 -s 20.0");
+// 		}
+// 	}
+}
+
+void HoudiniEngine::wait_for_cook()
+{
+    int status;
+    do
+    {
+		osleep(100); // sleeping..
+
+        int statusBufSize = 0;
+        ENSURE_SUCCESS( HAPI_GetStatusStringBufLength(
+            HAPI_STATUS_COOK_STATE, HAPI_STATUSVERBOSITY_ERRORS,
+            &statusBufSize ) );
+        char * statusBuf = NULL;
+        if ( statusBufSize > 0 )
+        {
+            statusBuf = new char[statusBufSize];
+            ENSURE_SUCCESS( HAPI_GetStatusString(
+                HAPI_STATUS_COOK_STATE, statusBuf ) );
+        }
+        if ( statusBuf )
+        {
+            std::string result( statusBuf );
+            ofmsg("cooking...:%1%", %result);
+            delete[] statusBuf;
+        }
+        HAPI_GetStatus(HAPI_STATUS_COOK_STATE, &status);
+    }
+    while ( status > HAPI_STATE_MAX_READY_STATE );
+    ENSURE_COOK_SUCCESS( status );
+}
+
+static std::string houdiniEngine::get_string(int string_handle)
+{
+    // A string handle of 0 means an invalid string handle -- similar to
+    // a null pointer.  Since we can't return NULL, though, return an empty
+    // string.
+    if (string_handle == 0)
+	return "";
+
+    int buffer_length;
+    ENSURE_SUCCESS(HAPI_GetStringBufLength(string_handle, &buffer_length));
+
+    char * buf = new char[ buffer_length ];
+
+    ENSURE_SUCCESS(HAPI_GetString(string_handle, buf, buffer_length));
+
+    std::string result( buf );
+    delete[] buf;
+    return result;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+void HoudiniEngine::handleEvent(const Event& evt)
+{
+// 	bool update = false;
+//
+// 	// switch between different objects
+// 	if (evt.isKeyDown('0')) {
+// 		mySwitch = (mySwitch + 1) % myAsset->parmMap()["switchCount"].getIntValue(0); // number of switches.. how get a var
+// // 		cout << ">>> old switch value: " << myAsset->parmMap()["switch1_input"].getIntValue(0) <<
+// // 		"/" << myAsset->parmMap()["switchCount"].getIntValue(0) << endl;
+// 		myAsset->parmMap()["switch1_input"].setIntValue(0, mySwitch);
+// 		update = true;
+// 	}
+//
+// 	if (evt.isKeyDown('t')) {
+// 		myAsset->parmMap()["switch_subdivide"].setIntValue(
+// 			0,
+// 			(myAsset->parmMap()["switch_subdivide"].getIntValue(0) + 1) % 2
+// 		);
+// 		update = true;
+// 	}
+//
+// 	// cook only if a change
+// 	if ((myAsset != NULL) && update) {
+// 		myAsset->cook();
+// 		wait_for_cook();
+// 		process_assets(*myAsset);
+// // 		cout << ">>> new switch value: " << myAsset->parmMap()["switch1_input"].getIntValue(0) << endl;
+// 	}
+//
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void HoudiniEngine::commitSharedData(SharedOStream& out)
+{
+	out << mySwitch;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void HoudiniEngine::updateSharedData(SharedIStream& in)
+{
+ 	in >> mySwitch;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// Python wrapper code.
+#ifdef OMEGA_USE_PYTHON
+#include "omega/PythonInterpreterWrapper.h"
+BOOST_PYTHON_MODULE(daHEngine)
+{
+	// HoudiniEngine
+	PYAPI_REF_BASE_CLASS(HoudiniEngine)
+		PYAPI_STATIC_REF_GETTER(HoudiniEngine, createAndInitialize)
+ 		PYAPI_METHOD(HoudiniEngine, loadAssetLibraryFromFile)
+ 		PYAPI_METHOD(HoudiniEngine, instantiateAsset)
+ 		PYAPI_METHOD(HoudiniEngine, instantiateGeometry)
+		;
+}
+#endif
