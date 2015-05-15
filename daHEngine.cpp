@@ -44,6 +44,12 @@ namespace houdiniEngine {
 		Vector3f getNormal(int index);
 		virtual void clear();
 
+		inline int getNormalCount() { return (myNormals == NULL) ? 0 : myNormals->size(); }
+		inline int getVertexCount() { return myVertices->size(); }
+		inline int getColorCount() { return (myColors == NULL) ? 0 : myColors->size(); }
+
+		inline int getPrimitiveSetCount() { return myGeometry->getPrimitiveSetList().size(); }
+
 		void dirty();
 
 	public:
