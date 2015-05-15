@@ -65,6 +65,24 @@ namespace houdiniEngine {
 
 using namespace houdiniEngine;
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// Python wrapper code.
+#ifdef OMEGA_USE_PYTHON
+#include "omega/PythonInterpreterWrapper.h"
+BOOST_PYTHON_MODULE(daHEngine)
+{
+	// HoudiniEngine
+	PYAPI_REF_BASE_CLASS(HoudiniEngine)
+		PYAPI_STATIC_REF_GETTER(HoudiniEngine, createAndInitialize)
+ 		PYAPI_METHOD(HoudiniEngine, loadAssetLibraryFromFile)
+ 		PYAPI_METHOD(HoudiniEngine, instantiateAsset)
+ 		PYAPI_METHOD(HoudiniEngine, hasHG)
+ 		PYAPI_METHOD(HoudiniEngine, getHGInfo)
+ 		PYAPI_REF_GETTER(HoudiniEngine, instantiateGeometry)
+		;
+}
+#endif
+
 ///////////////////////////////////////////////////////////////////////////////
 void HoudiniGeometry::clear()
 {
@@ -131,47 +149,33 @@ HoudiniEngine::HoudiniEngine():
 	EngineModule("HoudiniEngine"),
 	mySceneManager(NULL)
 {
-    try
-    {
-		enableSharedData();
-
-	    HAPI_CookOptions cook_options = HAPI_CookOptions_Create();
-
-	    ENSURE_SUCCESS(HAPI_Initialize(
-		getenv("$HOME"),
-		/*dso_search_path=*/NULL,
-	        &cook_options,
-		/*use_cooking_thread=*/true,
-		/*cooking_thread_max_size=*/-1));
-    }
-    catch (hapi::Failure &failure)
-    {
-		ofwarn("%1%", %failure.lastErrorMessage());
-	throw;
-    }
 }
 
-HoudiniEngine::~HoudiniEngine() {
-
-	delete myAsset;
-	if (hg != NULL) delete hg;
-
-    try
-    {
-	    ENSURE_SUCCESS(HAPI_Cleanup());
-		olog(Verbose, "done HAPI");
-    }
-    catch (hapi::Failure &failure)
-    {
-		ofwarn("%1%", %failure.lastErrorMessage());
-		throw;
-    }
+HoudiniEngine::~HoudiniEngine()
+{
+	if (SystemManager::instance()->isMaster())
+	{
+	    try
+	    {
+		    ENSURE_SUCCESS(HAPI_Cleanup());
+			olog(Verbose, "done HAPI");
+	    }
+	    catch (hapi::Failure &failure)
+	    {
+			ofwarn("Houdini Failure on cleanup %1%", %failure.lastErrorMessage());
+			throw;
+	    }
+	}
 }
 
 int HoudiniEngine::loadAssetLibraryFromFile(const String& otlFile)
 {
-
     int assetCount = -1;
+
+	// do this on master only
+	if (!SystemManager::instance()->isMaster()) {
+		return -1;
+	}
 
     HAPI_Result hr = HAPI_LoadAssetLibraryFromFile(
             otlFile.c_str(),
@@ -191,48 +195,27 @@ int HoudiniEngine::loadAssetLibraryFromFile(const String& otlFile)
 
 }
 
-int HoudiniEngine::instantiateAsset(const String& assetName)
+void HoudiniEngine::createMenu(const String& asset_name)
 {
-	// this is code to instantiate an asset
-    HAPI_StringHandle asset_name_sh;
-    ENSURE_SUCCESS( HAPI_GetAvailableAssets( library_id, &asset_name_sh, 1 ) );
-    std::string asset_name = get_string( asset_name_sh );
-
-    ENSURE_SUCCESS(HAPI_InstantiateAsset(
-            asset_name.c_str(),
-            /* cook_on_load */ true,
-            &asset_id ));
-
-	wait_for_cook();
-
-//     HAPI_AssetInfo asset_info;
-//
-//     ENSURE_SUCCESS( HAPI_GetAssetInfo( asset_id, &asset_info ) );
-
-	myAsset = new hapi::Asset(asset_id); // make this a ref pointer later
-
-    process_assets(*myAsset);
-
 	// load only the params in the DA Folder
 	// first find the index of the folder, then iterate through the list of params
 	// from there onwards
 	const char* daFolderName = "daFolder_0";
 
 	int daFolderIndex = 0;
-	if (myAsset->parmMap().count(daFolderName) > 0) {
-		HAPI_ParmId daFolderId = myAsset->parmMap()[daFolderName].info().id;
+	if (myAsset.get()->parmMap().count(daFolderName) > 0) {
+		HAPI_ParmId daFolderId = myAsset.get()->parmMap()[daFolderName].info().id;
 	// 	cout << "folder id: " << daFolderId << endl;
-		while (daFolderIndex < myAsset->parms().size()) {
-			if (myAsset->parmMap()[daFolderName].info().id == myAsset->parms()[daFolderIndex].info().id) {
+		while (daFolderIndex < myAsset.get()->parms().size()) {
+			if (myAsset.get()->parmMap()[daFolderName].info().id == myAsset.get()->parms()[daFolderIndex].info().id) {
 				break;
 			}
 			daFolderIndex ++;
 		}
 	}
 
-	for (int i = daFolderIndex; i < myAsset->parms().size(); i++) {
-// 	for (int i = 0; i < myAsset->parms().size(); i++) {
-		hapi::Parm* parm = &myAsset->parms()[i];
+	for (int i = daFolderIndex; i < myAsset.get()->parms().size(); i++) {
+		hapi::Parm* parm = &myAsset.get()->parms()[i];
 
 // 		cout << parm->name() << "Parm type: " << parm->info().type << endl;
 
@@ -267,6 +250,14 @@ int HoudiniEngine::instantiateAsset(const String& assetName)
 // 		mi->setUserTag(parm->name());
 // 		mi->setListener(this);
 
+		// TODO: generalise this so the following works:
+		// check for uiMin/uiMax, then use sliders
+		// use text boxes for vectors and non min/max things
+		// use submenus/containers for choices
+		// use the joinNext variable for displaying items
+		// use checkbox for HAPI_PARMTYPE_TOGGLE
+		// use text box for string
+		// do multiparms
 		if (parm->info().size == 1) {
 			if (parm->info().type == HAPI_PARMTYPE_INT) {
 				int val = parm->getIntValue(0);
@@ -283,6 +274,8 @@ int HoudiniEngine::instantiateAsset(const String& assetName)
 				MenuItem* miLabel = mi;
 				mi = menu->addSlider(100 * (parm->info().max), "");
 				mi->getSlider()->setValue(int(val) * 100);
+				// use userData to store ref to the label, for changing values
+				// when updating
 				mi->setUserData(miLabel);
 			}
 			mi->setUserTag(parm->name());
@@ -296,6 +289,8 @@ int HoudiniEngine::instantiateAsset(const String& assetName)
 					float val = parm->getFloatValue(j);
 					mi = menu->addSlider(100 * (parm->info().max), "");
 					mi->getSlider()->setValue(int(val) * 100);
+					// use userData to store ref to the label, for changing values
+					// when updating
 					mi->setUserData(miLabel);
 					mi->setUserTag(parm->name() + ostr(" %1%", %j));
 					mi->setListener(this);
@@ -304,25 +299,97 @@ int HoudiniEngine::instantiateAsset(const String& assetName)
 			}
 		}
 	}
+}
 
+bool HoudiniEngine::hasHG(const String &s) {
+	return (myHoudiniGeometrys[s] != NULL);
+}
+
+void HoudiniEngine::getHGInfo(const String &s) {
+	if (myHoudiniGeometrys[s] == NULL) {
+		return;
+	}
+
+	HoudiniGeometry* hg = myHoudiniGeometrys[s];
+
+	ofmsg("name: %1%", %hg->getName());
+	ofmsg("verts: %1%", %hg->getVertexCount());
+	ofmsg("normals: %1%", %hg->getNormalCount());
+	ofmsg("cols: %1%", %hg->getColorCount());
+
+}
+
+int HoudiniEngine::instantiateAsset(const String& asset_name)
+{
+// 	// this is code to instantiate an asset
+//     HAPI_StringHandle asset_name_sh;
+//     ENSURE_SUCCESS( HAPI_GetAvailableAssets( library_id, &asset_name_sh, 1 ) );
+//     std::string asset_name = get_string( asset_name_sh );
+
+	if (!SystemManager::instance()->isMaster()) {
+		return -1;
+	}
+
+	int asset_id = 0;
+
+    ENSURE_SUCCESS(HAPI_InstantiateAsset(
+            asset_name.c_str(),
+            /* cook_on_load */ true,
+            &asset_id ));
+
+	wait_for_cook();
+
+//     HAPI_AssetInfo asset_info;
+//
+//     ENSURE_SUCCESS( HAPI_GetAssetInfo( asset_id, &asset_info ) );
+
+	myAsset = new RefAsset(asset_id);
+	instancedHEAssets[asset_name] = myAsset;
+    process_assets(myAsset);
+
+	updateGeos = true;
 	return 0;
 }
 
-void HoudiniEngine::instantiateGeometry(const String& asset, const int geoNum, const int partNum)
+// geometry should be instantiated like this:
+// lib/otl node
+// |
+// o- asset node+
+//     |
+//     o- object node+
+//         |
+//         o- geo node+
+//             |
+//             o- part node+
+// StaticObject* HoudiniEngine::instantiateGeometry(const String& asset, const int geoNum, const int partNum)
+// HoudiniGeometry doesn't seem to be properly instantiated on all nodes. Why?
+// No geometry is drawn..
+StaticObject* HoudiniEngine::instantiateGeometry(const String& asset)
 {
-	for (int i = 0; i < geoNames.size(); ++i) {
-		ofmsg("making instance %1%", %geoNames[i]);
-		StaticObject* hgGeoInstance = new StaticObject(mySceneManager, geoNames[i]);
-		hgGeoInstance->setPosition(Vector3f(0, 2, -4));
-// 		getEngine()->getScene()->addChild(hgGeoInstance);
-//  		sn->addChild(hgGeoInstance);
-// 		ofmsg("added instance %1%", %geoNames[i]);
+	int geoNum = 0;
+	int partNum = 0;
+	String s = ostr("%1% 0 %2% %3%", %asset %geoNum %partNum);
+
+	if (myHoudiniGeometrys[s] == NULL) {
+		ofwarn("No model of %1% with geo %2% and part %3%.. creating", %asset %geoNum %partNum);
+
+		HoudiniGeometry* hg = HoudiniGeometry::create(s);
+		myHoudiniGeometrys[s] = hg;
+		if (mySceneManager->getModel(s) == NULL) {
+			mySceneManager->addModel(hg);
+		}
 	}
+
+	ofmsg("making instance %1%", %s);
+	return new StaticObject(mySceneManager, s);
 }
 
-void HoudiniEngine::process_assets(const hapi::Asset &asset)
+// void HoudiniEngine::process_assets(const hapi::Asset &asset)
+void HoudiniEngine::process_assets(Ref <RefAsset> &refAsset)
 {
-    vector<hapi::Object> objects = asset.objects();
+	hapi::Asset* asset = refAsset.get();
+
+    vector<hapi::Object> objects = asset->objects();
     for (int object_index=0; object_index < int(objects.size()); ++object_index)
     {
 		vector<hapi::Geo> geos = objects[object_index].geos();
@@ -334,28 +401,37 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 		    for (int part_index=0; part_index < int(parts.size()); ++part_index)
 			{
 
-				String s = ostr("geo%1%", %part_index);
+				String s = ostr("%1% %2% %3% %4%",
+					%asset->name()
+					%object_index
+					%geo_index
+					%part_index
+				);
 
-				if (mySceneManager->getModel(s) == NULL) {
-					ofmsg("making hg %1%", %s);
+				HoudiniGeometry* hg;
+
+				if (myHoudiniGeometrys[s] == NULL) {
+					ofmsg("making hg: '%1%'", %s);
 					hg = HoudiniGeometry::create(s);
-					geoNames.push_back(s);
-					mySceneManager->addModel(hg);
-				} else {
-					hg->clear();
-				}
-				process_geo_part(parts[part_index]);
 
+					ofmsg("made hg: '%1%'", %s);
+					myHoudiniGeometrys[s] = hg;
+					ofmsg("assigned hg: '%1%'", %s);
+
+					if (mySceneManager->getModel(s) == NULL) {
+						mySceneManager->addModel(hg);
+					}
+					ofmsg("added to scene: '%1%'", %s);
+				}
+				process_geo_part(parts[part_index], hg);
 			}
 		}
     }
 }
 
-void HoudiniEngine::process_geo_part(const hapi::Part &part)
+// void HoudiniEngine::process_geo_part(const hapi::Part &part)
+void HoudiniEngine::process_geo_part(const hapi::Part &part, HoudiniGeometry* hg)
 {
-//     cout << "object " << part.geo.object.id << ", geo " << part.geo.id
-// 	<< ", part " << part.id << endl;
-
 	vector<Vector3f> points;
 	vector<Vector3f> normals;
 	vector<Vector3f> colors;
@@ -388,53 +464,43 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part)
 	HAPI_ATTROWNER_POINT);
     for (int attrib_index=0; attrib_index < int(point_attrib_names.size());
 	    ++attrib_index) {
-// 		cout << "    " << point_attrib_names[attrib_index] << endl;
 		if (point_attrib_names[attrib_index] == "P") {
-// 		    cout << "point positions:" << endl;
 		    process_float_attrib(part, HAPI_ATTROWNER_POINT, "P", points);
 		}
 		if (point_attrib_names[attrib_index] == "N") {
-// 		    cout << "point normals:" << endl;
 			has_point_normals = true;
 		    process_float_attrib(part, HAPI_ATTROWNER_POINT, "N", normals);
 		}
 		if (point_attrib_names[attrib_index] == "Cd") {
-// 		    cout << "point colors:" << endl;
 			has_point_colors = true;
 		    process_float_attrib(part, HAPI_ATTROWNER_POINT, "Cd", colors);
 		}
 	}
 
     // Print the list of point attribute names.
-//     cout << "vertex attributes:" << endl;
     vector<std::string> vertex_attrib_names = part.attribNames(
 	HAPI_ATTROWNER_VERTEX);
     for (int attrib_index=0; attrib_index < int(vertex_attrib_names.size());
 	    ++attrib_index) {
-// 		cout << "    " << vertex_attrib_names[attrib_index] << endl;
 		if (vertex_attrib_names[attrib_index] == "N") {
-// 		    cout << "vertex normals:" << endl;
 			has_vertex_normals = true;
 		    process_float_attrib(part, HAPI_ATTROWNER_VERTEX, "N", normals);
 		}
 	}
 
     // Print the list of point attribute names.
-//     cout << "primitive attributes:" << endl;
     vector<std::string> primitive_attrib_names = part.attribNames(
 	HAPI_ATTROWNER_PRIM);
     for (int attrib_index=0; attrib_index < int(primitive_attrib_names.size());
 	    ++attrib_index) {
-// 		cout << "    " << primitive_attrib_names[attrib_index] << endl;
 		if (primitive_attrib_names[attrib_index] == "Cd") {
-// 		    cout << "primitive colors:" << endl;
 			has_primitive_colors = true;
 		    process_float_attrib(part, HAPI_ATTROWNER_PRIM, "Cd", colors);
 		}
 	}
 
 //     cout << "Number of faces: " << part.info().faceCount << endl;
-    int * face_counts = new int[ part.info().faceCount ];
+    int *face_counts = new int[ part.info().faceCount ];
     ENSURE_SUCCESS( HAPI_GetFaceCounts(
 		part.geo.object.asset.id,
 		part.geo.object.id,
@@ -601,6 +667,27 @@ void HoudiniEngine::process_float_attrib(
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 void HoudiniEngine::initialize()
 {
+	enableSharedData();
+
+	if (SystemManager::instance()->isMaster()) {
+	    try
+	    {
+		    HAPI_CookOptions cook_options = HAPI_CookOptions_Create();
+
+		    ENSURE_SUCCESS(HAPI_Initialize(
+			getenv("$HOME"),
+			/*dso_search_path=*/NULL,
+		        &cook_options,
+			/*use_cooking_thread=*/true,
+			/*cooking_thread_max_size=*/-1));
+	    }
+	    catch (hapi::Failure &failure)
+	    {
+			ofwarn("Houdini Failure.. %1%", %failure.lastErrorMessage());
+			throw;
+	    }
+	}
+
 	// Create and initialize the cyclops scene manager.
 	mySceneManager = SceneManager::createAndInitialize();
 
@@ -619,7 +706,6 @@ void HoudiniEngine::initialize()
 	sn = SceneNode::create("myOtl");
 	myEditor->addNode(sn);
 
-
 	// Add the 'quit' menu item. Menu items can either run callbacks when activated, or they can
 	// run script commands. In this case, we make the menu item call the 'oexit' script command.
 	// oexit is the standard omegalib script command used to terminate the application.
@@ -633,13 +719,6 @@ void HoudiniEngine::initialize()
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 void HoudiniEngine::update(const UpdateContext& context)
 {
-// 	// If we are not in editing mode, Animate our loaded object.
-// 	if(!myEditor->isEnabled())
-// 	{
-// 		myObject->setPosition(0, 2 + Math::sin(context.time) * 0.5f + 0.5f, -2);
-// 		myObject->pitch(context.dt);
-// 		myObject->yaw(context.dt);
-// 	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -677,7 +756,7 @@ void HoudiniEngine::onMenuItemEvent(MenuItem* mi)
 // 		}
 // 	}
 
-	hapi::Parm* parm = &(myAsset->parmMap()[mi->getUserTag().substr(0, z)]);
+	hapi::Parm* parm = &(myAsset.get()->parmMap()[mi->getUserTag().substr(0, z)]);
 	int index = atoi(mi->getUserTag().substr(z + 1).c_str());
 
 // 	for (int i = 0; i < parm->info().size; ++i) {
@@ -701,9 +780,10 @@ void HoudiniEngine::onMenuItemEvent(MenuItem* mi)
 // 	}
 
 	if (update) {
-		myAsset->cook();
+		myAsset.get()->cook();
 		wait_for_cook();
-		process_assets(*myAsset);
+// 		process_assets(*myAsset);
+		process_assets(myAsset);
 	}
 
 }
@@ -809,29 +889,210 @@ void HoudiniEngine::handleEvent(const Event& evt)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// only run on master
+// for each part of each geo of each object of each asset:
+// send all the verts, faces, normals, colours, etc
 void HoudiniEngine::commitSharedData(SharedOStream& out)
 {
-	out << mySwitch;
+/*
+	// share the heAsset
+//     foreach(Mapping::Item asset, instancedHEAssets)
+//     {
+// 		// asset name
+// 		out << asset->name();
+// 	    vector<hapi::Object> objects = asset->objects();
+//
+// 		// obj count
+// 		out << int(objects.size());
+// 	    for (int object_index=0; object_index < int(objects.size()); ++object_index)
+// 	    {
+// 			vector<hapi::Geo> geos = objects[object_index].geos();
+//
+// 			// geo count
+// 			out << int(geo.size());
+// 			for (int geo_index=0; geo_index < int(geos.size()); ++geo_index)
+// 			{
+// 			    vector<hapi::Part> parts = geos[geo_index].parts();
+//
+// 				// parts count
+// 				out << int(parts.size());
+//
+// 				hapi::HAPI_AttributeOwner[] owners = {
+// 					HAPI_ATTROWNER_VERTEX,
+// 					HAPI_ATTROWNER_POINT,
+// 					HAPI_ATTROWNER_PRIM,
+// 					HAPI_ATTROWNER_DETAIL
+// 				};
+//
+// 			    for (int part_index=0; part_index < int(parts.size()); ++part_index)
+// 				{
+// 					hapi::HAPI_PartInfo hpi = part.info();
+//
+// 					for (int i = 0; i < 4; ++i) {
+//
+// 					    vector<std::string> attrib_names = part.attribNames(
+// 						owners[i]);
+//
+// 						// num of attributes of that owner
+// 						out << int(attrib_names.size());
+//
+// 					    for (int attrib_index=0; attrib_index < int(attrib_names.size());
+// 						    ++attrib_index) {
+// 							out << attrib_names[attrib_index];
+// 						}
+// 					}
+// 				}
+// 			}
+// 		}
+// 	}
+*/
+	out << updateGeos;
+
+	if (!updateGeos) {
+		return;
+	}
+
+	updateGeos = false;
+
+	if (SystemManager::instance()->isMaster()) {
+		ofmsg("MASTER: sending %1% geos", %myHoudiniGeometrys.size());
+	}
+
+	// change this to count the number of changed objs, geos, parts
+	out << int(myHoudiniGeometrys.size());
+
+	// no, share the houdiniGeometry stuff, as i've already added them to hg on master
+    foreach(HGDictionary::Item hg, myHoudiniGeometrys)
+    {
+		out << hg->getName();
+// 		ofmsg("MASTER: info for %1%", %hg->getName());
+// 		getHGInfo(hg->getName());
+// 		ofmsg("MASTER: end info for %1%", %hg->getName());
+		out << hg->getVertexCount();
+		for (int i = 0; i < hg->getVertexCount(); ++i) {
+			out << hg->getVertex(i);
+		}
+		out << hg->getNormalCount();
+		for (int i = 0; i < hg->getNormalCount(); ++i) {
+			out << hg->getNormal(i);
+		}
+		out << hg->getColorCount();
+		for (int i = 0; i < hg->getColorCount(); ++i) {
+			out << hg->getColor(i);
+		}
+		// faces are done in that primitive set way
+		// TODO: simplification: assume all faces are triangles?
+		osg::Geometry* geo = hg->getOsgNode()->getDrawable(0)->asGeometry();
+		osg::Geometry::PrimitiveSetList psl = geo->getPrimitiveSetList();
+
+		out << int(psl.size());
+		for (int i = 0; i < psl.size(); ++i) {
+
+			osg::DrawArrays* da = dynamic_cast<osg::DrawArrays*>(psl[i].get());
+
+			out << da->getMode();
+			out << int(da->getFirst());
+			out << int(da->getCount());
+		}
+	}
+
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// only run on slaves!
 void HoudiniEngine::updateSharedData(SharedIStream& in)
 {
- 	in >> mySwitch;
-}
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// Python wrapper code.
-#ifdef OMEGA_USE_PYTHON
-#include "omega/PythonInterpreterWrapper.h"
-BOOST_PYTHON_MODULE(daHEngine)
-{
-	// HoudiniEngine
-	PYAPI_REF_BASE_CLASS(HoudiniEngine)
-		PYAPI_STATIC_REF_GETTER(HoudiniEngine, createAndInitialize)
- 		PYAPI_METHOD(HoudiniEngine, loadAssetLibraryFromFile)
- 		PYAPI_METHOD(HoudiniEngine, instantiateAsset)
- 		PYAPI_METHOD(HoudiniEngine, instantiateGeometry)
-		;
+	in >> updateGeos;
+
+	if (!updateGeos) {
+		return;
+	}
+
+	int numItems = 0;
+
+	// houdiniGeometry count
+	in >> numItems;
+
+	if (!SystemManager::instance()->isMaster()) {
+		ofmsg("SLAVE: getting data: %1%", %numItems);
+	}
+
+    for(int i = 0; i < numItems; i++)
+    {
+        String name;
+        in >> name;
+
+        HoudiniGeometry* hg = myHoudiniGeometrys[name];
+        if(hg == NULL)
+        {
+// 			hg = HoudiniGeometry::create(name);
+// 			myHoudiniGeometrys[name] = hg;
+// 			SceneManager::instance()->addModel(hg);
+			continue;
+// 		} else {
+// 			ofmsg("SLAVE: i have the hg: '%1%'", %name);
+// 			getHGInfo(name);
+// 			ofmsg("SLAVE: end info for '%1%'", %name);
+		}
+
+		hg->clear();
+
+		int vertCount = 0;
+		in >> vertCount;
+
+		for (int j = 0; j < vertCount; ++j)
+		{
+			Vector3f v;
+			in >> v;
+			hg->addVertex(v);
+		}
+
+		int normalCount = 0;
+		in >> normalCount;
+
+		for (int j = 0; j < normalCount; ++j)
+		{
+			Vector3f n;
+			in >> n;
+			hg->addNormal(n);
+		}
+
+		int colorCount = 0;
+		in >> colorCount;
+
+		for (int j = 0; j < colorCount; ++j)
+		{
+			Color c;
+			in >> c;
+			hg->addColor(c);
+		}
+
+		// primitive set count
+		int psCount = 0;
+		in >> psCount;
+
+		for (int j = 0; j < psCount; ++j)
+		{
+			osg::PrimitiveSet::Mode mode;
+			int startIndex;
+			int count;
+
+			in >> mode;
+			in >> startIndex;
+			in >> count;
+
+			hg->addPrimitiveOsg(mode, startIndex, count);
+		}
+
+		hg->dirty();
+
+    }
+
+	omsg("SLAVE: all hgs:");
+    foreach(HGDictionary::Item hg, myHoudiniGeometrys)
+    {
+		ofmsg("SLAVE: hg: '%1%'", %hg->getName());
+		getHGInfo(hg->getName());
+	}
 }
-#endif
