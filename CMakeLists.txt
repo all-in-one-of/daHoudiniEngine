@@ -21,7 +21,6 @@ target_link_libraries(${MODULE_NAME}
 	omega
 	omegaToolkit
 	omegaOsg
-	cyclops
 	HAPI
 )
 
