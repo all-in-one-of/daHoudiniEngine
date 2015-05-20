@@ -87,7 +87,8 @@ namespace houdiniEngine {
 		virtual void onMenuItemEvent(MenuItem* mi);
 		virtual void onSelectedChanged(SceneNode* source, bool value);
 
-		void process_assets(Ref <RefAsset> &refAsset);
+// 		void process_assets(Ref <RefAsset> &refAsset);
+		void process_assets(const hapi::Asset &asset);
 		void process_geo_part(const hapi::Part &part, HoudiniGeometry* hg);
 		void process_float_attrib(
 		    const hapi::Part &part, HAPI_AttributeOwner attrib_owner,
@@ -104,6 +105,7 @@ namespace houdiniEngine {
 		StaticObject* instantiateGeometry(const String& asset);
 
 		void createMenu(const String& asset_name);
+		void initializeParameters(const String& asset_name);
 
 		bool hasHG(const String &s);
 		void getHGInfo(const String &s);
@@ -124,7 +126,7 @@ namespace houdiniEngine {
 
 		// Houdini Engine Stuff
 	    int library_id; // need to put into an array for multiple libraries?
-	    Ref <RefAsset> myAsset;
+// 	    Ref <RefAsset> myAsset;
 
 		bool updateGeos;
 
@@ -135,6 +137,7 @@ namespace houdiniEngine {
 
 		typedef Dictionary<String, Ref<HoudiniGeometry> > HGDictionary;
 		typedef Dictionary<String, Ref<RefAsset> > Mapping;
+		typedef Dictionary<String, vector<MenuItem> > Menus;
 
 		// geometries
 		HGDictionary myHoudiniGeometrys;
@@ -143,7 +146,8 @@ namespace houdiniEngine {
 		Mapping instancedHEAssets;
 
 		//parameters
-		vector<MenuItem> params;
+		ui::Menu* houdiniMenu;
+		Menus assetParams;
 
 	};
 };
