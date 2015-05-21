@@ -14,6 +14,7 @@ add_subdirectory(examples/daHoudiniEngine)
 set(MODULE_NAME daHEngine)
 
 add_library(${MODULE_NAME} MODULE
+	houdiniGeometry.cpp
 	daHEngine.cpp
 )
 
