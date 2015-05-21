@@ -723,6 +723,9 @@ void HoudiniEngine::onMenuItemEvent(MenuItem* mi)
 	// eg: 'size 2.1' for a size vector
 	int z = mi->getUserTag().find_last_of(" "); // index of space
 
+	// TODO: do a null check here.. may break
+	String asset_name = ((MenuItem*)mi->getUserData())->getUserTag();
+	hapi::Asset* myAsset = instancedHEAssets[asset_name];
 	hapi::Parm* parm = &(myAsset->parmMap()[mi->getUserTag().substr(0, z)]);
 	int index = atoi(mi->getUserTag().substr(z + 1).c_str());
 
@@ -732,10 +735,6 @@ void HoudiniEngine::onMenuItemEvent(MenuItem* mi)
 // 	cout << "last parameter: " << mi->getUserTag().substr(z + 1) << endl;
 // 	cout << "asset name: " << ((MenuItem*)mi->getUserData())->getUserTag() << endl;
 
-	// TODO: do a null check here.. may break
-	String asset_name = ((MenuItem*)mi->getUserData())->getUserTag();
-
-	hapi::Asset* myAsset = instancedHEAssets[asset_name];
 
 	if (myAsset == NULL) {
 		ofwarn("No instanced asset %1%", %asset_name);
