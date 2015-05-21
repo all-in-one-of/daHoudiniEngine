@@ -53,10 +53,8 @@ namespace houdiniEngine {
 		void dirty();
 
 	public:
-		HoudiniGeometry(const String& name): ModelGeometry(name) {
-	// 		osg::VertexBufferObject* vboP = myGeometry->getOrCreateVertexBufferObject();
-	// 		vboP->setUsage(GL_DYNAMIC_DRAW);
-		}
+		HoudiniGeometry(const String& name): ModelGeometry(name) {}
+
 	private:
 		Ref<osg::Vec3Array> myNormals;
 
@@ -195,98 +193,9 @@ int HoudiniEngine::loadAssetLibraryFromFile(const String& otlFile)
 
 }
 
-// TODO: read, load and mark for sharing all exposed parameter information about an asset
-void HoudiniEngine::initializeParameters(const String& asset_name)
-{
-	// load only the params in the DA Folder
-	// first find the index of the folder, then iterate through the list of params
-	// from there onwards
-	const char* daFolderName = "daFolder_0";
 
-	int daFolderIndex = 0;
-
-	hapi::Asset* myAsset = instancedHEAssets[asset_name];
-
-	if (myAsset == NULL) {
-		ofwarn("No asset of name %1%", %asset_name);
-		return;
-	}
-
-	if (myAsset->parmMap().count(daFolderName) > 0) {
-		HAPI_ParmId daFolderId = myAsset->parmMap()[daFolderName].info().id;
-		cout << "folder id: " << daFolderId << endl;
-		while (daFolderIndex < myAsset->parms().size()) {
-			if (myAsset->parmMap()[daFolderName].info().id == myAsset->parms()[daFolderIndex].info().id) {
-				break;
-			}
-			daFolderIndex ++;
-		}
-	}
-
-	for (int i = daFolderIndex; i < myAsset->parms().size(); i++) {
-		hapi::Parm* parm = &myAsset->parms()[i];
-
-		cout << parm->name() << "Parm type: " << parm->info().type << endl;
-
-		if (parm->info().invisible) continue;
-
-		MenuItem* mi = NULL;
-
-		mi = houdiniMenu->addItem(MenuItem::Label);
-		mi->setText(parm->label());
-
-		// TODO: generalise this so the following works:
-		// check for uiMin/uiMax, then use sliders
-		// use text boxes for vectors and non min/max things
-		// use submenus/containers for choices
-		// use the joinNext variable for displaying items
-		// use checkbox for HAPI_PARMTYPE_TOGGLE
-		// use text box for string
-		// do multiparms
-		if (parm->info().size == 1) {
-			if (parm->info().type == HAPI_PARMTYPE_INT) {
-				int val = parm->getIntValue(0);
-				mi->setText(parm->label() + ": " + ostr("%1%", %val));
-				mi->setUserTag("label." + parm->name());
-				MenuItem* miLabel = mi;
-				mi = houdiniMenu->addSlider(parm->info().max + 1, "");
-				mi->getSlider()->setValue(val);
-				mi->setUserData(miLabel);
-			} else if (parm->info().type == HAPI_PARMTYPE_FLOAT) {
-				float val = parm->getFloatValue(0);
-				mi->setText(parm->label() + ": " + ostr("%1%", %val));
-				mi->setUserTag("label." + parm->name());
-				MenuItem* miLabel = mi;
-				mi = houdiniMenu->addSlider(100 * (parm->info().max), "");
-				mi->getSlider()->setValue(int(val) * 100);
-				// use userData to store ref to the label, for changing values
-				// when updating
-				mi->setUserData(miLabel);
-			}
-			mi->setUserTag(parm->name());
-			mi->setListener(this);
-		} else {
-			if (parm->info().type == HAPI_PARMTYPE_FLOAT) {
-				mi->setText(parm->label());
-				mi->setUserTag("label." + parm->name());
-				MenuItem* miLabel = mi;
-				for (int j = 0; j < parm->info().size; ++j) {
-					float val = parm->getFloatValue(j);
-					mi = houdiniMenu->addSlider(100 * (parm->info().max), "");
-					mi->getSlider()->setValue(int(val) * 100);
-					// use userData to store ref to the label, for changing values
-					// when updating
-					mi->setUserData(miLabel);
-					mi->setUserTag(parm->name() + ostr(" %1%", %j));
-					mi->setListener(this);
-					miLabel->setText(ostr("%1% %2%", %miLabel->getText() %val));
-				}
-			}
-		}
-	}
-}
-
-// TODO: make menu based on shared data for a given asset
+// only run on master
+// identical-looking menus get created on slaves
 void HoudiniEngine::createMenu(const String& asset_name)
 {
 	// load only the params in the DA Folder
@@ -303,9 +212,8 @@ void HoudiniEngine::createMenu(const String& asset_name)
 	int daFolderIndex = 0;
 	if (myAsset->parmMap().count(daFolderName) > 0) {
 		HAPI_ParmId daFolderId = myAsset->parmMap()[daFolderName].info().id;
-	// 	cout << "folder id: " << daFolderId << endl;
 		while (daFolderIndex < myAsset->parms().size()) {
-			if (myAsset->parmMap()[daFolderName].info().id == myAsset->parms()[daFolderIndex].info().id) {
+			if (daFolderId == myAsset->parms()[daFolderIndex].info().id) {
 				break;
 			}
 			daFolderIndex ++;
@@ -320,40 +228,13 @@ void HoudiniEngine::createMenu(const String& asset_name)
 	for (int i = daFolderIndex; i < myAsset->parms().size(); i++) {
 		hapi::Parm* parm = &myAsset->parms()[i];
 
-// 		cout << parm->name() << "Parm type: " << parm->info().type << endl;
-
+		// skip if invisible
 		if (parm->info().invisible) continue;
-
-// 		MenuItem* mi = NULL;
 
 		mi = houdiniMenu->addItem(MenuItem::Label);
 		mi->setText(parm->label());
 
-// 		if (assetParams.count(asset_name) == 0) {
-// 		}
 		assetParams[asset_name].push_back(*mi);
-
-// 		if (parm->info().size == 1) {
-// 			if (parm->info().type == HAPI_PARMTYPE_INT) {
-// 				int val = parm->getIntValue(0);
-// 				mi->setText(parm->label() + ": " + ostr("%1%", %val));
-// 				mi->setUserTag("label." + parm->name());
-// 				MenuItem* miLabel = mi;
-// 				mi = menu->addSlider(parm->info().max + 1, "");
-// 				mi->getSlider()->setValue(val);
-// 				mi->setUserData(miLabel);
-// 			} else if (parm->info().type == HAPI_PARMTYPE_FLOAT) {
-// 				float val = parm->getFloatValue(0);
-// 				mi->setText(parm->label() + ": " + ostr("%1%", %val));
-// 				mi->setUserTag("label." + parm->name());
-// 				MenuItem* miLabel = mi;
-// 				mi = menu->addSlider(100 * (parm->info().max), "");
-// 				mi->getSlider()->setValue(int(val) * 100);
-// 				mi->setUserData(miLabel);
-// 			}
-// 		}
-// 		mi->setUserTag(parm->name());
-// 		mi->setListener(this);
 
 		// TODO: generalise this so the following works:
 		// check for uiMin/uiMax, then use sliders
@@ -367,17 +248,15 @@ void HoudiniEngine::createMenu(const String& asset_name)
 			if (parm->info().type == HAPI_PARMTYPE_INT) {
 				int val = parm->getIntValue(0);
 				mi->setText(parm->label() + ": " + ostr("%1%", %val));
-// 				mi->setUserTag("label." + parm->name());
-				mi->setUserTag(asset_name);
+				mi->setUserTag(asset_name); // reference to the asset this param belongs to
 				assetParams[asset_name].push_back(*mi);
 				MenuItem* miLabel = mi;
 				mi = houdiniMenu->addSlider(parm->info().max + 1, "");
 				mi->getSlider()->setValue(val);
-				mi->setUserData(miLabel);
+				mi->setUserData(miLabel); // reference to the label, for updating values
 			} else if (parm->info().type == HAPI_PARMTYPE_FLOAT) {
 				float val = parm->getFloatValue(0);
 				mi->setText(parm->label() + ": " + ostr("%1%", %val));
-// 				mi->setUserTag("label." + parm->name());
 				mi->setUserTag(asset_name);
 				assetParams[asset_name].push_back(*mi);
 				MenuItem* miLabel = mi;
@@ -391,9 +270,9 @@ void HoudiniEngine::createMenu(const String& asset_name)
 			mi->setListener(this);
 			assetParams[asset_name].push_back(*mi);
 		} else {
+			// use sliders for floats
 			if (parm->info().type == HAPI_PARMTYPE_FLOAT) {
 				mi->setText(parm->label());
-// 				mi->setUserTag("label." + parm->name());
 				mi->setUserTag(asset_name);
 				MenuItem* miLabel = mi;
 				for (int j = 0; j < parm->info().size; ++j) {
@@ -431,13 +310,10 @@ void HoudiniEngine::getHGInfo(const String &s) {
 
 }
 
+// only run on master
+// returns id of the asset instance
 int HoudiniEngine::instantiateAsset(const String& asset_name)
 {
-// 	// this is code to instantiate an asset
-//     HAPI_StringHandle asset_name_sh;
-//     ENSURE_SUCCESS( HAPI_GetAvailableAssets( library_id, &asset_name_sh, 1 ) );
-//     std::string asset_name = get_string( asset_name_sh );
-
 	if (!SystemManager::instance()->isMaster()) {
 		return -1;
 	}
@@ -452,7 +328,6 @@ int HoudiniEngine::instantiateAsset(const String& asset_name)
 	wait_for_cook();
 
 //     HAPI_AssetInfo asset_info;
-//
 //     ENSURE_SUCCESS( HAPI_GetAssetInfo( asset_id, &asset_info ) );
 
 	Ref <RefAsset> myAsset = new RefAsset(asset_id);
@@ -461,10 +336,11 @@ int HoudiniEngine::instantiateAsset(const String& asset_name)
 
 	createMenu(asset_name);
 	updateGeos = true;
-	return 0;
+
+	return asset_id;
 }
 
-// geometry should be instantiated like this:
+// TODO: geometry should be instantiated like this:
 // lib/otl node
 // |
 // o- asset node+
@@ -475,12 +351,13 @@ int HoudiniEngine::instantiateAsset(const String& asset_name)
 //             |
 //             o- part node+
 // StaticObject* HoudiniEngine::instantiateGeometry(const String& asset, const int geoNum, const int partNum)
-// HoudiniGeometry doesn't seem to be properly instantiated on all nodes. Why?
-// No geometry is drawn..
 StaticObject* HoudiniEngine::instantiateGeometry(const String& asset)
 {
+	// TODO: should loop through all the geos and parts..
 	int geoNum = 0;
 	int partNum = 0;
+
+	// of form 'Object/asset_name <asset number> <geoNum> <partNum>'
 	String s = ostr("%1% 0 %2% %3%", %asset %geoNum %partNum);
 
 	if (myHoudiniGeometrys[s] == NULL) {
@@ -497,11 +374,9 @@ StaticObject* HoudiniEngine::instantiateGeometry(const String& asset)
 	return new StaticObject(mySceneManager, s);
 }
 
+// put houdini engine asset data into a houdiniGeometry
 void HoudiniEngine::process_assets(const hapi::Asset &asset)
-// void HoudiniEngine::process_assets(Ref <RefAsset> &refAsset)
 {
-// 	hapi::Asset* asset = refAsset.get();
-
     vector<hapi::Object> objects = asset.objects();
     for (int object_index=0; object_index < int(objects.size()); ++object_index)
     {
@@ -521,33 +396,27 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 					%part_index
 				);
 
-				ofmsg("made String: '%1%'", %s);
 				HoudiniGeometry* hg;
 
 				hg = myHoudiniGeometrys[s];
 
-// 				if (myHoudiniGeometrys[s] == NULL) {
 				if (hg == NULL) {
-					ofmsg("making hg: '%1%'", %s);
 					hg = HoudiniGeometry::create(s);
-
-					ofmsg("made hg: '%1%'", %s);
 					myHoudiniGeometrys[s] = hg;
-					ofmsg("assigned hg: '%1%'", %s);
 
 					if (mySceneManager->getModel(s) == NULL) {
 						mySceneManager->addModel(hg);
 					}
-					ofmsg("added to scene: '%1%'", %s);
 				}
-				// otherwise, proceed..
+
 				process_geo_part(parts[part_index], hg);
 			}
 		}
     }
 }
 
-// void HoudiniEngine::process_geo_part(const hapi::Part &part)
+// TODO: incrementally update the geometry?
+// send a new version, and still have the old version?
 void HoudiniEngine::process_geo_part(const hapi::Part &part, HoudiniGeometry* hg)
 {
 	vector<Vector3f> points;
@@ -560,9 +429,8 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, HoudiniGeometry* hg
 	bool has_vertex_colors = false;
 	bool has_primitive_colors = false;
 
-
 	hg->clear();
-	
+
 	//  attrib owners:
 	// 	HAPI_ATTROWNER_VERTEX
 	// 	HAPI_ATTROWNER_POINT
@@ -579,8 +447,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, HoudiniGeometry* hg
 	// 	HAPI_ATTRIB_UV			"uv"
 	// 	HAPI_ATTRIB_UV2			"uv2"
 
-    // Print the list of point attribute names.
-//     cout << "point attributes:" << endl;
+	// TODO: improve this..
     vector<std::string> point_attrib_names = part.attribNames(
 	HAPI_ATTROWNER_POINT);
     for (int attrib_index=0; attrib_index < int(point_attrib_names.size());
@@ -598,7 +465,6 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, HoudiniGeometry* hg
 		}
 	}
 
-    // Print the list of point attribute names.
     vector<std::string> vertex_attrib_names = part.attribNames(
 	HAPI_ATTROWNER_VERTEX);
     for (int attrib_index=0; attrib_index < int(vertex_attrib_names.size());
@@ -609,7 +475,6 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, HoudiniGeometry* hg
 		}
 	}
 
-    // Print the list of point attribute names.
     vector<std::string> primitive_attrib_names = part.attribNames(
 	HAPI_ATTROWNER_PRIM);
     for (int attrib_index=0; attrib_index < int(primitive_attrib_names.size());
@@ -620,7 +485,6 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, HoudiniGeometry* hg
 		}
 	}
 
-//     cout << "Number of faces: " << part.info().faceCount << endl;
     int *face_counts = new int[ part.info().faceCount ];
     ENSURE_SUCCESS( HAPI_GetFaceCounts(
 		part.geo.object.asset.id,
@@ -639,7 +503,6 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, HoudiniGeometry* hg
 		part.geo.id,
         part.id,
 		vertex_list, 0, part.info().vertexCount ) );
-//     cout << "Vertex Indices into Points array:\n";
     int curr_index = 0;
 
 	int prev_faceCount = face_counts[0];
@@ -771,14 +634,8 @@ void HoudiniEngine::process_float_attrib(
 		for (int tuple_index=0; tuple_index < attrib_info.tupleSize;
 			++tuple_index)
 		{
-
 			v[tuple_index] = attrib_data[elem_index * attrib_info.tupleSize + tuple_index ];
-
-// 		    cout << attrib_data[
-// 			    elem_index * attrib_info.tupleSize + tuple_index]
-// 			<< " ";
 		}
-// 		cout << endl;
 		points[elem_index] = v;
     }
 
@@ -813,9 +670,9 @@ void HoudiniEngine::initialize()
 	mySceneManager = SceneManager::createAndInitialize();
 
 	// Create the scene editor and add our loaded object to it.
-	myEditor = SceneEditorModule::createAndInitialize();
+// 	myEditor = SceneEditorModule::createAndInitialize();
 // 	myEditor->addNode(myObject);
-	myEditor->setEnabled(false);
+// 	myEditor->setEnabled(false);
 
 	// Create and initialize the menu manager
 	myMenuManager = MenuManager::createAndInitialize();
@@ -829,8 +686,8 @@ void HoudiniEngine::initialize()
 	MenuItem* myLabel = houdiniMenu->addItem(MenuItem::Label);
 	myLabel->setText("Houdini Engine Parameters");
 
-	sn = SceneNode::create("myOtl");
-	myEditor->addNode(sn);
+// 	sn = SceneNode::create("myOtl");
+// 	myEditor->addNode(sn);
 
 	// Add the 'quit' menu item. Menu items can either run callbacks when activated, or they can
 	// run script commands. In this case, we make the menu item call the 'oexit' script command.
@@ -861,52 +718,30 @@ void HoudiniEngine::onMenuItemEvent(MenuItem* mi)
 	// TODO: change this to suit running on the master only, but callable from slave..
 	bool update = false;
 
-	// is this event generated by the 'manipulate object' menu item?
-	if(mi == myEditorMenuItem)
-	{
-		myEditor->setEnabled(myEditorMenuItem->isChecked());
-	}
-	cout << "parameter: " << mi->getUserTag() << endl;
 
-	int z = mi->getUserTag().find_last_of(" ");
-	cout << "first parameter: " << mi->getUserTag().substr(0, z) << endl;
-	cout << "last parameter: " << mi->getUserTag().substr(z + 1) << endl;
-	cout << "asset name: " << ((MenuItem*)mi->getUserData())->getUserTag() << endl;
-// 	if (myAsset->parmMap()[mi->getUserTag()].info().size == 1) {
-// 		if (myAsset->parmMap()[mi->getUserTag()].info().type == HAPI_PARMTYPE_INT) {
-// 			myAsset->parmMap()[mi->getUserTag()].setIntValue(0, mi->getSlider()->getValue());
-//
-// 			((MenuItem*)mi->getUserData())->setText(myAsset->parmMap()[mi->getUserTag()].label() + ": " +
-// 			ostr("%1%", %mi->getSlider()->getValue()));
-//
-// 			update = true;
-//
-// 		} else if (myAsset->parmMap()[mi->getUserTag()].info().type == HAPI_PARMTYPE_FLOAT) {
-// 			myAsset->parmMap()[mi->getUserTag()].setFloatValue(0, 0.01 * mi->getSlider()->getValue());
-//
-// 			((MenuItem*)mi->getUserData())->setText(myAsset->parmMap()[mi->getUserTag()].label() + ": " +
-// 			ostr("%1%", %(mi->getSlider()->getValue() * 0.01)));
-//
-// 			update = true;
-//
-// 		}
-// 	}
-
-	// TODO: null check here.. may break
-	String asset_name = ((MenuItem*)mi->getUserData())->getUserTag();
-
-	hapi::Asset* myAsset = instancedHEAssets[asset_name]; // TODO: replace with the proper thing..
-
-	if (myAsset == NULL) {
-		owarn("No asset..");
-		return;
-	}
-
+	// user tag is of form '<parmName> <parmIndex>'
+	// eg: 'size 2.1' for a size vector
+	int z = mi->getUserTag().find_last_of(" "); // index of space
 
 	hapi::Parm* parm = &(myAsset->parmMap()[mi->getUserTag().substr(0, z)]);
 	int index = atoi(mi->getUserTag().substr(z + 1).c_str());
 
-// 	for (int i = 0; i < parm->info().size; ++i) {
+// 	cout << "parameter: " << mi->getUserTag() << endl;
+
+// 	cout << "first parameter: " << mi->getUserTag().substr(0, z) << endl;
+// 	cout << "last parameter: " << mi->getUserTag().substr(z + 1) << endl;
+// 	cout << "asset name: " << ((MenuItem*)mi->getUserData())->getUserTag() << endl;
+
+	// TODO: do a null check here.. may break
+	String asset_name = ((MenuItem*)mi->getUserData())->getUserTag();
+
+	hapi::Asset* myAsset = instancedHEAssets[asset_name];
+
+	if (myAsset == NULL) {
+		ofwarn("No instanced asset %1%", %asset_name);
+		return;
+	}
+
 	if (parm->info().type == HAPI_PARMTYPE_INT) {
 		parm->setIntValue(index, mi->getSlider()->getValue());
 
@@ -924,15 +759,11 @@ void HoudiniEngine::onMenuItemEvent(MenuItem* mi)
 		update = true;
 
 	}
-// 	}
 
 	if (update) {
-		omsg("Menu Item changed, going to update things");
 		myAsset->cook();
 		wait_for_cook();
-		omsg("Cooking done");
 		process_assets(*myAsset);
-		omsg("asset reprocessing done");
 		updateGeos = true;
 	}
 
@@ -941,6 +772,7 @@ void HoudiniEngine::onMenuItemEvent(MenuItem* mi)
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 void HoudiniEngine::onSelectedChanged(SceneNode* source, bool value)
 {
+	/*
 // 	if(source == myObject)
 // 	{
 // 		if(myObject->isSelected())
@@ -954,6 +786,7 @@ void HoudiniEngine::onSelectedChanged(SceneNode* source, bool value)
 // 			myObject->setEffect("colored -d #303030 -g 1.0 -s 20.0");
 // 		}
 // 	}
+	*/
 }
 
 void HoudiniEngine::wait_for_cook()
@@ -1009,6 +842,7 @@ static std::string houdiniEngine::get_string(int string_handle)
 ///////////////////////////////////////////////////////////////////////////////
 void HoudiniEngine::handleEvent(const Event& evt)
 {
+/*
 // 	bool update = false;
 //
 // 	// switch between different objects
@@ -1036,6 +870,7 @@ void HoudiniEngine::handleEvent(const Event& evt)
 // // 		cout << ">>> new switch value: " << myAsset->parmMap()["switch1_input"].getIntValue(0) << endl;
 // 	}
 //
+*/
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1098,27 +933,23 @@ void HoudiniEngine::commitSharedData(SharedOStream& out)
 */
 	out << updateGeos;
 
+	// continue only if there is something to send
 	if (!updateGeos) {
 		return;
 	}
 
 	updateGeos = false;
 
-	if (SystemManager::instance()->isMaster()) {
-		ofmsg("MASTER: sending %1% geos", %myHoudiniGeometrys.size());
-	}
+	ofmsg("MASTER: sending %1% geos", %myHoudiniGeometrys.size());
 
-	// change this to count the number of changed objs, geos, parts
+	// TODO change this to count the number of changed objs, geos, parts
 	out << int(myHoudiniGeometrys.size());
 
-	// todo: only share lists from the asset, not from the HoudiniGeometry
-	// we are sending some duplicated data..
+	// TODO: only share lists from the asset, not from the HoudiniGeometry
+	// we are currently sending duplicated data..
     foreach(HGDictionary::Item hg, myHoudiniGeometrys)
     {
 		out << hg->getName();
-// 		ofmsg("MASTER: info for %1%", %hg->getName());
-// 		getHGInfo(hg->getName());
-// 		ofmsg("MASTER: end info for %1%", %hg->getName());
 		out << hg->getVertexCount();
 		for (int i = 0; i < hg->getVertexCount(); ++i) {
 			out << hg->getVertex(i);
@@ -1162,6 +993,8 @@ void HoudiniEngine::commitSharedData(SharedOStream& out)
 			continue;
 		}
 
+
+		// send the folder id index for start of this asset's parms
 		if (myAsset->parmMap().count(daFolderName) > 0) {
 			HAPI_ParmId daFolderId = myAsset->parmMap()[daFolderName].info().id;
 			cout << "folder id: " << daFolderId << endl;
@@ -1172,8 +1005,10 @@ void HoudiniEngine::commitSharedData(SharedOStream& out)
 				daFolderIndex ++;
 			}
 		}
-
+ 	}
+/*
 // 		// from hengine..
+//		// is part of geo loop
 // 		// parameter count
 // 		int parmCount = 0;
 //
@@ -1200,8 +1035,7 @@ void HoudiniEngine::commitSharedData(SharedOStream& out)
 // 			out << parm->info();
 //
 // 		}
- 	}
-
+*/
 	int parmCount = assetParams.size();
 
 	out << parmCount;
@@ -1213,7 +1047,7 @@ void HoudiniEngine::commitSharedData(SharedOStream& out)
 		for (int i = 0; i < mis.second.size(); ++i) {
 			MenuItem* mi = &mis.second[i];
 			out << mi->getType();
-			// Button, Checkbox, Slider, Label, SubMenu, Image, Container
+			// MenuItem.Type: { Button, Checkbox, Slider, Label, SubMenu, Image, Container }
 			if (mi->getType() == MenuItem::Label) {
 				out << mi->getText();
 			} else if (mi->getType() == MenuItem::Slider) {
@@ -1263,7 +1097,6 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 // 			getHGInfo(name);
 // 			ofmsg("SLAVE: end info for '%1%'", %name);
 		}
-		ofmsg("SLAVE: i DO have the hg: '%1%'", %name);
 
 		hg->clear();
 
@@ -1325,15 +1158,15 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 
 	in >> parmCount;
 
-	ofmsg("SLAVE: currently have %1% asset parameter lists", %assetParams.size());
-    foreach(Menus::Item mis, assetParams)
-	{
-		ofmsg("SLAVE: name %1%", %mis.first);
-		ofmsg("SLAVE: number %1%", %mis.second.size());
-		for (int i = 0; i < mis.second.size(); ++i) {
-			ofmsg("SLAVE: menu item %1%", %mis.second[i].getType());
-		}
-	}
+// 	ofmsg("SLAVE: currently have %1% asset parameter lists", %assetParams.size());
+//     foreach(Menus::Item mis, assetParams)
+// 	{
+// 		ofmsg("SLAVE: name %1%", %mis.first);
+// 		ofmsg("SLAVE: number %1%", %mis.second.size());
+// 		for (int i = 0; i < mis.second.size(); ++i) {
+// 			ofmsg("SLAVE: menu item %1%", %mis.second[i].getType());
+// 		}
+// 	}
 	ofmsg("SLAVE: received %1% asset parameter lists", %parmCount);
 
 	// using assetparams map
@@ -1384,24 +1217,6 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 		}
 	}
 
-
-// 		// TODO: make or modify the menus from the information given here..
-// 		// using the hengine stuff
-// 		for (int j = 0; j < parmCount; ++j) {
-// 			std::string name;
-// 			in >> name;
-// 			std::string label;
-// 			in >> label;
-// 			HAPI_ParmInfo info;
-// 			in >> info;
-// 			ofmsg("SLAVE: %1% info: %2%, some info: %3% %4%", %name %label %info.size %info.choiceCount);
-// 			if (assetParams.count(name) == 0) {
-// 				MenuItem* mi = NULL;
-// 				mi = houdiniMenu->addItem(MenuItem::Label);
-// 				mi->setText(label);
-// 				assetParams[name].push_back(*mi);
-// 			}
-// 		}
 
 	omsg("SLAVE: all hgs:");
     foreach(HGDictionary::Item hg, myHoudiniGeometrys)
