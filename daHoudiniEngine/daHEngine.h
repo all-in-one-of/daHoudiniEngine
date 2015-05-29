@@ -110,6 +110,9 @@ namespace houdiniEngine {
 		bool hasHG(const String &s);
 		void getHGInfo(const String &s);
 
+		float getTime();
+		void setTime(float time);
+
 	private:
 		SceneManager* mySceneManager;
 		StaticObject* myObject;

@@ -47,6 +47,8 @@ BOOST_PYTHON_MODULE(daHEngine)
  		PYAPI_METHOD(HoudiniEngine, hasHG)
  		PYAPI_METHOD(HoudiniEngine, getHGInfo)
  		PYAPI_REF_GETTER(HoudiniEngine, instantiateGeometry)
+ 		PYAPI_METHOD(HoudiniEngine, getTime)
+ 		PYAPI_METHOD(HoudiniEngine, setTime)
 		;
 }
 #endif
@@ -1144,3 +1146,26 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 		getHGInfo(hg->getName());
 	}
 }
+
+// TODO: distribute value to slaves
+float HoudiniEngine::getTime()
+{
+
+	float myTime = -1.0;
+
+	if (SystemManager::instance()->isMaster())
+	{
+		HAPI_GetTime(&myTime);
+	}
+
+	return myTime;
+}
+
+void HoudiniEngine::setTime(float time)
+{
+	if (SystemManager::instance()->isMaster())
+	{
+		HAPI_SetTime(time);
+	}
+}
+
