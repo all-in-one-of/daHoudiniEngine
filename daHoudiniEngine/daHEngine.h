@@ -113,6 +113,8 @@ namespace houdiniEngine {
 		float getTime();
 		void setTime(float time);
 
+		void cook();
+
 	private:
 		SceneManager* mySceneManager;
 		StaticObject* myObject;

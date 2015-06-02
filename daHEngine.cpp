@@ -49,6 +49,7 @@ BOOST_PYTHON_MODULE(daHEngine)
  		PYAPI_REF_GETTER(HoudiniEngine, instantiateGeometry)
  		PYAPI_METHOD(HoudiniEngine, getTime)
  		PYAPI_METHOD(HoudiniEngine, setTime)
+ 		PYAPI_METHOD(HoudiniEngine, cook)
 		;
 }
 #endif
@@ -240,12 +241,21 @@ int HoudiniEngine::instantiateAsset(const String& asset_name)
 		return -1;
 	}
 
-	int asset_id = 0;
+	int asset_id = -1;
+
+	ofmsg("about to instantiate %1%", %asset_name);
 
     ENSURE_SUCCESS(HAPI_InstantiateAsset(
             asset_name.c_str(),
             /* cook_on_load */ true,
             &asset_id ));
+
+	if (asset_id < 0) {
+		ofmsg("unable to instantiate %1%", %asset_name);
+		return -1;
+	}
+
+	ofmsg("instantiated %1%, %2%", %asset_name %asset_id);
 
 	wait_for_cook();
 
@@ -870,6 +880,7 @@ void HoudiniEngine::commitSharedData(SharedOStream& out)
 	// we are currently sending duplicated data..
     foreach(HGDictionary::Item hg, myHoudiniGeometrys)
     {
+		ofmsg("Name: %1%", %hg->getName());
 		out << hg->getName();
 		out << hg->getVertexCount();
 		for (int i = 0; i < hg->getVertexCount(); ++i) {
@@ -907,7 +918,14 @@ void HoudiniEngine::commitSharedData(SharedOStream& out)
 
 		int daFolderIndex = 0;
 
-		hapi::Asset* myAsset = instancedHEAssets["Object/switch_asset"];
+// 		hapi::Asset* myAsset = instancedHEAssets["Object/switch_asset"];
+		hapi::Asset* myAsset = NULL;
+
+		// TODO: find a better way to refer to the params for this object..
+		foreach(Mapping::Item asset, instancedHEAssets)
+		{
+			myAsset = asset.second;
+		}
 
 		if (myAsset == NULL) {
 			out << 0;
@@ -1169,3 +1187,15 @@ void HoudiniEngine::setTime(float time)
 	}
 }
 
+void HoudiniEngine::cook()
+{
+	foreach(Mapping::Item asset, instancedHEAssets)
+	{
+		hapi::Asset* myAsset = asset.second;
+		myAsset->cook();
+		wait_for_cook();
+		process_assets(*myAsset);
+		updateGeos = true;
+	}
+
+}
