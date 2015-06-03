@@ -102,7 +102,8 @@ namespace houdiniEngine {
 
 		int loadAssetLibraryFromFile(const String& otlFile);
 		int instantiateAsset(const String& asset);
-		StaticObject* instantiateGeometry(const String& asset);
+		StaticObject* instantiateGeometry(const String& asset, const int assetNum, const int geoNum, const int partNum);
+// 		StaticObject* instantiateGeometry(const String& asset);
 
 		void createMenu(const String& asset_name);
 		void initializeParameters(const String& asset_name);

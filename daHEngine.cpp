@@ -255,7 +255,7 @@ int HoudiniEngine::instantiateAsset(const String& asset_name)
 		return -1;
 	}
 
-	ofmsg("instantiated %1%, %2%", %asset_name %asset_id);
+	ofmsg("instantiated %1%, id: %2%", %asset_name %asset_id);
 
 	wait_for_cook();
 
@@ -273,24 +273,23 @@ int HoudiniEngine::instantiateAsset(const String& asset_name)
 }
 
 // TODO: geometry should be instantiated like this:
-// lib/otl node
-// |
-// o- asset node+
+//    asset node+
 //     |
-//     o- object node+
+//     o- object node+ (staticObject)
 //         |
-//         o- geo node+
+//         o- geo node+ (staticObject or osg nodes)
 //             |
-//             o- part node+
-// StaticObject* HoudiniEngine::instantiateGeometry(const String& asset, const int geoNum, const int partNum)
-StaticObject* HoudiniEngine::instantiateGeometry(const String& asset)
+//             o- part node+ (drawables as part of geo, no transforms)
+StaticObject* HoudiniEngine::instantiateGeometry(const String& asset, const int assetNum, const int geoNum, const int partNum)
+// StaticObject* HoudiniEngine::instantiateGeometry(const String& asset)
 {
 	// TODO: should loop through all the geos and parts..
-	int geoNum = 0;
-	int partNum = 0;
+// 	int objectNum = 0;
+// 	int geoNum = 0;
+// 	int partNum = 0;
 
 	// of form 'Object/asset_name <asset number> <geoNum> <partNum>'
-	String s = ostr("%1% 0 %2% %3%", %asset %geoNum %partNum);
+	String s = ostr("%1% %2% %3% %4%", %asset %assetNum %geoNum %partNum);
 
 	if (myHoudiniGeometrys[s] == NULL) {
 		ofwarn("No model of %1% with geo %2% and part %3%.. creating", %asset %geoNum %partNum);
@@ -310,13 +309,23 @@ StaticObject* HoudiniEngine::instantiateGeometry(const String& asset)
 void HoudiniEngine::process_assets(const hapi::Asset &asset)
 {
     vector<hapi::Object> objects = asset.objects();
+	ofmsg("%1%: %2% objects", %asset.name() %objects.size());
     for (int object_index=0; object_index < int(objects.size()); ++object_index)
     {
+
+		ofmsg("is an instancer: %1%: %2%", %objects[object_index].name() %objects[object_index].info().isInstancer);
+		ofmsg("instance path: %1%: %2%", %objects[object_index].name() %objects[object_index].objectInstancePath());
+		if (objects[object_index].info().isInstancer > 0) {
+			ofmsg("%1%: %2%", %objects[object_index].id %objects[object_index].info().objectToInstanceId);
+		}
+
 		vector<hapi::Geo> geos = objects[object_index].geos();
+		ofmsg("%1%: %2%: %3% geos", %objects[object_index].name() %object_index %geos.size());
 
 		for (int geo_index=0; geo_index < int(geos.size()); ++geo_index)
 		{
 		    vector<hapi::Part> parts = geos[geo_index].parts();
+			ofmsg("%1%: %2%: %3%: %4% parts", %geos[geo_index].name() %object_index %geo_index %parts.size());
 
 		    for (int part_index=0; part_index < int(parts.size()); ++part_index)
 			{
@@ -340,6 +349,8 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 						mySceneManager->addModel(hg);
 					}
 				}
+
+				ofmsg("processing %1% %2%", %s %parts[part_index].name());
 
 				process_geo_part(parts[part_index], hg);
 			}
@@ -384,6 +395,9 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, HoudiniGeometry* hg
 	HAPI_ATTROWNER_POINT);
     for (int attrib_index=0; attrib_index < int(point_attrib_names.size());
 	    ++attrib_index) {
+
+		ofmsg("has %1%", %point_attrib_names[attrib_index]);
+
 		if (point_attrib_names[attrib_index] == "P") {
 		    process_float_attrib(part, HAPI_ATTROWNER_POINT, "P", points);
 		}
@@ -401,6 +415,9 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, HoudiniGeometry* hg
 	HAPI_ATTROWNER_VERTEX);
     for (int attrib_index=0; attrib_index < int(vertex_attrib_names.size());
 	    ++attrib_index) {
+
+		ofmsg("has %1%", %vertex_attrib_names[attrib_index]);
+
 		if (vertex_attrib_names[attrib_index] == "N") {
 			has_vertex_normals = true;
 		    process_float_attrib(part, HAPI_ATTROWNER_VERTEX, "N", normals);
@@ -411,11 +428,21 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, HoudiniGeometry* hg
 	HAPI_ATTROWNER_PRIM);
     for (int attrib_index=0; attrib_index < int(primitive_attrib_names.size());
 	    ++attrib_index) {
+
+		ofmsg("has %1%", %primitive_attrib_names[attrib_index]);
+
 		if (primitive_attrib_names[attrib_index] == "Cd") {
 			has_primitive_colors = true;
 		    process_float_attrib(part, HAPI_ATTROWNER_PRIM, "Cd", colors);
 		}
 	}
+
+	if (part.info().faceCount == 0) {
+		ofmsg ("No faces, points count? %1%", %points.size());
+		hg->dirty();
+		return;
+	}
+
 
     int *face_counts = new int[ part.info().faceCount ];
     ENSURE_SUCCESS( HAPI_GetFaceCounts(
@@ -1027,10 +1054,10 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
         if(hg == NULL)
         {
  			ofmsg("SLAVE: no hg: '%1%'", %name);
-// 			hg = HoudiniGeometry::create(name);
-// 			myHoudiniGeometrys[name] = hg;
-// 			SceneManager::instance()->addModel(hg);
-			continue;
+			hg = HoudiniGeometry::create(name);
+			myHoudiniGeometrys[name] = hg;
+			SceneManager::instance()->addModel(hg);
+// 			continue;
 // 		} else {
 // 			ofmsg("SLAVE: i have the hg: '%1%'", %name);
 // 			getHGInfo(name);
