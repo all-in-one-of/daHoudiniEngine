@@ -280,21 +280,23 @@ int HoudiniEngine::instantiateAsset(const String& asset_name)
 //         o- geo node+ (staticObject or osg nodes)
 //             |
 //             o- part node+ (drawables as part of geo, no transforms)
-StaticObject* HoudiniEngine::instantiateGeometry(const String& asset, const int assetNum, const int geoNum, const int partNum)
+// StaticObject* HoudiniEngine::instantiateGeometry(const String& asset, const int assetNum, const int geoNum, const int partNum)
+StaticObject* HoudiniEngine::instantiateGeometry(const String& asset, const int assetNum, const int geoNum)
 // StaticObject* HoudiniEngine::instantiateGeometry(const String& asset)
 {
 	// TODO: should loop through all the geos and parts..
 // 	int objectNum = 0;
 // 	int geoNum = 0;
-// 	int partNum = 0;
+ 	int partNum = 0;
 
 	// of form 'Object/asset_name <asset number> <geoNum> <partNum>'
-	String s = ostr("%1% %2% %3% %4%", %asset %assetNum %geoNum %partNum);
+	String s = ostr("%1% %2% %3%", %asset %assetNum %geoNum);
 
 	if (myHoudiniGeometrys[s] == NULL) {
-		ofwarn("No model of %1% with geo %2% and part %3%.. creating", %asset %geoNum %partNum);
+		ofwarn("No model of %1% with geo %2%.. creating", %asset %geoNum);
 
 		HoudiniGeometry* hg = HoudiniGeometry::create(s);
+		// need to add number of drawables
 		myHoudiniGeometrys[s] = hg;
 		if (mySceneManager->getModel(s) == NULL) {
 			mySceneManager->addModel(hg);
@@ -327,28 +329,31 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 		    vector<hapi::Part> parts = geos[geo_index].parts();
 			ofmsg("%1%: %2%: %3%: %4% parts", %geos[geo_index].name() %object_index %geo_index %parts.size());
 
+			String s = ostr("%1% %2% %3%",
+				%asset.name()
+				%object_index
+				%geo_index
+			);
+
+			HoudiniGeometry* hg;
+
+			hg = myHoudiniGeometrys[s];
+
+			if (hg == NULL) {
+				hg = HoudiniGeometry::create(s); // change static function
+				hg->addDrawable(parts.size() - 1);
+				myHoudiniGeometrys[s] = hg;
+
+				if (mySceneManager->getModel(s) == NULL) {
+					mySceneManager->addModel(hg);
+				}
+			}
+
+			ofmsg("clearing %1%", %hg->getName());
+			hg->clear();
+
 		    for (int part_index=0; part_index < int(parts.size()); ++part_index)
 			{
-
-				String s = ostr("%1% %2% %3% %4%",
-					%asset.name()
-					%object_index
-					%geo_index
-					%part_index
-				);
-
-				HoudiniGeometry* hg;
-
-				hg = myHoudiniGeometrys[s];
-
-				if (hg == NULL) {
-					hg = HoudiniGeometry::create(s);
-					myHoudiniGeometrys[s] = hg;
-
-					if (mySceneManager->getModel(s) == NULL) {
-						mySceneManager->addModel(hg);
-					}
-				}
 
 				ofmsg("processing %1% %2%", %s %parts[part_index].name());
 
@@ -372,8 +377,8 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, int partIndex, Houd
 	bool has_vertex_colors = false;
 	bool has_primitive_colors = false;
 
-	ofmsg("clearing %1%", %hg->getName());
-	hg->clear();
+// 	ofmsg("clearing %1%", %hg->getName());
+// 	hg->clear();
 
 	//  attrib owners:
 	// 	HAPI_ATTROWNER_VERTEX
@@ -497,7 +502,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, int partIndex, Houd
 // 				prev_faceCountIndex << " plus " <<
 // 				curr_index - prev_faceCountIndex << endl;
 
-			hg->addPrimitiveOsg(myType, prev_faceCountIndex, curr_index - prev_faceCountIndex, 0);
+			hg->addPrimitiveOsg(myType, prev_faceCountIndex, curr_index - prev_faceCountIndex, partIndex);
 
 			prev_faceCountIndex = curr_index;
 			prev_faceCount = face_counts[ii];
@@ -507,7 +512,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, int partIndex, Houd
 // 				curr_index - prev_faceCountIndex << endl;
 			hg->addPrimitiveOsg(osg::PrimitiveSet::TRIANGLE_FAN,
 				prev_faceCountIndex,
-			    curr_index - prev_faceCountIndex, 0);
+			    curr_index - prev_faceCountIndex, partIndex);
 
 			prev_faceCountIndex = curr_index;
 			prev_faceCount = face_counts[ii];
@@ -520,12 +525,12 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, int partIndex, Houd
 			int myIndex = curr_index + (face_counts[ii] - jj) % face_counts[ii];
 // 			cout << "i: " << vertex_list[myIndex] << " ";
 
-			int lastIndex = hg->addVertex(points[vertex_list[ myIndex ]], 0);
+			int lastIndex = hg->addVertex(points[vertex_list[ myIndex ]], partIndex);
 
 			if (has_point_normals) {
-				hg->addNormal(normals[vertex_list[ myIndex ]], 0);
+				hg->addNormal(normals[vertex_list[ myIndex ]], partIndex);
 			} else if (has_vertex_normals) {
-				hg->addNormal(normals[myIndex], 0);
+				hg->addNormal(normals[myIndex], partIndex);
 			}
 			if(has_point_colors) {
 				hg->addColor(Color(
@@ -533,14 +538,14 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, int partIndex, Houd
 					colors[vertex_list[ myIndex ]][1],
 					colors[vertex_list[ myIndex ]][2],
 					1.0
-				), 0);
+				), partIndex);
 			} else if (has_primitive_colors) {
 				hg->addColor(Color(
 					colors[ii][0],
 					colors[ii][1],
 					colors[ii][2],
 					1.0
-				), 0);
+				), partIndex);
 			}
 
 //             cout << "v:" << myIndex << ", i: "
@@ -565,7 +570,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, int partIndex, Houd
 // 		prev_faceCountIndex << " plus " <<
 // 		curr_index - prev_faceCountIndex << endl;
 
-	hg->addPrimitiveOsg(myType, prev_faceCountIndex, curr_index - prev_faceCountIndex, 0);
+	hg->addPrimitiveOsg(myType, prev_faceCountIndex, curr_index - prev_faceCountIndex, partIndex);
 
 	hg->dirty();
 
