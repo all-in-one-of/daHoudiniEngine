@@ -352,7 +352,7 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 
 				ofmsg("processing %1% %2%", %s %parts[part_index].name());
 
-				process_geo_part(parts[part_index], hg);
+				process_geo_part(parts[part_index], part_index, hg);
 			}
 		}
     }
@@ -360,7 +360,7 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 
 // TODO: incrementally update the geometry?
 // send a new version, and still have the old version?
-void HoudiniEngine::process_geo_part(const hapi::Part &part, HoudiniGeometry* hg)
+void HoudiniEngine::process_geo_part(const hapi::Part &part, int partIndex, HoudiniGeometry* hg)
 {
 	vector<Vector3f> points;
 	vector<Vector3f> normals;
@@ -372,6 +372,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, HoudiniGeometry* hg
 	bool has_vertex_colors = false;
 	bool has_primitive_colors = false;
 
+	ofmsg("clearing %1%", %hg->getName());
 	hg->clear();
 
 	//  attrib owners:
@@ -496,7 +497,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, HoudiniGeometry* hg
 // 				prev_faceCountIndex << " plus " <<
 // 				curr_index - prev_faceCountIndex << endl;
 
-			hg->addPrimitiveOsg(myType, prev_faceCountIndex, curr_index - prev_faceCountIndex);
+			hg->addPrimitiveOsg(myType, prev_faceCountIndex, curr_index - prev_faceCountIndex, 0);
 
 			prev_faceCountIndex = curr_index;
 			prev_faceCount = face_counts[ii];
@@ -506,7 +507,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, HoudiniGeometry* hg
 // 				curr_index - prev_faceCountIndex << endl;
 			hg->addPrimitiveOsg(osg::PrimitiveSet::TRIANGLE_FAN,
 				prev_faceCountIndex,
-			    curr_index - prev_faceCountIndex);
+			    curr_index - prev_faceCountIndex, 0);
 
 			prev_faceCountIndex = curr_index;
 			prev_faceCount = face_counts[ii];
@@ -519,12 +520,12 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, HoudiniGeometry* hg
 			int myIndex = curr_index + (face_counts[ii] - jj) % face_counts[ii];
 // 			cout << "i: " << vertex_list[myIndex] << " ";
 
-			int lastIndex = hg->addVertex(points[vertex_list[ myIndex ]]);
+			int lastIndex = hg->addVertex(points[vertex_list[ myIndex ]], 0);
 
 			if (has_point_normals) {
-				hg->addNormal(normals[vertex_list[ myIndex ]]);
+				hg->addNormal(normals[vertex_list[ myIndex ]], 0);
 			} else if (has_vertex_normals) {
-				hg->addNormal(normals[myIndex]);
+				hg->addNormal(normals[myIndex], 0);
 			}
 			if(has_point_colors) {
 				hg->addColor(Color(
@@ -532,14 +533,14 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, HoudiniGeometry* hg
 					colors[vertex_list[ myIndex ]][1],
 					colors[vertex_list[ myIndex ]][2],
 					1.0
-				));
+				), 0);
 			} else if (has_primitive_colors) {
 				hg->addColor(Color(
 					colors[ii][0],
 					colors[ii][1],
 					colors[ii][2],
 					1.0
-				));
+				), 0);
 			}
 
 //             cout << "v:" << myIndex << ", i: "
@@ -564,7 +565,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, HoudiniGeometry* hg
 // 		prev_faceCountIndex << " plus " <<
 // 		curr_index - prev_faceCountIndex << endl;
 
-	hg->addPrimitiveOsg(myType, prev_faceCountIndex, curr_index - prev_faceCountIndex);
+	hg->addPrimitiveOsg(myType, prev_faceCountIndex, curr_index - prev_faceCountIndex, 0);
 
 	hg->dirty();
 
@@ -1073,7 +1074,7 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 		{
 			Vector3f v;
 			in >> v;
-			hg->addVertex(v);
+			hg->addVertex(v, 0);
 		}
 
 		int normalCount = 0;
@@ -1083,7 +1084,7 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 		{
 			Vector3f n;
 			in >> n;
-			hg->addNormal(n);
+			hg->addNormal(n, 0);
 		}
 
 		int colorCount = 0;
@@ -1093,7 +1094,7 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 		{
 			Color c;
 			in >> c;
-			hg->addColor(c);
+			hg->addColor(c, 0);
 		}
 
 		// primitive set count
@@ -1112,7 +1113,7 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 			in >> startIndex;
 			in >> count;
 
-			hg->addPrimitiveOsg(mode, startIndex, count);
+			hg->addPrimitiveOsg(mode, startIndex, count, 0);
 		}
 
 		hg->dirty();

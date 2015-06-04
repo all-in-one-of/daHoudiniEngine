@@ -89,7 +89,8 @@ namespace houdiniEngine {
 
 // 		void process_assets(Ref <RefAsset> &refAsset);
 		void process_assets(const hapi::Asset &asset);
-		void process_geo_part(const hapi::Part &part, HoudiniGeometry* hg);
+		void process_geo_part(const hapi::Part &part, int partIndex, HoudiniGeometry* hg);
+// 		void process_geo_part(const hapi::Part &part, HoudiniGeometry* hg);
 		void process_float_attrib(
 		    const hapi::Part &part, HAPI_AttributeOwner attrib_owner,
 		    const char *attrib_name, vector<Vector3f>& points);
