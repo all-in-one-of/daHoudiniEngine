@@ -915,69 +915,44 @@ void HoudiniEngine::commitSharedData(SharedOStream& out)
     {
 		ofmsg("Name: %1%", %hg->getName());
 		out << hg->getName();
-		out << hg->getVertexCount();
-		for (int i = 0; i < hg->getVertexCount(); ++i) {
-			out << hg->getVertex(i);
-		}
-		out << hg->getNormalCount();
-		for (int i = 0; i < hg->getNormalCount(); ++i) {
-			out << hg->getNormal(i);
-		}
-		out << hg->getColorCount();
-		for (int i = 0; i < hg->getColorCount(); ++i) {
-			out << hg->getColor(i);
-		}
-		// faces are done in that primitive set way
-		// TODO: simplification: assume all faces are triangles?
-		osg::Geometry* geo = hg->getOsgNode()->getDrawable(0)->asGeometry();
-		osg::Geometry::PrimitiveSetList psl = geo->getPrimitiveSetList();
 
-		out << int(psl.size());
-		for (int i = 0; i < psl.size(); ++i) {
+		ofmsg("Drawables: %1%", %hg->getDrawableCount());
+		out << hg->getDrawableCount();
 
-			osg::DrawArrays* da = dynamic_cast<osg::DrawArrays*>(psl[i].get());
+		// parts
+		for (int d = 0; d < hg->getDrawableCount(); ++d) {
 
-			out << da->getMode();
-			out << int(da->getFirst());
-			out << int(da->getCount());
-		}
+			ofmsg("Vertex count: %1%", %hg->getVertexCount(d));
+			out << hg->getVertexCount(d);
+			for (int i = 0; i < hg->getVertexCount(d); ++i) {
+				out << hg->getVertex(i, d);
+			}
+			ofmsg("Normal count: %1%", %hg->getNormalCount(d));
+			out << hg->getNormalCount(d);
+			for (int i = 0; i < hg->getNormalCount(d); ++i) {
+				out << hg->getNormal(i, d);
+			}
+			ofmsg("Color count: %1%", %hg->getColorCount(d));
+			out << hg->getColorCount(d);
+			for (int i = 0; i < hg->getColorCount(d); ++i) {
+				out << hg->getColor(i, d);
+			}
+			// faces are done in that primitive set way
+			// TODO: simplification: assume all faces are triangles?
+			osg::Geometry* geo = hg->getOsgNode()->getDrawable(d)->asGeometry();
+			osg::Geometry::PrimitiveSetList psl = geo->getPrimitiveSetList();
 
-		// start of sending parameters
+			out << int(psl.size());
+			for (int i = 0; i < psl.size(); ++i) {
 
-		// load only the params in the DA Folder
-		// first find the index of the folder, then iterate through the list of params
-		// from there onwards
-		const char* daFolderName = "daFolder_0";
+				osg::DrawArrays* da = dynamic_cast<osg::DrawArrays*>(psl[i].get());
 
-		int daFolderIndex = 0;
-
-// 		hapi::Asset* myAsset = instancedHEAssets["Object/switch_asset"];
-		hapi::Asset* myAsset = NULL;
-
-		// TODO: find a better way to refer to the params for this object..
-		foreach(Mapping::Item asset, instancedHEAssets)
-		{
-			myAsset = asset.second;
-		}
-
-		if (myAsset == NULL) {
-			out << 0;
-			continue;
-		}
-
-
-		// send the folder id index for start of this asset's parms
-		if (myAsset->parmMap().count(daFolderName) > 0) {
-			HAPI_ParmId daFolderId = myAsset->parmMap()[daFolderName].info().id;
-			cout << "folder id: " << daFolderId << endl;
-			while (daFolderIndex < myAsset->parms().size()) {
-				if (myAsset->parmMap()[daFolderName].info().id == myAsset->parms()[daFolderIndex].info().id) {
-					break;
-				}
-				daFolderIndex ++;
+				out << da->getMode();
+				out << int(da->getFirst());
+				out << int(da->getCount());
 			}
 		}
- 	}
+	}
 /*
 // 		// from hengine..
 //		// is part of geo loop
@@ -1056,11 +1031,17 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
         String name;
         in >> name;
 
+		ofmsg("SLAVE %1%: object name: %2%", %SystemManager::instance()->getHostname() %name);
+
+		int drawableCount = 0;
+        in >> drawableCount;
+
         HoudiniGeometry* hg = myHoudiniGeometrys[name];
         if(hg == NULL)
         {
  			ofmsg("SLAVE: no hg: '%1%'", %name);
 			hg = HoudiniGeometry::create(name);
+			hg->addDrawable(drawableCount - 1);
 			myHoudiniGeometrys[name] = hg;
 			SceneManager::instance()->addModel(hg);
 // 			continue;
@@ -1072,53 +1053,65 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 
 		hg->clear();
 
-		int vertCount = 0;
-		in >> vertCount;
-
-		for (int j = 0; j < vertCount; ++j)
-		{
-			Vector3f v;
-			in >> v;
-			hg->addVertex(v, 0);
+		// add drawables if needed
+		if (hg->getDrawableCount() < drawableCount) {
+			hg->addDrawable(drawableCount - hg->getDrawableCount());
 		}
 
-		int normalCount = 0;
-		in >> normalCount;
+		for (int d = 0; d < drawableCount; ++d) {
 
-		for (int j = 0; j < normalCount; ++j)
-		{
-			Vector3f n;
-			in >> n;
-			hg->addNormal(n, 0);
-		}
+			int vertCount = 0;
+			in >> vertCount;
 
-		int colorCount = 0;
-		in >> colorCount;
+// 			ofmsg("SLAVE: vertex count: '%1%'", %vertCount);
+			for (int j = 0; j < vertCount; ++j)
+			{
+				Vector3f v;
+				in >> v;
+				hg->addVertex(v, d);
+			}
 
-		for (int j = 0; j < colorCount; ++j)
-		{
-			Color c;
-			in >> c;
-			hg->addColor(c, 0);
-		}
+			int normalCount = 0;
+			in >> normalCount;
 
-		// primitive set count
-		int psCount = 0;
-		in >> psCount;
+// 			ofmsg("SLAVE: normal count: '%1%'", %normalCount);
+			for (int j = 0; j < normalCount; ++j)
+			{
+				Vector3f n;
+				in >> n;
+				hg->addNormal(n, d);
+			}
 
-		ofmsg("SLAVE: primitive set count: '%1%'", %psCount);
+			int colorCount = 0;
+			in >> colorCount;
 
-		for (int j = 0; j < psCount; ++j)
-		{
-			osg::PrimitiveSet::Mode mode;
-			int startIndex;
-			int count;
+// 			ofmsg("SLAVE: color count: '%1%'", %colorCount);
+			for (int j = 0; j < colorCount; ++j)
+			{
+				Color c;
+				in >> c;
+				hg->addColor(c, d);
+			}
 
-			in >> mode;
-			in >> startIndex;
-			in >> count;
+			// primitive set count
+			int psCount = 0;
+			in >> psCount;
 
-			hg->addPrimitiveOsg(mode, startIndex, count, 0);
+// 			ofmsg("SLAVE: primitive set count: '%1%'", %psCount);
+
+			for (int j = 0; j < psCount; ++j)
+			{
+				osg::PrimitiveSet::Mode mode;
+				int startIndex;
+				int count;
+
+				in >> mode;
+				in >> startIndex;
+				in >> count;
+
+				hg->addPrimitiveOsg(mode, startIndex, count, d);
+			}
+
 		}
 
 		hg->dirty();
@@ -1139,28 +1132,28 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 // 			ofmsg("SLAVE: menu item %1%", %mis.second[i].getType());
 // 		}
 // 	}
-	ofmsg("SLAVE: received %1% asset parameter lists", %parmCount);
+// 	ofmsg("SLAVE: received %1% asset parameter lists", %parmCount);
 
 	// using assetparams map
 	for (int j = 0; j < parmCount; ++j) {
 		String name;
 		in >> name;
-		ofmsg("SLAVE: %1%", %name);
+// 		ofmsg("SLAVE: %1%", %name);
 		int items = 0;
 		in >> items;
-		ofmsg("SLAVE: menu items to do: %1%", %items);
+// 		ofmsg("SLAVE: menu items to do: %1%", %items);
 		MenuItem* prevMenuItem = NULL;
 		for (int k = 0; k < items; ++k) {
 			MenuItem::Type t;
 			in >> t;
-			ofmsg("SLAVE: menuItem : %1%", %t);
+// 			ofmsg("SLAVE: menuItem : %1%", %t);
 
 			MenuItem* mi = NULL;
 
 			if (t == MenuItem::Label) {
 				String s;
 				in >> s;
-				ofmsg("SLAVE: label : %1%", %s);
+// 				ofmsg("SLAVE: label : %1%", %s);
 
 				if (assetParams[name].size() > k) {
 					mi = &(assetParams[name][k]);
@@ -1175,7 +1168,7 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 				in >> ticks;
 				int value;
 				in >> value;
-				ofmsg("SLAVE: slider : %1% out of %2%", %value %ticks);
+// 				ofmsg("SLAVE: slider : %1% out of %2%", %value %ticks);
 				MenuItem* slider = NULL;
 
 				if (assetParams[name].size() > k) {
@@ -1190,12 +1183,12 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 	}
 
 
-	omsg("SLAVE: all hgs:");
-    foreach(HGDictionary::Item hg, myHoudiniGeometrys)
-    {
-		ofmsg("SLAVE: hg: '%1%'", %hg->getName());
-		getHGInfo(hg->getName());
-	}
+// 	omsg("SLAVE: all hgs:");
+//     foreach(HGDictionary::Item hg, myHoudiniGeometrys)
+//     {
+// 		ofmsg("SLAVE: hg: '%1%'", %hg->getName());
+// 		getHGInfo(hg->getName());
+// 	}
 }
 
 // TODO: distribute value to slaves
