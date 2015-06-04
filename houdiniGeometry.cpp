@@ -53,6 +53,7 @@ int HoudiniGeometry::addVertex(const Vector3f& v)
 { return HoudiniGeometry::addVertex(v, 0); }
 int HoudiniGeometry::addVertex(const Vector3f& v, const int drawableIndex)
 {
+	oassert(hgeoms.size() > drawableIndex);
 	hgeoms[drawableIndex].vertices->push_back(osg::Vec3d(v[0], v[1], v[2]));
 	hgeoms[drawableIndex].geometry->dirtyBound();
 	return hgeoms[drawableIndex].vertices->size() - 1;
@@ -86,6 +87,7 @@ int HoudiniGeometry::addColor(const Color& c)
 { return HoudiniGeometry::addColor(c, 0) ; }
 int HoudiniGeometry::addColor(const Color& c, const int drawableIndex)
 {
+	oassert(hgeoms.size() > drawableIndex);
 	if(hgeoms[drawableIndex].colors == NULL)
 	{
 		hgeoms[drawableIndex].colors = new osg::Vec4Array();
@@ -176,6 +178,7 @@ int HoudiniGeometry::addNormal(const Vector3f& v)
 { return HoudiniGeometry::addNormal(v, 0) ; }
 int HoudiniGeometry::addNormal(const Vector3f& v, const int drawableIndex)
 {
+	oassert(hgeoms.size() > drawableIndex);
 	if(hgeoms[drawableIndex].normals == NULL) {
 		hgeoms[drawableIndex].normals = new osg::Vec3Array();
 		hgeoms[drawableIndex].geometry->setNormalArray(hgeoms[drawableIndex].normals);
