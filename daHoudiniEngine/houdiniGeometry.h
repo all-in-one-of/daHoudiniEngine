@@ -75,6 +75,7 @@ namespace houdiniEngine {
 		//! Removes all vertices, colors and primitives from this object
 		void clear();
 
+		int getDrawableCount() { return (myNode == NULL ? 0 : myNode->getNumDrawables()); };
 
 		int addDrawable(const int count);
 // 		const String& getName() { return myName; }
