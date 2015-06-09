@@ -44,8 +44,6 @@ BOOST_PYTHON_MODULE(daHEngine)
 		PYAPI_STATIC_REF_GETTER(HoudiniEngine, createAndInitialize)
  		PYAPI_METHOD(HoudiniEngine, loadAssetLibraryFromFile)
  		PYAPI_METHOD(HoudiniEngine, instantiateAsset)
- 		PYAPI_METHOD(HoudiniEngine, hasHG)
- 		PYAPI_METHOD(HoudiniEngine, getHGInfo)
  		PYAPI_REF_GETTER(HoudiniEngine, instantiateGeometry)
  		PYAPI_METHOD(HoudiniEngine, getTime)
  		PYAPI_METHOD(HoudiniEngine, setTime)
@@ -215,23 +213,6 @@ void HoudiniEngine::createMenu(const String& asset_name)
 	}
 }
 
-bool HoudiniEngine::hasHG(const String &s) {
-	return (myHoudiniGeometrys[s] != NULL);
-}
-
-void HoudiniEngine::getHGInfo(const String &s) {
-	if (myHoudiniGeometrys[s] == NULL) {
-		return;
-	}
-
-	HoudiniGeometry* hg = myHoudiniGeometrys[s];
-
-	ofmsg("name: %1%", %hg->getName());
-	ofmsg("verts: %1%", %hg->getVertexCount());
-	ofmsg("normals: %1%", %hg->getNormalCount());
-	ofmsg("cols: %1%", %hg->getColorCount());
-
-}
 
 // only run on master
 // returns id of the asset instance
