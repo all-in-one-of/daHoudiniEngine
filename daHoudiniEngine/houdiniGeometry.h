@@ -151,57 +151,29 @@ namespace houdiniEngine {
 		HoudiniGeometry(const String& name);
 
 		//! Adds a vertex and return its index.
-		int addVertex(const Vector3f& v);
-		int addVertex(const Vector3f& v, const int drawableIndex);
-		int addVertex(const Vector3f& v, const int drawableIndex, const int geodeIndex);
 		int addVertex(const Vector3f& v, const int drawableIndex, const int geodeIndex, const int objIndex);
-
 		//! Replaces an existing vertex
-		void setVertex(int index, const Vector3f& v);
-		void setVertex(int index, const Vector3f& v, const int drawableIndex);
-		void setVertex(int index, const Vector3f& v, const int drawableIndex, const int geodeIndex);
 		void setVertex(int index, const Vector3f& v, const int drawableIndex, const int geodeIndex, const int objIndex);
 		//! Retrieves an existing vertex
-		Vector3f getVertex(int index);
-		Vector3f getVertex(int index, const int drawableIndex);
-		Vector3f getVertex(int index, const int drawableIndex, const int geodeIndex);
 		Vector3f getVertex(int index, const int drawableIndex, const int geodeIndex, const int objIndex);
 		//! Adds a vertex color and return its index. The color will be applied
 		//! to the vertex with the same index as this color.
-		int addColor(const Color& c);
-		int addColor(const Color& c, const int drawableIndex);
-		int addColor(const Color& c, const int drawableIndex, const int geodeIndex);
 		int addColor(const Color& c, const int drawableIndex, const int geodeIndex, const int objIndex);
 
-		Color getColor(int index);
-		Color getColor(int index, const int drawableIndex);
-		Color getColor(int index, const int drawableIndex, const int geodeIndex);
 		Color getColor(int index, const int drawableIndex, const int geodeIndex, const int objIndex);
 		//! Replaces an existing color
-		void setColor(int index, const Color& c);
-		void setColor(int index, const Color& c, const int drawableIndex);
-		void setColor(int index, const Color& c, const int drawableIndex, const int geodeIndex);
 		void setColor(int index, const Color& c, const int drawableIndex, const int geodeIndex, const int objIndex);
 
-		void setVertexListSize(int size) { setVertexListSize(size, 0); }
-		void setVertexListSize(int size, const int drawableIndex) { setVertexListSize(size, drawableIndex, 0); }
-		void setVertexListSize(int size, const int drawableIndex, const int geodeIndex) {
-			setVertexListSize(size, drawableIndex, geodeIndex, 0);
-		};
+		//! Adds a normal and return its index.
+		int addNormal(const Vector3f& v, const int drawableIndex, const int geodeIndex, const int objIndex);
+		void setNormal(int index, const Vector3f& v, const int drawableIndex, const int geodeIndex, const int objIndex);
+		Vector3f getNormal(int index, const int drawableIndex, const int geodeIndex, const int objIndex);
+
 		void setVertexListSize(int size, const int drawableIndex, const int geodeIndex, const int objIndex) {
 			hobjs[objIndex].hgeoms[geodeIndex].hparts[drawableIndex].vertices->resize(size);
 		};
 
 		//! Adds a primitive set
-		void addPrimitive(ProgramAsset::PrimitiveType type, int startIndex, int endIndex);
-		void addPrimitive(ProgramAsset::PrimitiveType type, int startIndex, int endIndex, const int drawableIndex);
-		void addPrimitive(
-			ProgramAsset::PrimitiveType type,
-			int startIndex,
-			int endIndex,
-			const int drawableIndex,
-			const int geodeIndex
-		);
 		void addPrimitive(
 			ProgramAsset::PrimitiveType type,
 			int startIndex,
@@ -211,15 +183,6 @@ namespace houdiniEngine {
 			const int objIndex
 		);
 
-		void addPrimitiveOsg(osg::PrimitiveSet::Mode type, int startIndex, int endIndex);
-		void addPrimitiveOsg(osg::PrimitiveSet::Mode type, int startIndex, int endIndex, const int drawableIndex);
-		void addPrimitiveOsg(
-			osg::PrimitiveSet::Mode type,
-			int startIndex,
-			int endIndex,
-			const int drawableIndex,
-			const int geodeIndex
-		);
 		void addPrimitiveOsg(
 			osg::PrimitiveSet::Mode type,
 			int startIndex,
@@ -232,10 +195,6 @@ namespace houdiniEngine {
 		//! Removes all vertices, colors and primitives from this object
 		void clear();
 
-		int getDrawableCount() { return getDrawableCount(0); };
-		int getDrawableCount(const int geodeIndex) {
-			return (myNode == NULL ? 0 : getDrawableCount(0, 0));
-		};
 		int getDrawableCount(const int geodeIndex, const int objIndex) {
 			if (objIndex < myNode->getNumChildren()) {
 				if (geodeIndex < myNode->getChild(objIndex)->asGroup()->getNumChildren()) {
@@ -243,68 +202,22 @@ namespace houdiniEngine {
 						getChild(geodeIndex)->asGeode()->getNumDrawables();
 				}
 			}
-
 			return 0;
-
-// 			return ((myNode->getChild(objIndex)->asGroup()->getNumChildren() <= geodeIndex) ?
-// 			0 :
-// 			myNode->getChild(objIndex)->asGroup()->getChild(geodeIndex)->asGeode()->getNumDrawables());
 		};
 
-		int addDrawable(const int count);
-		int addDrawable(const int count, const int geodeIndex);
 		int addDrawable(const int count, const int geodeIndex, const int objIndex);
 
-		int addGeode(const int count);
 		int addGeode(const int count, const int objIndex);
 
-		int getGeodeCount() { return (myNode == NULL ? 0 : getGeodeCount(0)); };
 		int getGeodeCount(const int objIndex) {
 			if (objIndex < myNode->getNumChildren()) {
 				return myNode->getChild(objIndex)->asGroup()->getNumChildren();
 			}
-
 			return 0;
-
-// 			return (myNode->getNumChildren() <= objIndex ?
-// 			0 :
-// 			myNode->getChild(objIndex)->asGroup()->getNumChildren());
 		};
 
 		int addObject(const int count);
 		int getObjectCount() { return (myNode == NULL ? 0 : myNode->getNumChildren()); };
-
-
-		int addNormal(const Vector3f& v);
-		int addNormal(const Vector3f& v, const int drawableIndex);
-		int addNormal(const Vector3f& v, const int drawableIndex, const int geodeIndex);
-		int addNormal(const Vector3f& v, const int drawableIndex, const int geodeIndex, const int objIndex);
-		void setNormal(int index, const Vector3f& v);
-		void setNormal(int index, const Vector3f& v, const int drawableIndex);
-		void setNormal(int index, const Vector3f& v, const int drawableIndex, const int geodeIndex);
-		void setNormal(int index, const Vector3f& v, const int drawableIndex, const int geodeIndex, const int objIndex);
-		Vector3f getNormal(int index);
-		Vector3f getNormal(int index, const int drawableIndex);
-		Vector3f getNormal(int index, const int drawableIndex, const int geodeIndex);
-		Vector3f getNormal(int index, const int drawableIndex, const int geodeIndex, const int objIndex);
-
-		inline int getNormalCount() { return getNormalCount(0); }
-		inline int getVertexCount() { return getVertexCount(0); }
-		inline int getColorCount() { return getColorCount(0); }
-
-		inline int getNormalCount(const int drawableIndex) { return getNormalCount(drawableIndex, 0); }
-		inline int getVertexCount(const int drawableIndex) { return getVertexCount(drawableIndex, 0); }
-		inline int getColorCount(const int drawableIndex) { return getColorCount(drawableIndex, 0); }
-
-		inline int getNormalCount(const int drawableIndex, const int geodeIndex) {
-			return getNormalCount(drawableIndex, geodeIndex, 0);
-		}
-		inline int getVertexCount(const int drawableIndex, const int geodeIndex) {
-			return getVertexCount(drawableIndex, geodeIndex, 0);
-		}
-		inline int getColorCount(const int drawableIndex, const int geodeIndex) {
-			return getColorCount(drawableIndex, geodeIndex, 0);
-		}
 
 		inline int getNormalCount(const int drawableIndex, const int geodeIndex, const int objIndex) {
 			return (hobjs[objIndex].hgeoms[geodeIndex].hparts[drawableIndex].normals == NULL) ?
@@ -320,16 +233,10 @@ namespace houdiniEngine {
 			hobjs[objIndex].hgeoms[geodeIndex].hparts[drawableIndex].colors->size();
 		}
 
-		inline int getPrimitiveSetCount() { return getPrimitiveSetCount(0); }
-		inline int getPrimitiveSetCount(const int drawableIndex) { return getPrimitiveSetCount(drawableIndex, 0); }
-		inline int getPrimitiveSetCount(const int drawableIndex, const int geodeIndex) {
-			return getPrimitiveSetCount(drawableIndex, geodeIndex, 0);
-		}
 		inline int getPrimitiveSetCount(const int drawableIndex, const int geodeIndex, const int objIndex) {
 			return hobjs[objIndex].hgeoms[geodeIndex].hparts[drawableIndex].geometry->getPrimitiveSetList().size();
 		}
 
-// 		const String& getName() { return myName; }
 		osg::Node* getOsgNode() { return myNode; }
 		osg::Geode* getOsgNode(const int geodeIndex) { return getOsgNode(0, 0); }
 		osg::Geode* getOsgNode(const int geodeIndex, const int objIndex) {

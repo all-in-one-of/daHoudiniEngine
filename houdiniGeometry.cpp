@@ -14,18 +14,14 @@ HoudiniGeometry::HoudiniGeometry(const String& name):
 	myNode = new osg::Group();
 
 	addObject(1);
-	addGeode(1);
-	addDrawable(1);
+	addGeode(1, 0);
+	addDrawable(1, 0, 0);
 
 }
 
 // add a drawable (osg::geometry) to a given geode
 // drawables are stored in HParts for an HGeom
 ///////////////////////////////////////////////////////////////////////////////
-int HoudiniGeometry::addDrawable(const int count)
-{ return addDrawable(count, 0); }
-int HoudiniGeometry::addDrawable(const int count, const int geodeIndex)
-{ return addDrawable(count, geodeIndex, 0); }
 int HoudiniGeometry::addDrawable(const int count, const int geodeIndex, const int objIndex)
 {
 
@@ -46,8 +42,6 @@ int HoudiniGeometry::addDrawable(const int count, const int geodeIndex, const in
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-int HoudiniGeometry::addGeode(const int count)
-{ return addGeode(count, 0); }
 int HoudiniGeometry::addGeode(const int count, const int objIndex)
 {
 	for (int i = 0; i < count; ++i) {
@@ -70,12 +64,6 @@ int HoudiniGeometry::addObject(const int count)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-int HoudiniGeometry::addVertex(const Vector3f& v)
-{ return HoudiniGeometry::addVertex(v, 0); }
-int HoudiniGeometry::addVertex(const Vector3f& v, const int drawableIndex)
-{ return HoudiniGeometry::addVertex(v, drawableIndex, 0); }
-int HoudiniGeometry::addVertex(const Vector3f& v, const int drawableIndex, const int geodeIndex)
-{ return HoudiniGeometry::addVertex(v, drawableIndex, geodeIndex, 0); }
 int HoudiniGeometry::addVertex(const Vector3f& v, const int drawableIndex, const int geodeIndex, const int objIndex)
 {
 	oassert(hobjs[objIndex].hgeoms[geodeIndex].hparts.size() > drawableIndex);
@@ -85,12 +73,6 @@ int HoudiniGeometry::addVertex(const Vector3f& v, const int drawableIndex, const
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-void HoudiniGeometry::setVertex(int index, const Vector3f& v)
-{ return HoudiniGeometry::setVertex(index, v, 0) ; }
-void HoudiniGeometry::setVertex(int index, const Vector3f& v, const int drawableIndex)
-{ return HoudiniGeometry::setVertex(index, v, drawableIndex, 0) ; }
-void HoudiniGeometry::setVertex(int index, const Vector3f& v, const int drawableIndex, const int geodeIndex)
-{ return HoudiniGeometry::setVertex(index, v, drawableIndex, geodeIndex, 0) ; }
 void HoudiniGeometry::setVertex(int index, const Vector3f& v, const int drawableIndex, const int geodeIndex, const int objIndex)
 {
 	oassert(hobjs[objIndex].hgeoms[geodeIndex].hparts[drawableIndex].vertices->size() > index);
@@ -102,12 +84,6 @@ void HoudiniGeometry::setVertex(int index, const Vector3f& v, const int drawable
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-Vector3f HoudiniGeometry::getVertex(int index)
-{ return HoudiniGeometry::getVertex(index, 0) ; }
-Vector3f HoudiniGeometry::getVertex(int index, const int drawableIndex)
-{ return HoudiniGeometry::getVertex(index, drawableIndex, 0) ; }
-Vector3f HoudiniGeometry::getVertex(int index, const int drawableIndex, const int geodeIndex)
-{ return HoudiniGeometry::getVertex(index, drawableIndex, geodeIndex, 0) ; }
 Vector3f HoudiniGeometry::getVertex(int index, const int drawableIndex, const int geodeIndex, const int objIndex)
 {
 	oassert(hobjs[objIndex].hgeoms[geodeIndex].hparts[drawableIndex].vertices->size() > index);
@@ -116,12 +92,6 @@ Vector3f HoudiniGeometry::getVertex(int index, const int drawableIndex, const in
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-int HoudiniGeometry::addColor(const Color& c)
-{ return HoudiniGeometry::addColor(c, 0) ; }
-int HoudiniGeometry::addColor(const Color& c, const int drawableIndex)
-{ return HoudiniGeometry::addColor(c, drawableIndex, 0) ; }
-int HoudiniGeometry::addColor(const Color& c, const int drawableIndex, const int geodeIndex)
-{ return HoudiniGeometry::addColor(c, drawableIndex, geodeIndex, 0) ; }
 int HoudiniGeometry::addColor(const Color& c, const int drawableIndex, const int geodeIndex, const int objIndex)
 {
 	oassert(hobjs[objIndex].hgeoms[geodeIndex].hparts.size() > drawableIndex);
@@ -136,12 +106,6 @@ int HoudiniGeometry::addColor(const Color& c, const int drawableIndex, const int
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-void HoudiniGeometry::setColor(int index, const Color& col)
-{ return HoudiniGeometry::setColor(index, col, 0) ; }
-void HoudiniGeometry::setColor(int index, const Color& col, const int drawableIndex)
-{ return HoudiniGeometry::setColor(index, col, drawableIndex, 0) ; }
-void HoudiniGeometry::setColor(int index, const Color& col, const int drawableIndex, const int geodeIndex)
-{ return HoudiniGeometry::setColor(index, col, drawableIndex, geodeIndex, 0) ; }
 void HoudiniGeometry::setColor(int index, const Color& col, const int drawableIndex, const int geodeIndex, const int objIndex)
 {
 	oassert(hobjs[objIndex].hgeoms[geodeIndex].hparts[drawableIndex].colors != NULL && hobjs[objIndex].hgeoms[geodeIndex].hparts[drawableIndex].colors->size() > index);
@@ -154,12 +118,6 @@ void HoudiniGeometry::setColor(int index, const Color& col, const int drawableIn
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-Color HoudiniGeometry::getColor(int index)
-{ return HoudiniGeometry::getColor(index, 0) ; }
-Color HoudiniGeometry::getColor(int index, const int drawableIndex)
-{ return HoudiniGeometry::getColor(index, drawableIndex, 0) ; }
-Color HoudiniGeometry::getColor(int index, const int drawableIndex, const int geodeIndex)
-{ return HoudiniGeometry::getColor(index, drawableIndex, geodeIndex, 0) ; }
 Color HoudiniGeometry::getColor(int index, const int drawableIndex, const int geodeIndex, const int	objIndex)
 {
 	oassert(hobjs[objIndex].hgeoms[geodeIndex].hparts[drawableIndex].colors != NULL && hobjs[objIndex].hgeoms[geodeIndex].hparts[drawableIndex].colors->size() > index);
@@ -168,12 +126,6 @@ Color HoudiniGeometry::getColor(int index, const int drawableIndex, const int ge
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-void HoudiniGeometry::addPrimitive(ProgramAsset::PrimitiveType type, int startIndex, int endIndex)
-{ return HoudiniGeometry::addPrimitive(type, startIndex, endIndex, 0) ; }
-void HoudiniGeometry::addPrimitive(ProgramAsset::PrimitiveType type, int startIndex, int endIndex, const int drawableIndex)
-{ return HoudiniGeometry::addPrimitive(type, startIndex, endIndex, drawableIndex, 0) ; }
-void HoudiniGeometry::addPrimitive(ProgramAsset::PrimitiveType type, int startIndex, int endIndex, const int drawableIndex, const int geodeIndex)
-{ return HoudiniGeometry::addPrimitive(type, startIndex, endIndex, drawableIndex, geodeIndex, 0) ; }
 void HoudiniGeometry::addPrimitive(ProgramAsset::PrimitiveType type, int startIndex, int endIndex, const int drawableIndex, const int geodeIndex, const int objIndex)
 {
 	osg::PrimitiveSet::Mode osgPrimType;
@@ -190,12 +142,6 @@ void HoudiniGeometry::addPrimitive(ProgramAsset::PrimitiveType type, int startIn
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-void HoudiniGeometry::addPrimitiveOsg(osg::PrimitiveSet::Mode type, int startIndex, int endIndex)
-{ return HoudiniGeometry::addPrimitiveOsg(type, startIndex, endIndex, 0) ; }
-void HoudiniGeometry::addPrimitiveOsg(osg::PrimitiveSet::Mode type, int startIndex, int endIndex, const int drawableIndex)
-{ return HoudiniGeometry::addPrimitiveOsg(type, startIndex, endIndex, drawableIndex, 0) ; }
-void HoudiniGeometry::addPrimitiveOsg(osg::PrimitiveSet::Mode type, int startIndex, int endIndex, const int drawableIndex, const int geodeIndex)
-{ return HoudiniGeometry::addPrimitiveOsg(type, startIndex, endIndex, drawableIndex, geodeIndex, 0) ; }
 void HoudiniGeometry::addPrimitiveOsg(osg::PrimitiveSet::Mode type, int startIndex, int endIndex, const int drawableIndex, const int geodeIndex, const int objIndex)
 {
 	hobjs[objIndex].hgeoms[geodeIndex].hparts[drawableIndex].geometry->addPrimitiveSet(new osg::DrawArrays(type, startIndex, endIndex));
@@ -234,12 +180,6 @@ void HoudiniGeometry::dirty()
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-int HoudiniGeometry::addNormal(const Vector3f& v)
-{ return HoudiniGeometry::addNormal(v, 0) ; }
-int HoudiniGeometry::addNormal(const Vector3f& v, const int drawableIndex)
-{ return HoudiniGeometry::addNormal(v, drawableIndex, 0) ; }
-int HoudiniGeometry::addNormal(const Vector3f& v, const int drawableIndex, const int geodeIndex)
-{ return HoudiniGeometry::addNormal(v, drawableIndex, geodeIndex, 0) ; }
 int HoudiniGeometry::addNormal(const Vector3f& v, const int drawableIndex, const int geodeIndex, const int objIndex)
 {
 	oassert(hobjs[objIndex].hgeoms[geodeIndex].hparts.size() > drawableIndex);
@@ -254,12 +194,6 @@ int HoudiniGeometry::addNormal(const Vector3f& v, const int drawableIndex, const
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-void HoudiniGeometry::setNormal(int index, const Vector3f& v)
-{ return HoudiniGeometry::setNormal(index, v, 0) ; }
-void HoudiniGeometry::setNormal(int index, const Vector3f& v, const int drawableIndex)
-{ return HoudiniGeometry::setNormal(index, v, drawableIndex, 0) ; }
-void HoudiniGeometry::setNormal(int index, const Vector3f& v, const int drawableIndex, const int geodeIndex)
-{ return HoudiniGeometry::setNormal(index, v, drawableIndex, geodeIndex, 0) ; }
 void HoudiniGeometry::setNormal(int index, const Vector3f& v, const int drawableIndex, const int geodeIndex, const int objIndex)
 {
 	oassert(hobjs[objIndex].hgeoms[geodeIndex].hparts[drawableIndex].normals->size() > index);
@@ -271,12 +205,6 @@ void HoudiniGeometry::setNormal(int index, const Vector3f& v, const int drawable
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-Vector3f HoudiniGeometry::getNormal(int index)
-{ return HoudiniGeometry::getNormal(index, 0) ; }
-Vector3f HoudiniGeometry::getNormal(int index, const int drawableIndex)
-{ return HoudiniGeometry::getNormal(index, drawableIndex, 0) ; }
-Vector3f HoudiniGeometry::getNormal(int index, const int drawableIndex, const int geodeIndex)
-{ return HoudiniGeometry::getNormal(index, drawableIndex, geodeIndex, 0) ; }
 Vector3f HoudiniGeometry::getNormal(int index, const int drawableIndex, const int geodeIndex, const int objIndex)
 {
 	oassert(hobjs[objIndex].hgeoms[geodeIndex].hparts[drawableIndex].normals->size() > index);
