@@ -89,7 +89,13 @@ namespace houdiniEngine {
 
 // 		void process_assets(Ref <RefAsset> &refAsset);
 		void process_assets(const hapi::Asset &asset);
-		void process_geo_part(const hapi::Part &part, int geoIndex, int partIndex, HoudiniGeometry* hg);
+		void process_geo_part(
+			const hapi::Part &part,
+			const int objIndex,
+			const int geoIndex,
+			const int partIndex,
+			HoudiniGeometry* hg
+		);
 // 		void process_geo_part(const hapi::Part &part, int partIndex, HoudiniGeometry* hg);
 		void process_float_attrib(
 		    const hapi::Part &part, HAPI_AttributeOwner attrib_owner,
@@ -105,7 +111,7 @@ namespace houdiniEngine {
 		int instantiateAsset(const String& asset);
 // 		StaticObject* instantiateGeometry(const String& asset, const int assetNum, const int geoNum, const int partNum);
 // 		StaticObject* instantiateGeometry(const String& asset, const int assetNum, const int geoNum);
-		StaticObject* instantiateGeometry(const String& asset, const int objectNum);
+		StaticObject* instantiateGeometry(const String& asset);
 
 		void createMenu(const String& asset_name);
 		void initializeParameters(const String& asset_name);

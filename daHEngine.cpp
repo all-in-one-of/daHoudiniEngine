@@ -243,7 +243,7 @@ int HoudiniEngine::instantiateAsset(const String& asset_name)
 
 	int asset_id = -1;
 
-	ofmsg("about to instantiate %1%", %asset_name);
+// 	ofmsg("about to instantiate %1%", %asset_name);
 
     ENSURE_SUCCESS(HAPI_InstantiateAsset(
             asset_name.c_str(),
@@ -255,7 +255,7 @@ int HoudiniEngine::instantiateAsset(const String& asset_name)
 		return -1;
 	}
 
-	ofmsg("instantiated %1%, id: %2%", %asset_name %asset_id);
+// 	ofmsg("instantiated %1%, id: %2%", %asset_name %asset_id);
 
 	wait_for_cook();
 
@@ -281,19 +281,19 @@ int HoudiniEngine::instantiateAsset(const String& asset_name)
 //             |
 //             o- part node+ (drawables as part of geo, no transforms)
 // StaticObject* HoudiniEngine::instantiateGeometry(const String& asset, const int assetNum, const int geoNum, const int partNum)
-StaticObject* HoudiniEngine::instantiateGeometry(const String& asset, const int objectNum)
-// StaticObject* HoudiniEngine::instantiateGeometry(const String& asset)
+// StaticObject* HoudiniEngine::instantiateGeometry(const String& asset, const int objectNum)
+StaticObject* HoudiniEngine::instantiateGeometry(const String& asset)
 {
 	// TODO: should loop through all the geos and parts..
-//  	int objectNum = 0;
+  	int objectNum = 0;
  	int geoNum = 0;
  	int partNum = 0;
 
 	// of form 'Object/asset_name <asset number> <geoNum> <partNum>'
-	String s = ostr("%1% %2%", %asset %objectNum);
+	String s = ostr("%1%", %asset);
 
 	if (myHoudiniGeometrys[s] == NULL) {
-		ofwarn("No model of %1% with geo %2%.. creating", %asset %geoNum);
+		ofwarn("No model of %1% with object %2%.. creating", %asset %objectNum);
 
 		HoudiniGeometry* hg = HoudiniGeometry::create(s);
 		// need to add number of drawables
@@ -303,7 +303,6 @@ StaticObject* HoudiniEngine::instantiateGeometry(const String& asset, const int 
 		}
 	}
 
-	ofmsg("making instance %1%", %s);
 	return new StaticObject(mySceneManager, s);
 }
 
@@ -311,8 +310,27 @@ StaticObject* HoudiniEngine::instantiateGeometry(const String& asset, const int 
 void HoudiniEngine::process_assets(const hapi::Asset &asset)
 {
     vector<hapi::Object> objects = asset.objects();
-	ofmsg("%1%: %2% objects", %asset.name() %objects.size());
-    for (int object_index=0; object_index < int(objects.size()); ++object_index)
+// 	ofmsg("%1%: %2% objects", %asset.name() %objects.size());
+
+	String s = ostr("%1%", %asset.name());
+
+	HoudiniGeometry* hg;
+
+	if (myHoudiniGeometrys.count(s) > 0) {
+		hg = myHoudiniGeometrys[s];
+	} else {
+		hg = HoudiniGeometry::create(s);
+		myHoudiniGeometrys[s] = hg;
+
+	}
+
+	hg->clear();
+
+	if (hg->getObjectCount() < objects.size()) {
+		hg->addObject(objects.size() - hg->getObjectCount());
+	}
+
+	for (int object_index=0; object_index < int(objects.size()); ++object_index)
     {
 
 // 		ModelAsset ma = new ModelAsset();
@@ -322,53 +340,34 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 // 	    ma->nodes.push_back(geom->getOsgNode());
 
 		// TODO check for instancing, then do things differently
-		ofmsg("is an instancer: %1%: %2%", %objects[object_index].name() %objects[object_index].info().isInstancer);
-		ofmsg("instance path: %1%: %2%", %objects[object_index].name() %objects[object_index].objectInstancePath());
 		if (objects[object_index].info().isInstancer > 0) {
+			ofmsg("instance path: %1%: %2%", %objects[object_index].name() %objects[object_index].objectInstancePath());
 			ofmsg("%1%: %2%", %objects[object_index].id %objects[object_index].info().objectToInstanceId);
 		}
 
 		vector<hapi::Geo> geos = objects[object_index].geos();
-		ofmsg("%1%: %2%: %3% geos", %objects[object_index].name() %object_index %geos.size());
+// 		ofmsg("%1%: %2%: %3% geos", %objects[object_index].name() %object_index %geos.size());
 
-		String s = ostr("%1% %2%",
-			%asset.name()
-			%object_index
-		);
-
-		HoudiniGeometry* hg;
-
-		if (myHoudiniGeometrys.count(s) > 0) {
-			hg = myHoudiniGeometrys[s];
-		} else {
-			hg = HoudiniGeometry::create(s);
-			myHoudiniGeometrys[s] = hg;
-
-		}
-
-		hg->clear();
-
-		if (hg->getGeodeCount() < geos.size()) {
-			hg->addGeode(geos.size() - hg->getGeodeCount() - 1);
+		if (hg->getGeodeCount(object_index) < geos.size()) {
+			hg->addGeode(geos.size() - hg->getGeodeCount(object_index), object_index);
 		}
 
 
 		for (int geo_index=0; geo_index < int(geos.size()); ++geo_index)
 		{
 		    vector<hapi::Part> parts = geos[geo_index].parts();
-			ofmsg("%1%: %2%: %3%: %4% parts", %geos[geo_index].name() %object_index %geo_index %parts.size());
+// 			ofmsg("%1%: %2%: %3%: %4% parts", %geos[geo_index].name() %object_index %geo_index %parts.size());
 
-			if (hg->getDrawableCount(geo_index) < parts.size()) {
-				ofmsg("adding %1% counts to %2%", %(parts.size() - hg->getDrawableCount(geo_index) - 1) %geo_index);
-				hg->addDrawable(parts.size() - hg->getDrawableCount(geo_index), geo_index);
+			if (hg->getDrawableCount(geo_index, object_index) < parts.size()) {
+				hg->addDrawable(parts.size() - hg->getDrawableCount(geo_index, object_index), geo_index, object_index);
 			}
 
 		    for (int part_index=0; part_index < int(parts.size()); ++part_index)
 			{
 
-				ofmsg("processing %1% %2%", %s %parts[part_index].name());
+// 				ofmsg("processing %1% %2%", %s %parts[part_index].name());
 
-				process_geo_part(parts[part_index], geo_index, part_index, hg);
+				process_geo_part(parts[part_index], object_index, geo_index, part_index, hg);
 			}
 		}
 		if (mySceneManager->getModel(s) == NULL) {
@@ -379,7 +378,7 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 
 // TODO: incrementally update the geometry?
 // send a new version, and still have the old version?
-void HoudiniEngine::process_geo_part(const hapi::Part &part, int geoIndex, int partIndex, HoudiniGeometry* hg)
+void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex, const int geoIndex, const int partIndex, HoudiniGeometry* hg)
 {
 	vector<Vector3f> points;
 	vector<Vector3f> normals;
@@ -416,7 +415,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, int geoIndex, int p
     for (int attrib_index=0; attrib_index < int(point_attrib_names.size());
 	    ++attrib_index) {
 
-		ofmsg("has %1%", %point_attrib_names[attrib_index]);
+// 		ofmsg("has %1%", %point_attrib_names[attrib_index]);
 
 		if (point_attrib_names[attrib_index] == "P") {
 		    process_float_attrib(part, HAPI_ATTROWNER_POINT, "P", points);
@@ -436,7 +435,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, int geoIndex, int p
     for (int attrib_index=0; attrib_index < int(vertex_attrib_names.size());
 	    ++attrib_index) {
 
-		ofmsg("has %1%", %vertex_attrib_names[attrib_index]);
+// 		ofmsg("has %1%", %vertex_attrib_names[attrib_index]);
 
 		if (vertex_attrib_names[attrib_index] == "N") {
 			has_vertex_normals = true;
@@ -449,7 +448,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, int geoIndex, int p
     for (int attrib_index=0; attrib_index < int(primitive_attrib_names.size());
 	    ++attrib_index) {
 
-		ofmsg("has %1%", %primitive_attrib_names[attrib_index]);
+// 		ofmsg("has %1%", %primitive_attrib_names[attrib_index]);
 
 		if (primitive_attrib_names[attrib_index] == "Cd") {
 			has_primitive_colors = true;
@@ -458,7 +457,8 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, int geoIndex, int p
 	}
 
 	if (part.info().faceCount == 0) {
-		ofmsg ("No faces, points count? %1%", %points.size());
+		// this is to do with instancing
+// 		ofmsg ("No faces, points count? %1%", %points.size());
 		hg->dirty();
 		return;
 	}
@@ -516,7 +516,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, int geoIndex, int p
 // 				prev_faceCountIndex << " plus " <<
 // 				curr_index - prev_faceCountIndex << endl;
 
-			hg->addPrimitiveOsg(myType, prev_faceCountIndex, curr_index - prev_faceCountIndex, partIndex, geoIndex);
+			hg->addPrimitiveOsg(myType, prev_faceCountIndex, curr_index - prev_faceCountIndex, partIndex, geoIndex, objIndex);
 
 			prev_faceCountIndex = curr_index;
 			prev_faceCount = face_counts[ii];
@@ -526,7 +526,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, int geoIndex, int p
 // 				curr_index - prev_faceCountIndex << endl;
 			hg->addPrimitiveOsg(osg::PrimitiveSet::TRIANGLE_FAN,
 				prev_faceCountIndex,
-			    curr_index - prev_faceCountIndex, partIndex, geoIndex);
+			    curr_index - prev_faceCountIndex, partIndex, geoIndex, objIndex);
 
 			prev_faceCountIndex = curr_index;
 			prev_faceCount = face_counts[ii];
@@ -539,12 +539,12 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, int geoIndex, int p
 			int myIndex = curr_index + (face_counts[ii] - jj) % face_counts[ii];
 // 			cout << "i: " << vertex_list[myIndex] << " ";
 
-			int lastIndex = hg->addVertex(points[vertex_list[ myIndex ]], partIndex, geoIndex);
+			int lastIndex = hg->addVertex(points[vertex_list[ myIndex ]], partIndex, geoIndex, objIndex);
 
 			if (has_point_normals) {
-				hg->addNormal(normals[vertex_list[ myIndex ]], partIndex, geoIndex);
+				hg->addNormal(normals[vertex_list[ myIndex ]], partIndex, geoIndex, objIndex);
 			} else if (has_vertex_normals) {
-				hg->addNormal(normals[myIndex], partIndex, geoIndex);
+				hg->addNormal(normals[myIndex], partIndex, geoIndex, objIndex);
 			}
 			if(has_point_colors) {
 				hg->addColor(Color(
@@ -552,14 +552,14 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, int geoIndex, int p
 					colors[vertex_list[ myIndex ]][1],
 					colors[vertex_list[ myIndex ]][2],
 					1.0
-				), partIndex, geoIndex);
+				), partIndex, geoIndex, objIndex);
 			} else if (has_primitive_colors) {
 				hg->addColor(Color(
 					colors[ii][0],
 					colors[ii][1],
 					colors[ii][2],
 					1.0
-				), partIndex, geoIndex);
+				), partIndex, geoIndex, objIndex);
 			}
 
 //             cout << "v:" << myIndex << ", i: "
@@ -584,7 +584,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, int geoIndex, int p
 // 		prev_faceCountIndex << " plus " <<
 // 		curr_index - prev_faceCountIndex << endl;
 
-	hg->addPrimitiveOsg(myType, prev_faceCountIndex, curr_index - prev_faceCountIndex, partIndex, geoIndex);
+	hg->addPrimitiveOsg(myType, prev_faceCountIndex, curr_index - prev_faceCountIndex, partIndex, geoIndex, objIndex);
 
 	hg->dirty();
 
@@ -918,7 +918,7 @@ void HoudiniEngine::commitSharedData(SharedOStream& out)
 
 	updateGeos = false;
 
-	ofmsg("MASTER: sending %1% geos", %myHoudiniGeometrys.size());
+// 	ofmsg("MASTER: sending %1% geos", %myHoudiniGeometrys.size());
 
 	// TODO change this to count the number of changed objs, geos, parts
 	out << int(myHoudiniGeometrys.size());
@@ -927,51 +927,56 @@ void HoudiniEngine::commitSharedData(SharedOStream& out)
 	// we are currently sending duplicated data..
     foreach(HGDictionary::Item hg, myHoudiniGeometrys)
     {
-		ofmsg("Name: %1%", %hg->getName());
+// 		ofmsg("Name: %1%", %hg->getName());
 		out << hg->getName();
 
-		ofmsg("Geodes: %1%", %hg->getGeodeCount());
-		out << hg->getGeodeCount();
+// 		ofmsg("Objects: %1%", %hg->getObjectCount());
+		out << hg->getObjectCount();
 
-		// geoms
-		for (int g = 0; g < hg->getGeodeCount(); ++g) {
+		// objects
+		for (int obj = 0; obj < hg->getObjectCount(); ++obj) {
 
-			ofmsg("Drawables: %1%", %hg->getDrawableCount(g));
-			out << hg->getDrawableCount(g);
+// 			ofmsg("Geodes: %1%", %hg->getGeodeCount(obj));
+			out << hg->getGeodeCount(obj);
 
-			// parts
-			for (int d = 0; d < hg->getDrawableCount(g); ++d) {
+			// geoms
+			for (int g = 0; g < hg->getGeodeCount(obj); ++g) {
 
-				ofmsg("Vertex count: %1%", %hg->getVertexCount(d, g));
-				out << hg->getVertexCount(d, g);
-				for (int i = 0; i < hg->getVertexCount(d, g); ++i) {
-					out << hg->getVertex(i, d, g);
-				}
-				ofmsg("Normal count: %1%", %hg->getNormalCount(d, g));
-				out << hg->getNormalCount(d, g);
-				for (int i = 0; i < hg->getNormalCount(d, g); ++i) {
-					out << hg->getNormal(i, d, g);
-				}
-				ofmsg("Color count: %1%", %hg->getColorCount(d, g));
-				out << hg->getColorCount(d, g);
-				for (int i = 0; i < hg->getColorCount(d, g); ++i) {
-					out << hg->getColor(i, d, g);
-				}
-				// faces are done in that primitive set way
-				// TODO: simplification: assume all faces are triangles?
-	// 			osg::Geometry* geo = hg->getOsgNode()->asGeode()->getDrawable(d, g)->asGeometry();
-	// 			osg::Geometry* geo = hg->getOsgNode()->getDrawable(d, g)->asGeometry();
-				osg::Geometry* geo = hg->getRootOsgNode()->getChild(g)->asGeode()->getDrawable(d)->asGeometry();
-				osg::Geometry::PrimitiveSetList psl = geo->getPrimitiveSetList();
+// 				ofmsg("Drawables: %1%", %hg->getDrawableCount(g, obj));
+				out << hg->getDrawableCount(g, obj);
 
-				out << int(psl.size());
-				for (int i = 0; i < psl.size(); ++i) {
+				// parts
+				for (int d = 0; d < hg->getDrawableCount(g, obj); ++d) {
 
-					osg::DrawArrays* da = dynamic_cast<osg::DrawArrays*>(psl[i].get());
+// 					ofmsg("Vertex count: %1%", %hg->getVertexCount(d, g, obj));
+					out << hg->getVertexCount(d, g, obj);
+					for (int i = 0; i < hg->getVertexCount(d, g, obj); ++i) {
+						out << hg->getVertex(i, d, g, obj);
+					}
+// 					ofmsg("Normal count: %1%", %hg->getNormalCount(d, g, obj));
+					out << hg->getNormalCount(d, g, obj);
+					for (int i = 0; i < hg->getNormalCount(d, g, obj); ++i) {
+						out << hg->getNormal(i, d, g, obj);
+					}
+// 					ofmsg("Color count: %1%", %hg->getColorCount(d, g, obj));
+					out << hg->getColorCount(d, g, obj);
+					for (int i = 0; i < hg->getColorCount(d, g, obj); ++i) {
+						out << hg->getColor(i, d, g, obj);
+					}
+					// faces are done in that primitive set way
+					// TODO: simplification: assume all faces are triangles?
+					osg::Geometry* geo = hg->getOsgNode()->asGroup()->getChild(obj)->asGroup()->getChild(g)->asGeode()->getDrawable(d)->asGeometry();
+					osg::Geometry::PrimitiveSetList psl = geo->getPrimitiveSetList();
 
-					out << da->getMode();
-					out << int(da->getFirst());
-					out << int(da->getCount());
+					out << int(psl.size());
+					for (int i = 0; i < psl.size(); ++i) {
+
+						osg::DrawArrays* da = dynamic_cast<osg::DrawArrays*>(psl[i].get());
+
+						out << da->getMode();
+						out << int(da->getFirst());
+						out << int(da->getCount());
+					}
 				}
 			}
 		}
@@ -1054,18 +1059,21 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
         String name;
         in >> name;
 
-		ofmsg("SLAVE %1%: object name: %2%", %SystemManager::instance()->getHostname() %name);
+// 		ofmsg("SLAVE %1%: object name: %2%", %SystemManager::instance()->getHostname() %name);
 
-		int geodeCount = 0;
-        in >> geodeCount;
+ 		int objectCount = 0;
+        in >> objectCount;
 
-        HoudiniGeometry* hg = myHoudiniGeometrys[name];
+// 		ofmsg("SLAVE: obj count: '%1%'", %objectCount);
+
+       HoudiniGeometry* hg = myHoudiniGeometrys[name];
         if(hg == NULL)
         {
  			ofmsg("SLAVE: no hg: '%1%'", %name);
 			hg = HoudiniGeometry::create(name);
 // 			hg->addDrawable(drawableCount - 1);
-			hg->addGeode(geodeCount - 1);
+// 			hg->addGeode(geodeCount - 1);
+			hg->addObject(objectCount);
 			myHoudiniGeometrys[name] = hg;
 			SceneManager::instance()->addModel(hg);
 // 			continue;
@@ -1077,63 +1085,85 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 
 		hg->clear();
 
-		for (int g = 0; g < geodeCount; ++g) {
+// 		ofmsg("SLAVE: current obj count: '%1%'", %hg->getObjectCount());
 
-			int drawableCount = 0;
-	        in >> drawableCount;
+		if (hg->getObjectCount() < objectCount) {
+			hg->addObject(objectCount - hg->getObjectCount());
+		}
 
-			// add drawables if needed
-			if (hg->getDrawableCount(g) < drawableCount) {
-				hg->addDrawable(drawableCount - hg->getDrawableCount(g));
+// 		ofmsg("SLAVE: new obj count: '%1%'", %hg->getObjectCount());
+
+ 		for (int obj = 0; obj < objectCount; ++obj) {
+
+			int geodeCount = 0;
+	        in >> geodeCount;
+
+// 			ofmsg("SLAVE: geode count: '%1%'", %geodeCount);
+
+			if (hg->getGeodeCount(obj) < geodeCount) {
+				hg->addGeode(geodeCount - hg->getGeodeCount(obj), obj);
 			}
 
-			for (int d = 0; d < drawableCount; ++d) {
+			for (int g = 0; g < geodeCount; ++g) {
 
-				int vertCount = 0;
-				in >> vertCount;
+				int drawableCount = 0;
+		        in >> drawableCount;
 
-	// 			ofmsg("SLAVE: vertex count: '%1%'", %vertCount);
-				for (int j = 0; j < vertCount; ++j)
-				{
-					Vector3f v;
-					in >> v;
-					hg->addVertex(v, d, g);
+// 				ofmsg("SLAVE: drawable count: '%1%'", %drawableCount);
+
+				// add drawables if needed
+				if (hg->getDrawableCount(g, obj) < drawableCount) {
+					hg->addDrawable(drawableCount - hg->getDrawableCount(g, obj), g, obj);
 				}
 
-				int normalCount = 0;
-				in >> normalCount;
+				for (int d = 0; d < drawableCount; ++d) {
 
-	// 			ofmsg("SLAVE: normal count: '%1%'", %normalCount);
-				for (int j = 0; j < normalCount; ++j)
-				{
-					Vector3f n;
-					in >> n;
-					hg->addNormal(n, d, g);
-				}
+					int vertCount = 0;
+					in >> vertCount;
 
-				int colorCount = 0;
-				in >> colorCount;
+// 					ofmsg("SLAVE: vertex count: '%1%'", %vertCount);
+					for (int j = 0; j < vertCount; ++j)
+					{
+						Vector3f v;
+						in >> v;
+						hg->addVertex(v, d, g, obj);
+					}
 
-	// 			ofmsg("SLAVE: color count: '%1%'", %colorCount);
-				for (int j = 0; j < colorCount; ++j)
-				{
-					Color c;
-					in >> c;
-					hg->addColor(c, d, g);
-				}
+					int normalCount = 0;
+					in >> normalCount;
 
-				// primitive set count
-				int psCount = 0;
-				in >> psCount;
+// 					ofmsg("SLAVE: normal count: '%1%'", %normalCount);
+					for (int j = 0; j < normalCount; ++j)
+					{
+						Vector3f n;
+						in >> n;
+						hg->addNormal(n, d, g, obj);
+					}
 
-	// 			ofmsg("SLAVE: primitive set count: '%1%'", %psCount);
+					int colorCount = 0;
+					in >> colorCount;
 
-				for (int j = 0; j < psCount; ++j)
-				{
-					osg::PrimitiveSet::Mode mode;
-					int startIndex, count;
-					in >> mode >> startIndex >> count;
-					hg->addPrimitiveOsg(mode, startIndex, count, d, g);
+// 					ofmsg("SLAVE: color count: '%1%'", %colorCount);
+					for (int j = 0; j < colorCount; ++j)
+					{
+						Color c;
+						in >> c;
+						hg->addColor(c, d, g, obj);
+					}
+
+					// primitive set count
+					int psCount = 0;
+					in >> psCount;
+
+// 					ofmsg("SLAVE: primitive set count: '%1%'", %psCount);
+
+					for (int j = 0; j < psCount; ++j)
+					{
+						osg::PrimitiveSet::Mode mode;
+						int startIndex, count;
+						in >> mode >> startIndex >> count;
+						hg->addPrimitiveOsg(mode, startIndex, count, d, g, obj);
+					}
 				}
 			}
 		}
