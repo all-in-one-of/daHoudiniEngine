@@ -248,7 +248,7 @@ namespace houdiniEngine {
 	private:
 		vector < HObj > hobjs;
 // 		vector < HGeom > hgeoms;
-		osg::Group* myNode;
+		osg::PositionAttitudeTransform* myNode;
 	};
 };
 

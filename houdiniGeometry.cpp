@@ -11,7 +11,7 @@ HoudiniGeometry::HoudiniGeometry(const String& name):
 {
 	// create geometry and geodes to hold the data
 // 	myNode = new osg::Geode();
-	myNode = new osg::Group();
+	myNode = new osg::PositionAttitudeTransform();
 
 	addObject(1);
 	addGeode(1, 0);

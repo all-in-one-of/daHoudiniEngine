@@ -311,6 +311,9 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 		hg->addObject(objects.size() - hg->getObjectCount());
 	}
 
+	HAPI_Transform* objTransforms = new HAPI_Transform[objects.size()];
+	HAPI_GetObjectTransforms(asset.id, HAPI_TRS, objTransforms, 0, objects.size());
+
 	for (int object_index=0; object_index < int(objects.size()); ++object_index)
     {
 
@@ -351,10 +354,29 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 				process_geo_part(parts[part_index], object_index, geo_index, part_index, hg);
 			}
 		}
-		if (mySceneManager->getModel(s) == NULL) {
-			mySceneManager->addModel(hg);
-		}
+
+		hg->getOsgNode()->asGroup()->getChild(object_index)->asTransform()->
+			asPositionAttitudeTransform()->setPosition(osg::Vec3d(
+				objTransforms[object_index].position[0],
+				objTransforms[object_index].position[1],
+				objTransforms[object_index].position[2]
+			)
+		);
+
+		hg->getOsgNode()->asGroup()->getChild(object_index)->asTransform()->
+			asPositionAttitudeTransform()->setScale(osg::Vec3d(
+				objTransforms[object_index].scale[0],
+				objTransforms[object_index].scale[1],
+				objTransforms[object_index].scale[2]
+			)
+		);
+
     }
+
+	if (mySceneManager->getModel(s) == NULL) {
+		mySceneManager->addModel(hg);
+	}
+    delete[] objTransforms;
 }
 
 // TODO: incrementally update the geometry?
@@ -720,9 +742,17 @@ void HoudiniEngine::onMenuItemEvent(MenuItem* mi)
 	}
 
 	if (update) {
+
+// 		ofmsg("%1% geo input count: %2%", %myAsset->name() %myAsset->info().geoInputCount);
+// 		ofmsg("%1% object transform changed: %2%", %myAsset->name() %myAsset->objects()[0].info().hasTransformChanged);
+// 		ofmsg("%1% object geos changed: %2%", %myAsset->name() %myAsset->objects()[0].info().haveGeosChanged);
+// 		ofmsg("%1% geo transform changed: %2%", %myAsset->name() %myAsset->objects()[0].geos()[0].info().hasGeoChanged);
+
 		myAsset->cook();
 		wait_for_cook();
+
 		process_assets(*myAsset);
+
 		updateGeos = true;
 	}
 
@@ -911,7 +941,6 @@ void HoudiniEngine::commitSharedData(SharedOStream& out)
 // 		ofmsg("Name: %1%", %hg->getName());
 		out << hg->getName();
 
-// 		ofmsg("Objects: %1%", %hg->getObjectCount());
 		out << hg->getObjectCount();
 
 		// objects
@@ -922,6 +951,18 @@ void HoudiniEngine::commitSharedData(SharedOStream& out)
 
 			// geoms
 			for (int g = 0; g < hg->getGeodeCount(obj); ++g) {
+
+
+				osg::Vec3d pos = hg->getOsgNode()->asGroup()->getChild(obj)->asTransform()->
+					asPositionAttitudeTransform()->getPosition();
+				osg::Quat rot = hg->getOsgNode()->asGroup()->getChild(obj)->asTransform()->
+					asPositionAttitudeTransform()->getAttitude();
+				osg::Vec3d scale = hg->getOsgNode()->asGroup()->getChild(obj)->asTransform()->
+					asPositionAttitudeTransform()->getScale();
+
+				out << pos[0] << pos[1] << pos[2];
+				out << rot.x() << rot.y() << rot.z() << rot.w();
+				out << scale[0] << scale[1] << scale[2];
 
 // 				ofmsg("Drawables: %1%", %hg->getDrawableCount(g, obj));
 				out << hg->getDrawableCount(g, obj);
@@ -1040,8 +1081,6 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
         String name;
         in >> name;
 
-// 		ofmsg("SLAVE %1%: object name: %2%", %SystemManager::instance()->getHostname() %name);
-
  		int objectCount = 0;
         in >> objectCount;
 
@@ -1052,8 +1091,6 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
         {
  			ofmsg("SLAVE: no hg: '%1%'", %name);
 			hg = HoudiniGeometry::create(name);
-// 			hg->addDrawable(drawableCount - 1);
-// 			hg->addGeode(geodeCount - 1);
 			hg->addObject(objectCount);
 			myHoudiniGeometrys[name] = hg;
 			SceneManager::instance()->addModel(hg);
@@ -1066,20 +1103,20 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 
 		hg->clear();
 
-// 		ofmsg("SLAVE: current obj count: '%1%'", %hg->getObjectCount());
+		ofmsg("SLAVE: current obj count: '%1%'", %hg->getObjectCount());
 
 		if (hg->getObjectCount() < objectCount) {
 			hg->addObject(objectCount - hg->getObjectCount());
 		}
 
-// 		ofmsg("SLAVE: new obj count: '%1%'", %hg->getObjectCount());
+		ofmsg("SLAVE: new obj count: '%1%'", %hg->getObjectCount());
 
  		for (int obj = 0; obj < objectCount; ++obj) {
 
 			int geodeCount = 0;
 	        in >> geodeCount;
 
-// 			ofmsg("SLAVE: geode count: '%1%'", %geodeCount);
+			ofmsg("SLAVE: geode count: '%1%'", %geodeCount);
 
 			if (hg->getGeodeCount(obj) < geodeCount) {
 				hg->addGeode(geodeCount - hg->getGeodeCount(obj), obj);
@@ -1087,10 +1124,28 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 
 			for (int g = 0; g < geodeCount; ++g) {
 
+				osg::Vec3d pos;
+				in >> pos[0] >> pos[1] >> pos[2];
+
+				osg::Vec4d rot;
+				osg::Quat qRot;
+				in >> rot[0] >> rot[1] >> rot[2] >> rot[3];
+				qRot.set(rot);
+
+				osg::Vec3d scale;
+				in >> scale[0] >> scale[1] >> scale[2];
+
+				hg->getOsgNode()->asGroup()->getChild(obj)->asTransform()->
+					asPositionAttitudeTransform()->setPosition(pos);
+				hg->getOsgNode()->asGroup()->getChild(obj)->asTransform()->
+					asPositionAttitudeTransform()->setAttitude(qRot);
+				hg->getOsgNode()->asGroup()->getChild(obj)->asTransform()->
+					asPositionAttitudeTransform()->setScale(scale);
+
 				int drawableCount = 0;
 		        in >> drawableCount;
 
-// 				ofmsg("SLAVE: drawable count: '%1%'", %drawableCount);
+				ofmsg("SLAVE: drawable count: '%1%'", %drawableCount);
 
 				// add drawables if needed
 				if (hg->getDrawableCount(g, obj) < drawableCount) {
@@ -1102,7 +1157,7 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 					int vertCount = 0;
 					in >> vertCount;
 
-// 					ofmsg("SLAVE: vertex count: '%1%'", %vertCount);
+					ofmsg("SLAVE: vertex count: '%1%'", %vertCount);
 					for (int j = 0; j < vertCount; ++j)
 					{
 						Vector3f v;
@@ -1113,7 +1168,7 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 					int normalCount = 0;
 					in >> normalCount;
 
-// 					ofmsg("SLAVE: normal count: '%1%'", %normalCount);
+					ofmsg("SLAVE: normal count: '%1%'", %normalCount);
 					for (int j = 0; j < normalCount; ++j)
 					{
 						Vector3f n;
@@ -1124,7 +1179,7 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 					int colorCount = 0;
 					in >> colorCount;
 
-// 					ofmsg("SLAVE: color count: '%1%'", %colorCount);
+					ofmsg("SLAVE: color count: '%1%'", %colorCount);
 					for (int j = 0; j < colorCount; ++j)
 					{
 						Color c;
@@ -1136,7 +1191,7 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 					int psCount = 0;
 					in >> psCount;
 
-// 					ofmsg("SLAVE: primitive set count: '%1%'", %psCount);
+					ofmsg("SLAVE: primitive set count: '%1%'", %psCount);
 
 					for (int j = 0; j < psCount; ++j)
 					{
