@@ -98,6 +98,7 @@ int HoudiniEngine::loadAssetLibraryFromFile(const String& otlFile)
 
     HAPI_Result hr = HAPI_LoadAssetLibraryFromFile(
             otlFile.c_str(),
+			false, /* allow_overwrite */
             &library_id);
     if (hr != HAPI_RESULT_SUCCESS)
     {
@@ -794,7 +795,7 @@ void HoudiniEngine::wait_for_cook()
         {
             statusBuf = new char[statusBufSize];
             ENSURE_SUCCESS( HAPI_GetStatusString(
-                HAPI_STATUS_COOK_STATE, statusBuf ) );
+                HAPI_STATUS_COOK_STATE, statusBuf, statusBufSize ) );
         }
         if ( statusBuf )
         {

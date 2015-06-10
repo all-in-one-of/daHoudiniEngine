@@ -1,9 +1,11 @@
 request_dependency(cyclops)
 
 #directory for HAPI
-include_directories(/opt/hfs14.0.201.13/toolkit/include)
+set(HOUDINI_BASE /opt/hfs14.0.359)
+
+include_directories(${HOUDINI_BASE}/toolkit/include)
 include_directories(.)
-link_directories(/opt/hfs14.0.201.13/dsolib)
+link_directories(${HOUDINI_BASE}/dsolib)
 link_directories(./)
 
 include_directories(${OSG_INCLUDES})

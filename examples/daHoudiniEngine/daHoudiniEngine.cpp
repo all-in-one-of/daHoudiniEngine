@@ -181,6 +181,7 @@ HEngineApp::HEngineApp():
 
 	    if (HAPI_LoadAssetLibraryFromFile(
 	            otl_file,
+				false, /* allow_overwrite */
 	            &library_id) != HAPI_RESULT_SUCCESS)
 	    {
 	        cout << "Could not load " << otl_file << endl;

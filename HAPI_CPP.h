@@ -33,7 +33,7 @@ public:
 
 	char * buf = new char[ buffer_length ];
 
-	HAPI_GetStatusString(HAPI_STATUS_CALL_RESULT, buf);
+	HAPI_GetStatusString(HAPI_STATUS_CALL_RESULT, buf, buffer_length);
         std::string result(buf);
 	return result;
     }
@@ -48,7 +48,7 @@ public:
 
 	char * buf = new char[ buffer_length ];
 
-	HAPI_GetStatusString(HAPI_STATUS_CALL_RESULT, buf);
+	HAPI_GetStatusString(HAPI_STATUS_CALL_RESULT, buf, buffer_length);
         std::string result(buf);
 	return result;
     }

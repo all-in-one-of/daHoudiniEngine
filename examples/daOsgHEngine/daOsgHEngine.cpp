@@ -234,6 +234,7 @@ HelloApplication::HelloApplication():
 
 	    HAPI_Result hr = HAPI_LoadAssetLibraryFromFile(
 	            otl_file,
+				false, /* allow_overwrite */
 	            &library_id);
 	    if (hr != HAPI_RESULT_SUCCESS)
 	    {
@@ -797,7 +798,7 @@ void HelloApplication::wait_for_cook()
         {
             statusBuf = new char[statusBufSize];
             ENSURE_SUCCESS( HAPI_GetStatusString(
-                HAPI_STATUS_COOK_STATE, statusBuf ) );
+                HAPI_STATUS_COOK_STATE, statusBuf, statusBufSize ) );
         }
         if ( statusBuf )
         {
