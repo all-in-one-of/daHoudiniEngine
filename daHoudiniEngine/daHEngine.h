@@ -119,10 +119,14 @@ namespace houdiniEngine {
 		bool hasHG(const String &s);
 		void getHGInfo(const String &s);
 
+		float getFps();
+
 		float getTime();
 		void setTime(float time);
 
 		void cook();
+
+		void setLoggingEnabled(const bool toggle);
 
 	private:
 		SceneManager* mySceneManager;
@@ -162,6 +166,9 @@ namespace houdiniEngine {
 		//parameters
 		ui::Menu* houdiniMenu;
 		Menus assetParams;
+
+		// logging
+		bool myLogEnabled;
 
 	};
 };

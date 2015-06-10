@@ -45,9 +45,11 @@ BOOST_PYTHON_MODULE(daHEngine)
  		PYAPI_METHOD(HoudiniEngine, loadAssetLibraryFromFile)
  		PYAPI_METHOD(HoudiniEngine, instantiateAsset)
  		PYAPI_REF_GETTER(HoudiniEngine, instantiateGeometry)
+ 		PYAPI_METHOD(HoudiniEngine, getFps)
  		PYAPI_METHOD(HoudiniEngine, getTime)
  		PYAPI_METHOD(HoudiniEngine, setTime)
  		PYAPI_METHOD(HoudiniEngine, cook)
+ 		PYAPI_METHOD(HoudiniEngine, setLoggingEnabled)
 		;
 }
 #endif
@@ -66,7 +68,8 @@ HoudiniEngine* HoudiniEngine::createAndInitialize()
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 HoudiniEngine::HoudiniEngine():
 	EngineModule("HoudiniEngine"),
-	mySceneManager(NULL)
+	mySceneManager(NULL),
+	myLogEnabled(false)
 {
 }
 
@@ -110,6 +113,15 @@ int HoudiniEngine::loadAssetLibraryFromFile(const String& otlFile)
     ENSURE_SUCCESS( HAPI_GetAvailableAssetCount( library_id, &assetCount ) );
 
 	ofmsg("%1% assets available", %assetCount);
+    HAPI_StringHandle* asset_name_sh = new HAPI_StringHandle[assetCount];
+    ENSURE_SUCCESS( HAPI_GetAvailableAssets( library_id, asset_name_sh, assetCount ) );
+
+	for (int i =0; i < assetCount; ++i) {
+	    std::string asset_name = get_string( asset_name_sh[i] );
+		ofmsg("asset %1%: %2%", %(i + 1) %asset_name);
+	}
+
+	delete[] asset_name_sh;
 
     return assetCount;
 
@@ -779,30 +791,36 @@ void HoudiniEngine::onSelectedChanged(SceneNode* source, bool value)
 	*/
 }
 
+void HoudiniEngine::setLoggingEnabled(const bool toggle) {
+	myLogEnabled = toggle;
+}
+
 void HoudiniEngine::wait_for_cook()
 {
     int status;
     do
     {
-		osleep(100); // sleeping..
+ 		osleep(100); // sleeping..
 
-        int statusBufSize = 0;
-        ENSURE_SUCCESS( HAPI_GetStatusStringBufLength(
-            HAPI_STATUS_COOK_STATE, HAPI_STATUSVERBOSITY_ERRORS,
-            &statusBufSize ) );
-        char * statusBuf = NULL;
-        if ( statusBufSize > 0 )
-        {
-            statusBuf = new char[statusBufSize];
-            ENSURE_SUCCESS( HAPI_GetStatusString(
-                HAPI_STATUS_COOK_STATE, statusBuf, statusBufSize ) );
-        }
-        if ( statusBuf )
-        {
-            std::string result( statusBuf );
-            ofmsg("cooking...:%1%", %result);
-            delete[] statusBuf;
-        }
+		if (myLogEnabled) {
+	        int statusBufSize = 0;
+	        ENSURE_SUCCESS( HAPI_GetStatusStringBufLength(
+	            HAPI_STATUS_COOK_STATE, HAPI_STATUSVERBOSITY_ERRORS,
+	            &statusBufSize ) );
+	        char * statusBuf = NULL;
+	        if ( statusBufSize > 0 )
+	        {
+	            statusBuf = new char[statusBufSize];
+	            ENSURE_SUCCESS( HAPI_GetStatusString(
+	                HAPI_STATUS_COOK_STATE, statusBuf, statusBufSize ) );
+	        }
+	        if ( statusBuf )
+	        {
+	            std::string result( statusBuf );
+	            ofmsg("cooking...:%1%", %result);
+	            delete[] statusBuf;
+	        }
+		}
         HAPI_GetStatus(HAPI_STATUS_COOK_STATE, &status);
     }
     while ( status > HAPI_STATE_MAX_READY_STATE );
@@ -1073,9 +1091,9 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 	// houdiniGeometry count
 	in >> numItems;
 
-	if (!SystemManager::instance()->isMaster()) {
-		ofmsg("SLAVE %1%: getting data: %2%", %SystemManager::instance()->getHostname() %numItems);
-	}
+// 	if (!SystemManager::instance()->isMaster()) {
+// 		ofmsg("SLAVE %1%: getting data: %2%", %SystemManager::instance()->getHostname() %numItems);
+// 	}
 
     for(int i = 0; i < numItems; i++)
     {
@@ -1104,20 +1122,20 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 
 		hg->clear();
 
-		ofmsg("SLAVE: current obj count: '%1%'", %hg->getObjectCount());
+// 		ofmsg("SLAVE: current obj count: '%1%'", %hg->getObjectCount());
 
 		if (hg->getObjectCount() < objectCount) {
 			hg->addObject(objectCount - hg->getObjectCount());
 		}
 
-		ofmsg("SLAVE: new obj count: '%1%'", %hg->getObjectCount());
+// 		ofmsg("SLAVE: new obj count: '%1%'", %hg->getObjectCount());
 
  		for (int obj = 0; obj < objectCount; ++obj) {
 
 			int geodeCount = 0;
 	        in >> geodeCount;
 
-			ofmsg("SLAVE: geode count: '%1%'", %geodeCount);
+// 			ofmsg("SLAVE: geode count: '%1%'", %geodeCount);
 
 			if (hg->getGeodeCount(obj) < geodeCount) {
 				hg->addGeode(geodeCount - hg->getGeodeCount(obj), obj);
@@ -1146,7 +1164,7 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 				int drawableCount = 0;
 		        in >> drawableCount;
 
-				ofmsg("SLAVE: drawable count: '%1%'", %drawableCount);
+// 				ofmsg("SLAVE: drawable count: '%1%'", %drawableCount);
 
 				// add drawables if needed
 				if (hg->getDrawableCount(g, obj) < drawableCount) {
@@ -1158,7 +1176,7 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 					int vertCount = 0;
 					in >> vertCount;
 
-					ofmsg("SLAVE: vertex count: '%1%'", %vertCount);
+// 					ofmsg("SLAVE: vertex count: '%1%'", %vertCount);
 					for (int j = 0; j < vertCount; ++j)
 					{
 						Vector3f v;
@@ -1169,7 +1187,7 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 					int normalCount = 0;
 					in >> normalCount;
 
-					ofmsg("SLAVE: normal count: '%1%'", %normalCount);
+// 					ofmsg("SLAVE: normal count: '%1%'", %normalCount);
 					for (int j = 0; j < normalCount; ++j)
 					{
 						Vector3f n;
@@ -1180,7 +1198,7 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 					int colorCount = 0;
 					in >> colorCount;
 
-					ofmsg("SLAVE: color count: '%1%'", %colorCount);
+// 					ofmsg("SLAVE: color count: '%1%'", %colorCount);
 					for (int j = 0; j < colorCount; ++j)
 					{
 						Color c;
@@ -1192,7 +1210,7 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 					int psCount = 0;
 					in >> psCount;
 
-					ofmsg("SLAVE: primitive set count: '%1%'", %psCount);
+// 					ofmsg("SLAVE: primitive set count: '%1%'", %psCount);
 
 					for (int j = 0; j < psCount; ++j)
 					{
@@ -1272,14 +1290,20 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 			}
 		}
 	}
+}
 
+float HoudiniEngine::getFps()
+{
+	if (SystemManager::instance()->isMaster())
+	{
+		HAPI_TimelineOptions to;
 
-// 	omsg("SLAVE: all hgs:");
-//     foreach(HGDictionary::Item hg, myHoudiniGeometrys)
-//     {
-// 		ofmsg("SLAVE: hg: '%1%'", %hg->getName());
-// 		getHGInfo(hg->getName());
-// 	}
+		HAPI_GetTimelineOptions(&to);
+
+		return to.fps;
+	}
+
+	return 0.0;
 }
 
 // TODO: distribute value to slaves
