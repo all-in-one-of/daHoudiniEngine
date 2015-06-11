@@ -44,6 +44,7 @@ BOOST_PYTHON_MODULE(daHEngine)
 		PYAPI_STATIC_REF_GETTER(HoudiniEngine, createAndInitialize)
  		PYAPI_METHOD(HoudiniEngine, loadAssetLibraryFromFile)
  		PYAPI_METHOD(HoudiniEngine, instantiateAsset)
+ 		PYAPI_METHOD(HoudiniEngine, instantiateAssetById)
  		PYAPI_REF_GETTER(HoudiniEngine, instantiateGeometry)
  		PYAPI_METHOD(HoudiniEngine, getFps)
  		PYAPI_METHOD(HoudiniEngine, getTime)
@@ -237,6 +238,8 @@ int HoudiniEngine::instantiateAsset(const String& asset_name)
 
 	int asset_id = -1;
 
+	try {
+
 // 	ofmsg("about to instantiate %1%", %asset_name);
 
     ENSURE_SUCCESS(HAPI_InstantiateAsset(
@@ -263,6 +266,67 @@ int HoudiniEngine::instantiateAsset(const String& asset_name)
 	createMenu(asset_name);
 	updateGeos = true;
 
+	} catch (hapi::Failure &failure)
+	{
+		ofwarn("%1%", %failure.lastErrorMessage());
+		throw;
+	}
+
+	return asset_id;
+}
+
+int HoudiniEngine::instantiateAssetById(int asset_id)
+{
+	if (!SystemManager::instance()->isMaster()) {
+		return -1;
+	}
+
+// 	ofmsg("about to instantiate %1%", %asset_name);
+
+	int assetCount;
+
+    ENSURE_SUCCESS( HAPI_GetAvailableAssetCount( library_id, &assetCount ) );
+
+	ofmsg("%1% assets available", %assetCount);
+    HAPI_StringHandle* asset_name_sh = new HAPI_StringHandle[assetCount];
+    ENSURE_SUCCESS( HAPI_GetAvailableAssets( library_id, asset_name_sh, assetCount ) );
+
+	std::string asset_name;
+
+	for (int i =0; i < assetCount; ++i) {
+	    asset_name = get_string( asset_name_sh[i] );
+		ofmsg("asset %1%: %2%", %(i + 1) %asset_name);
+	}
+
+	asset_name = get_string(asset_name_sh[asset_id]);
+
+    ENSURE_SUCCESS(HAPI_InstantiateAsset(
+            asset_name.c_str(),
+            /* cook_on_load */ true,
+            &asset_id ));
+
+	if (asset_id < 0) {
+		ofmsg("unable to instantiate %1%", %asset_name);
+
+		delete [] asset_name_sh;
+		return -1;
+	}
+
+// 	ofmsg("instantiated %1%, id: %2%", %asset_name %asset_id);
+
+	wait_for_cook();
+
+//     HAPI_AssetInfo asset_info;
+//     ENSURE_SUCCESS( HAPI_GetAssetInfo( asset_id, &asset_info ) );
+
+	Ref <RefAsset> myAsset = new RefAsset(asset_id);
+	instancedHEAssets[asset_name] = myAsset;
+    process_assets(*myAsset.get());
+
+	createMenu(asset_name);
+	updateGeos = true;
+
+	delete [] asset_name_sh;
 	return asset_id;
 }
 
@@ -325,7 +389,7 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 	}
 
 	HAPI_Transform* objTransforms = new HAPI_Transform[objects.size()];
-	HAPI_GetObjectTransforms(asset.id, HAPI_TRS, objTransforms, 0, objects.size());
+	ENSURE_SUCCESS (HAPI_GetObjectTransforms(asset.id, HAPI_TRS, objTransforms, 0, objects.size()));
 
 	for (int object_index=0; object_index < int(objects.size()); ++object_index)
     {
@@ -795,16 +859,18 @@ void HoudiniEngine::setLoggingEnabled(const bool toggle) {
 	myLogEnabled = toggle;
 }
 
+// TODO: make an async version of for omegalib
 void HoudiniEngine::wait_for_cook()
 {
     int status;
     do
     {
- 		osleep(100); // sleeping..
+ 		osleep(50); // sleeping..
 
 		if (myLogEnabled) {
 	        int statusBufSize = 0;
 	        ENSURE_SUCCESS( HAPI_GetStatusStringBufLength(
+/* 	            HAPI_STATUS_COOK_STATE, HAPI_STATUSVERBOSITY_MESSAGES, */
 	            HAPI_STATUS_COOK_STATE, HAPI_STATUSVERBOSITY_ERRORS,
 	            &statusBufSize ) );
 	        char * statusBuf = NULL;
@@ -847,6 +913,7 @@ static std::string houdiniEngine::get_string(int string_handle)
     return result;
 }
 
+// TODO: expose to python to write my own event handler
 ///////////////////////////////////////////////////////////////////////////////
 void HoudiniEngine::handleEvent(const Event& evt)
 {
@@ -939,7 +1006,8 @@ void HoudiniEngine::commitSharedData(SharedOStream& out)
 // 		}
 // 	}
 */
-	out << updateGeos;
+
+	out << updateGeos; // may not be necessary to send this..
 
 	// continue only if there is something to send
 	if (!updateGeos) {
@@ -959,19 +1027,15 @@ void HoudiniEngine::commitSharedData(SharedOStream& out)
     {
 // 		ofmsg("Name: %1%", %hg->getName());
 		out << hg->getName();
-
 		out << hg->getObjectCount();
 
 		// objects
 		for (int obj = 0; obj < hg->getObjectCount(); ++obj) {
-
 // 			ofmsg("Geodes: %1%", %hg->getGeodeCount(obj));
 			out << hg->getGeodeCount(obj);
 
 			// geoms
 			for (int g = 0; g < hg->getGeodeCount(obj); ++g) {
-
-
 				osg::Vec3d pos = hg->getOsgNode()->asGroup()->getChild(obj)->asTransform()->
 					asPositionAttitudeTransform()->getPosition();
 				osg::Quat rot = hg->getOsgNode()->asGroup()->getChild(obj)->asTransform()->
@@ -988,7 +1052,6 @@ void HoudiniEngine::commitSharedData(SharedOStream& out)
 
 				// parts
 				for (int d = 0; d < hg->getDrawableCount(g, obj); ++d) {
-
 // 					ofmsg("Vertex count: %1%", %hg->getVertexCount(d, g, obj));
 					out << hg->getVertexCount(d, g, obj);
 					for (int i = 0; i < hg->getVertexCount(d, g, obj); ++i) {
@@ -1011,53 +1074,20 @@ void HoudiniEngine::commitSharedData(SharedOStream& out)
 
 					out << int(psl.size());
 					for (int i = 0; i < psl.size(); ++i) {
-
 						osg::DrawArrays* da = dynamic_cast<osg::DrawArrays*>(psl[i].get());
 
-						out << da->getMode();
-						out << int(da->getFirst());
-						out << int(da->getCount());
+						out << da->getMode() << int(da->getFirst()) << int(da->getCount());
 					}
 				}
 			}
 		}
 	}
-/*
-// 		// from hengine..
-//		// is part of geo loop
-// 		// parameter count
-// 		int parmCount = 0;
-//
-// 		for (int i = daFolderIndex; i < myAsset->parms().size(); i++) {
-// 			hapi::Parm* parm = &myAsset->parms()[i];
-// 			if (!parm->info().invisible) parmCount++;
-// 		}
-//
-// 		ofmsg("MASTER: Sharing %1% parameters", %parmCount);
-//
-// 		// number of visible parameters
-// 		// this included the folder item, so subtract it..
-// 		out << parmCount - 1;
-//
-// 		for (int i = daFolderIndex + 1; i < myAsset->parms().size(); i++) {
-// 			hapi::Parm* parm = &myAsset->parms()[i];
-//
-// 			cout << parm->name() << "Parm type: " << parm->info().type << endl;
-//
-// 			if (parm->info().invisible) continue;
-//
-// 			out << parm->name();
-// 			out << parm->label();
-// 			out << parm->info();
-//
-// 		}
-*/
-	int parmCount = assetParams.size();
 
+	// distribute the parameter list
+	int parmCount = assetParams.size();
 	out << parmCount;
 
-    foreach(Menus::Item mis, assetParams)
-    {
+    foreach(Menus::Item mis, assetParams) {
 		out << mis.first;
 		out << int(mis.second.size());
 		for (int i = 0; i < mis.second.size(); ++i) {
@@ -1079,24 +1109,22 @@ void HoudiniEngine::commitSharedData(SharedOStream& out)
 // only run on slaves!
 void HoudiniEngine::updateSharedData(SharedIStream& in)
 {
-
 	in >> updateGeos;
 
 	if (!updateGeos) {
 		return;
 	}
 
+	// houdiniGeometry count
 	int numItems = 0;
 
-	// houdiniGeometry count
 	in >> numItems;
 
 // 	if (!SystemManager::instance()->isMaster()) {
 // 		ofmsg("SLAVE %1%: getting data: %2%", %SystemManager::instance()->getHostname() %numItems);
 // 	}
 
-    for(int i = 0; i < numItems; i++)
-    {
+    for(int i = 0; i < numItems; i++) {
         String name;
         in >> name;
 
@@ -1106,8 +1134,7 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 // 		ofmsg("SLAVE: obj count: '%1%'", %objectCount);
 
        HoudiniGeometry* hg = myHoudiniGeometrys[name];
-        if(hg == NULL)
-        {
+        if(hg == NULL) {
  			ofmsg("SLAVE: no hg: '%1%'", %name);
 			hg = HoudiniGeometry::create(name);
 			hg->addObject(objectCount);
@@ -1131,7 +1158,6 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 // 		ofmsg("SLAVE: new obj count: '%1%'", %hg->getObjectCount());
 
  		for (int obj = 0; obj < objectCount; ++obj) {
-
 			int geodeCount = 0;
 	        in >> geodeCount;
 
@@ -1142,7 +1168,6 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 			}
 
 			for (int g = 0; g < geodeCount; ++g) {
-
 				osg::Vec3d pos;
 				in >> pos[0] >> pos[1] >> pos[2];
 
@@ -1172,13 +1197,11 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 				}
 
 				for (int d = 0; d < drawableCount; ++d) {
-
 					int vertCount = 0;
 					in >> vertCount;
 
 // 					ofmsg("SLAVE: vertex count: '%1%'", %vertCount);
-					for (int j = 0; j < vertCount; ++j)
-					{
+					for (int j = 0; j < vertCount; ++j) {
 						Vector3f v;
 						in >> v;
 						hg->addVertex(v, d, g, obj);
@@ -1188,8 +1211,7 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 					in >> normalCount;
 
 // 					ofmsg("SLAVE: normal count: '%1%'", %normalCount);
-					for (int j = 0; j < normalCount; ++j)
-					{
+					for (int j = 0; j < normalCount; ++j) {
 						Vector3f n;
 						in >> n;
 						hg->addNormal(n, d, g, obj);
@@ -1199,8 +1221,7 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 					in >> colorCount;
 
 // 					ofmsg("SLAVE: color count: '%1%'", %colorCount);
-					for (int j = 0; j < colorCount; ++j)
-					{
+					for (int j = 0; j < colorCount; ++j) {
 						Color c;
 						in >> c;
 						hg->addColor(c, d, g, obj);
@@ -1212,8 +1233,7 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 
 // 					ofmsg("SLAVE: primitive set count: '%1%'", %psCount);
 
-					for (int j = 0; j < psCount; ++j)
-					{
+					for (int j = 0; j < psCount; ++j) {
 						osg::PrimitiveSet::Mode mode;
 						int startIndex, count;
 						in >> mode >> startIndex >> count;
@@ -1229,9 +1249,9 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 
 	// read in menu parms
 	int parmCount = 0;
-
 	in >> parmCount;
 
+//  parameter list
 // 	ofmsg("SLAVE: currently have %1% asset parameter lists", %assetParams.size());
 //     foreach(Menus::Item mis, assetParams)
 // 	{
@@ -1294,10 +1314,8 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 
 float HoudiniEngine::getFps()
 {
-	if (SystemManager::instance()->isMaster())
-	{
+	if (SystemManager::instance()->isMaster()) {
 		HAPI_TimelineOptions to;
-
 		HAPI_GetTimelineOptions(&to);
 
 		return to.fps;
@@ -1309,11 +1327,9 @@ float HoudiniEngine::getFps()
 // TODO: distribute value to slaves
 float HoudiniEngine::getTime()
 {
-
 	float myTime = -1.0;
 
-	if (SystemManager::instance()->isMaster())
-	{
+	if (SystemManager::instance()->isMaster()) {
 		HAPI_GetTime(&myTime);
 	}
 
@@ -1322,21 +1338,19 @@ float HoudiniEngine::getTime()
 
 void HoudiniEngine::setTime(float time)
 {
-	if (SystemManager::instance()->isMaster())
-	{
+	if (SystemManager::instance()->isMaster()) {
 		HAPI_SetTime(time);
 	}
 }
 
+// cook everything
 void HoudiniEngine::cook()
 {
-	foreach(Mapping::Item asset, instancedHEAssets)
-	{
+	foreach(Mapping::Item asset, instancedHEAssets) {
 		hapi::Asset* myAsset = asset.second;
 		myAsset->cook();
 		wait_for_cook();
 		process_assets(*myAsset);
 		updateGeos = true;
 	}
-
 }

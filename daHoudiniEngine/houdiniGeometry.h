@@ -132,7 +132,7 @@ namespace houdiniEngine {
 	*/
 	/* Structure of HoudiniGeometry:
 	 *
-	 * Group -> root node for the Asset
+	 * PositionAttitudeTransform -> root node for the Asset
 	 *   |
 	 *   +-> PositionAttitudeTransform -> Transform/Object level
 	 *         |
@@ -151,25 +151,79 @@ namespace houdiniEngine {
 		HoudiniGeometry(const String& name);
 
 		//! Adds a vertex and return its index.
-		int addVertex(const Vector3f& v, const int drawableIndex, const int geodeIndex, const int objIndex);
+		int addVertex(
+			const Vector3f& v,
+			const int drawableIndex,
+			const int geodeIndex,
+			const int objIndex
+		);
+
 		//! Replaces an existing vertex
-		void setVertex(int index, const Vector3f& v, const int drawableIndex, const int geodeIndex, const int objIndex);
+		void setVertex(
+			int index,
+			const Vector3f& v,
+			const int drawableIndex,
+			const int geodeIndex,
+			const int objIndex
+		);
 		//! Retrieves an existing vertex
-		Vector3f getVertex(int index, const int drawableIndex, const int geodeIndex, const int objIndex);
+		Vector3f getVertex(
+			int index,
+			const int drawableIndex,
+			const int geodeIndex,
+			const int objIndex
+		);
 		//! Adds a vertex color and return its index. The color will be applied
 		//! to the vertex with the same index as this color.
-		int addColor(const Color& c, const int drawableIndex, const int geodeIndex, const int objIndex);
+		int addColor(
+			const Color& c,
+			const int drawableIndex,
+			const int geodeIndex,
+			const int objIndex
+		);
 
-		Color getColor(int index, const int drawableIndex, const int geodeIndex, const int objIndex);
+		Color getColor(
+			int index,
+			const int drawableIndex,
+			const int geodeIndex,
+			const int objIndex
+		);
+
 		//! Replaces an existing color
-		void setColor(int index, const Color& c, const int drawableIndex, const int geodeIndex, const int objIndex);
+		void setColor(
+			int index,
+			const Color& c,
+			const int drawableIndex,
+			const int geodeIndex,
+			const int objIndex
+		);
 
 		//! Adds a normal and return its index.
-		int addNormal(const Vector3f& v, const int drawableIndex, const int geodeIndex, const int objIndex);
-		void setNormal(int index, const Vector3f& v, const int drawableIndex, const int geodeIndex, const int objIndex);
-		Vector3f getNormal(int index, const int drawableIndex, const int geodeIndex, const int objIndex);
+		int addNormal(
+			const Vector3f& v,
+			const int drawableIndex,
+			const int geodeIndex,
+			const int objIndex
+		);
+		void setNormal(
+			int index,
+			const Vector3f& v,
+			const int drawableIndex,
+			const int geodeIndex,
+			const int objIndex
+		);
+		Vector3f getNormal(
+			int index,
+			const int drawableIndex,
+			const int geodeIndex,
+			const int objIndex
+		);
 
-		void setVertexListSize(int size, const int drawableIndex, const int geodeIndex, const int objIndex) {
+		void setVertexListSize(
+			int size,
+			const int drawableIndex,
+			const int geodeIndex,
+			const int objIndex) {
 			hobjs[objIndex].hgeoms[geodeIndex].hparts[drawableIndex].vertices->resize(size);
 		};
 
@@ -233,7 +287,10 @@ namespace houdiniEngine {
 			hobjs[objIndex].hgeoms[geodeIndex].hparts[drawableIndex].colors->size();
 		}
 
-		inline int getPrimitiveSetCount(const int drawableIndex, const int geodeIndex, const int objIndex) {
+		inline int getPrimitiveSetCount(
+			const int drawableIndex,
+			const int geodeIndex,
+			const int objIndex) {
 			return hobjs[objIndex].hgeoms[geodeIndex].hparts[drawableIndex].geometry->getPrimitiveSetList().size();
 		}
 
@@ -247,7 +304,6 @@ namespace houdiniEngine {
 
 	private:
 		vector < HObj > hobjs;
-// 		vector < HGeom > hgeoms;
 		osg::PositionAttitudeTransform* myNode;
 	};
 };

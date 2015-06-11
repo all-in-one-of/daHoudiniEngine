@@ -1,9 +1,6 @@
 #ifndef __HOUDINI_ENGINE_H__
 #define __HOUDINI_ENGINE_H__
 
-// #include "omega/osystem.h"
-// #include "omega/Application.h"
-
 #ifdef WIN32
         #ifndef HE_STATIC
                 #ifdef daHengine_EXPORTS
@@ -87,7 +84,6 @@ namespace houdiniEngine {
 		virtual void onMenuItemEvent(MenuItem* mi);
 		virtual void onSelectedChanged(SceneNode* source, bool value);
 
-// 		void process_assets(Ref <RefAsset> &refAsset);
 		void process_assets(const hapi::Asset &asset);
 		void process_geo_part(
 			const hapi::Part &part,
@@ -96,7 +92,6 @@ namespace houdiniEngine {
 			const int partIndex,
 			HoudiniGeometry* hg
 		);
-// 		void process_geo_part(const hapi::Part &part, int partIndex, HoudiniGeometry* hg);
 		void process_float_attrib(
 		    const hapi::Part &part, HAPI_AttributeOwner attrib_owner,
 		    const char *attrib_name, vector<Vector3f>& points);
@@ -109,8 +104,7 @@ namespace houdiniEngine {
 
 		int loadAssetLibraryFromFile(const String& otlFile);
 		int instantiateAsset(const String& asset);
-// 		StaticObject* instantiateGeometry(const String& asset, const int assetNum, const int geoNum, const int partNum);
-// 		StaticObject* instantiateGeometry(const String& asset, const int assetNum, const int geoNum);
+		int instantiateAssetById(int asset_id);
 		StaticObject* instantiateGeometry(const String& asset);
 
 		void createMenu(const String& asset_name);
@@ -144,15 +138,13 @@ namespace houdiniEngine {
 
 		// Houdini Engine Stuff
 	    int library_id; // need to put into an array for multiple libraries?
-// 	    Ref <RefAsset> myAsset;
 
+	    // indicate when to update geos
 		bool updateGeos;
 
 		// this is the model definition, not the instance of it
 		// I change the verts, faces, normals, etc in this and StaticObjects
 		// in the scene get updated accordingly
-		// name in form: 'Asset objectNum geoNum partNum'
-
 		typedef Dictionary<String, Ref<HoudiniGeometry> > HGDictionary;
 		typedef Dictionary<String, Ref<RefAsset> > Mapping;
 		typedef Dictionary<String, vector<MenuItem> > Menus;
