@@ -341,23 +341,14 @@ int HoudiniEngine::instantiateAssetById(int asset_id)
 //         o- geo node+ (staticObject or osg nodes)
 //             |
 //             o- part node+ (drawables as part of geo, no transforms)
-// StaticObject* HoudiniEngine::instantiateGeometry(const String& asset, const int assetNum, const int geoNum, const int partNum)
-// StaticObject* HoudiniEngine::instantiateGeometry(const String& asset, const int objectNum)
 StaticObject* HoudiniEngine::instantiateGeometry(const String& asset)
 {
-	// TODO: should loop through all the geos and parts..
-  	int objectNum = 0;
- 	int geoNum = 0;
- 	int partNum = 0;
-
-	// of form 'Object/asset_name <asset number> <geoNum> <partNum>'
 	String s = ostr("%1%", %asset);
 
 	if (myHoudiniGeometrys[s] == NULL) {
-		ofwarn("No model of %1% with object %2%.. creating", %asset %objectNum);
+		ofwarn("No model of %1%.. creating", %asset);
 
 		HoudiniGeometry* hg = HoudiniGeometry::create(s);
-		// need to add number of drawables
 		myHoudiniGeometrys[s] = hg;
 		if (mySceneManager->getModel(s) == NULL) {
 			mySceneManager->addModel(hg);
@@ -826,13 +817,24 @@ void HoudiniEngine::onMenuItemEvent(MenuItem* mi)
 
 	if (update) {
 
-// 		ofmsg("%1% geo input count: %2%", %myAsset->name() %myAsset->info().geoInputCount);
-// 		ofmsg("%1% object transform changed: %2%", %myAsset->name() %myAsset->objects()[0].info().hasTransformChanged);
-// 		ofmsg("%1% object geos changed: %2%", %myAsset->name() %myAsset->objects()[0].info().haveGeosChanged);
-// 		ofmsg("%1% geo transform changed: %2%", %myAsset->name() %myAsset->objects()[0].geos()[0].info().hasGeoChanged);
-
 		myAsset->cook();
 		wait_for_cook();
+
+		// checking what has changed..
+		ofmsg("%1% geo input count: %2%", %myAsset->name() %myAsset->info().geoInputCount);
+		ofmsg("%1% have objects changed: %2%", %myAsset->name() %myAsset->info().haveObjectsChanged);
+		vector<hapi::Object> objects = myAsset->objects();
+
+		for (int i = 0; i < objects.size(); ++i) {
+			ofmsg("  %1% object transform changed: %2%", %i %objects[i].info().hasTransformChanged);
+			ofmsg("  %1% object geos changed: %2%", %i %objects[i].info().haveGeosChanged);
+			vector<hapi::Geo> geos = objects[i].geos();
+			for (int j = 0; j < geos.size(); ++j) {
+				ofmsg("    %1% geo transform changed: %2%", %j %geos[j].info().hasGeoChanged);
+			}
+		}
+
+
 
 		process_assets(*myAsset);
 
