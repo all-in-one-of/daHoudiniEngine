@@ -144,11 +144,14 @@ void HoudiniEngine::createMenu(const String& asset_name)
 		ofwarn("No asset of name %1%", %asset_name);
 	}
 
+	std::map<std::string, hapi::Parm> parmMap = myAsset->parmMap();
+	std::vector<hapi::Parm> parms = myAsset->parms();
+
 	int daFolderIndex = 0;
-	if (myAsset->parmMap().count(daFolderName) > 0) {
-		HAPI_ParmId daFolderId = myAsset->parmMap()[daFolderName].info().id;
-		while (daFolderIndex < myAsset->parms().size()) {
-			if (daFolderId == myAsset->parms()[daFolderIndex].info().id) {
+	if (parmMap.count(daFolderName) > 0) {
+		HAPI_ParmId daFolderId = parmMap[daFolderName].info().id;
+		while (daFolderIndex < parms.size()) {
+			if (daFolderId == parms[daFolderIndex].info().id) {
 				break;
 			}
 			daFolderIndex ++;
@@ -160,8 +163,8 @@ void HoudiniEngine::createMenu(const String& asset_name)
 	mi->setText(asset_name);
 	mi->setUserTag(asset_name);
 
-	for (int i = daFolderIndex; i < myAsset->parms().size(); i++) {
-		hapi::Parm* parm = &myAsset->parms()[i];
+	for (int i = daFolderIndex; i < parms.size(); i++) {
+		hapi::Parm* parm = &parms[i];
 
 		// skip if invisible
 		if (parm->info().invisible) continue;
@@ -785,7 +788,10 @@ void HoudiniEngine::onMenuItemEvent(MenuItem* mi)
 	// TODO: do a null check here.. may break
 	String asset_name = ((MenuItem*)mi->getUserData())->getUserTag();
 	hapi::Asset* myAsset = instancedHEAssets[asset_name];
-	hapi::Parm* parm = &(myAsset->parmMap()[mi->getUserTag().substr(0, z)]);
+
+	std::map<std::string, hapi::Parm> parmMap = myAsset->parmMap();
+
+	hapi::Parm* parm = &(parmMap[mi->getUserTag().substr(0, z)]);
 	int index = atoi(mi->getUserTag().substr(z + 1).c_str());
 
 // 	cout << "parameter: " << mi->getUserTag() << endl;
