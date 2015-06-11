@@ -8,3 +8,4 @@
 **/*.d
 **/*.o
 /otl/backup/*
+/orun.spaceship.otl.valgrind.txt
