@@ -60,9 +60,12 @@ namespace houdiniEngine {
 	{
 	public:
 		RefAsset(int id) : Asset(id)
-		{}
+		{ ofmsg("Constructing refAsset of id %1%", %id); }
 		RefAsset(const hapi::Asset &asset) : hapi::Asset(asset)
-		{}
+		{ ofmsg("Constructing refAsset from asset %1%", %asset.name()); }
+
+		~RefAsset()
+		{ ofmsg("Destructing refAsset of id %1%", %id); }
 
 	};
 
