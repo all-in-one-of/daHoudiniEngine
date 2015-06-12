@@ -247,6 +247,9 @@ namespace houdiniEngine {
 		);
 
 		//! Removes all vertices, colors and primitives from this object
+		void clear(const int drawableIndex, const int geodeIndex, const int objIndex);
+		void clear(const int geodeIndex, const int objIndex);
+		void clear(const int objIndex);
 		void clear();
 
 		int getDrawableCount(const int geodeIndex, const int objIndex) {

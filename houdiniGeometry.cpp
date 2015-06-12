@@ -153,17 +153,34 @@ void HoudiniGeometry::addPrimitiveOsg(osg::PrimitiveSet::Mode type, int startInd
 void HoudiniGeometry::clear()
 {
 	for (int obj = 0; obj < hobjs.size(); ++obj) {
-		for (int g = 0; g < hobjs[obj].hgeoms.size(); ++g) {
-			for (int i = 0; i < hobjs[obj].hgeoms[g].hparts.size(); ++i) {
-				if (hobjs[obj].hgeoms[g].hparts[i].colors != NULL) hobjs[obj].hgeoms[g].hparts[i].colors->clear();
-				if (hobjs[obj].hgeoms[g].hparts[i].normals != NULL) hobjs[obj].hgeoms[g].hparts[i].normals->clear();
-				hobjs[obj].hgeoms[g].hparts[i].vertices->clear();
-				hobjs[obj].hgeoms[g].hparts[i].geometry->removePrimitiveSet(0, hobjs[obj].hgeoms[g].hparts[i].geometry->getNumPrimitiveSets());
-				hobjs[obj].hgeoms[g].hparts[i].geometry->dirtyBound();
-			}
-		}
+		clear(obj);
 	}
 }
+
+void HoudiniGeometry::clear(const int objIndex)
+{
+	for (int g = 0; g < hobjs[objIndex].hgeoms.size(); ++g) {
+		clear(g, objIndex);
+	}
+}
+void HoudiniGeometry::clear(const int geodeIndex, const int objIndex)
+{
+	for (int i = 0; i < hobjs[objIndex].hgeoms[geodeIndex].hparts.size(); ++i) {
+		clear(i, geodeIndex, objIndex);
+	}
+}
+void HoudiniGeometry::clear(const int drawableIndex, const int geodeIndex, const int objIndex)
+{
+	HPart* hpart = &hobjs[objIndex].hgeoms[geodeIndex].hparts[drawableIndex];
+	oassert(hpart != NULL);
+
+	if (hpart->colors != NULL) hpart->colors->clear();
+	if (hpart->normals != NULL) hpart->normals->clear();
+	hpart->vertices->clear();
+	hpart->geometry->removePrimitiveSet(0, hpart->geometry->getNumPrimitiveSets());
+	hpart->geometry->dirtyBound();
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////
 void HoudiniGeometry::dirty()
