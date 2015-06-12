@@ -1354,6 +1354,10 @@ void HoudiniEngine::setTime(float time)
 // cook everything
 void HoudiniEngine::cook()
 {
+	if (!SystemManager::instance()->isMaster()) {
+		return;
+	}
+
 	foreach(Mapping::Item asset, instancedHEAssets) {
 		hapi::Asset* myAsset = asset.second;
 		myAsset->cook();
