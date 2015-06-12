@@ -376,78 +376,93 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 
 	}
 
-	hg->clear();
+	hg->objectsChanged = asset.info().haveObjectsChanged;
+// 	ofmsg("process_assets: Objects changed:  %1%", %hg->objectsChanged);
 
 	if (hg->getObjectCount() < objects.size()) {
 		hg->addObject(objects.size() - hg->getObjectCount());
 	}
 
-	HAPI_Transform* objTransforms = new HAPI_Transform[objects.size()];
-	ENSURE_SUCCESS (HAPI_GetObjectTransforms(asset.id, HAPI_TRS, objTransforms, 0, objects.size()));
+	if (hg->objectsChanged) {
+		for (int object_index=0; object_index < int(objects.size()); ++object_index)
+	    {
+			HAPI_ObjectInfo objInfo = objects[object_index].info();
 
-	for (int object_index=0; object_index < int(objects.size()); ++object_index)
-    {
-
-// 		ModelAsset ma = new ModelAsset();
-// 		ma->name = ostr("%1%", %object.name());
-// 	    ma->numNodes = 1;
-// 	    ma->info = NULL;
-// 	    ma->nodes.push_back(geom->getOsgNode());
-
-		// TODO check for instancing, then do things differently
-		if (objects[object_index].info().isInstancer > 0) {
-			ofmsg("instance path: %1%: %2%", %objects[object_index].name() %objects[object_index].objectInstancePath());
-			ofmsg("%1%: %2%", %objects[object_index].id %objects[object_index].info().objectToInstanceId);
-		}
-
-		vector<hapi::Geo> geos = objects[object_index].geos();
-// 		ofmsg("%1%: %2%: %3% geos", %objects[object_index].name() %object_index %geos.size());
-
-		if (hg->getGeodeCount(object_index) < geos.size()) {
-			hg->addGeode(geos.size() - hg->getGeodeCount(object_index), object_index);
-		}
-
-
-		for (int geo_index=0; geo_index < int(geos.size()); ++geo_index)
-		{
-		    vector<hapi::Part> parts = geos[geo_index].parts();
-// 			ofmsg("%1%: %2%: %3%: %4% parts", %geos[geo_index].name() %object_index %geo_index %parts.size());
-
-			if (hg->getDrawableCount(geo_index, object_index) < parts.size()) {
-				hg->addDrawable(parts.size() - hg->getDrawableCount(geo_index, object_index), geo_index, object_index);
+			// TODO check for instancing, then do things differently
+			if (objInfo.isInstancer > 0) {
+				ofmsg("instance path: %1%: %2%", %objects[object_index].name() %objects[object_index].objectInstancePath());
+				ofmsg("%1%: %2%", %objects[object_index].id %objInfo.objectToInstanceId);
 			}
 
-		    for (int part_index=0; part_index < int(parts.size()); ++part_index)
-			{
+			vector<hapi::Geo> geos = objects[object_index].geos();
+	// 		ofmsg("%1%: %2%: %3% geos", %objects[object_index].name() %object_index %geos.size());
 
-// 				ofmsg("processing %1% %2%", %s %parts[part_index].name());
-
-				process_geo_part(parts[part_index], object_index, geo_index, part_index, hg);
+			if (hg->getGeodeCount(object_index) < geos.size()) {
+				hg->addGeode(geos.size() - hg->getGeodeCount(object_index), object_index);
 			}
+
+			hg->setGeosChanged(objInfo.haveGeosChanged, object_index);
+// 			ofmsg("process_assets: Object Geos %1% changed: %2%", %object_index %hg->getGeosChanged(object_index));
+
+			if (hg->getGeosChanged(object_index)) {
+
+				for (int geo_index=0; geo_index < int(geos.size()); ++geo_index)
+				{
+				    vector<hapi::Part> parts = geos[geo_index].parts();
+// 					ofmsg("process_assets: Geo %1%:%2% %3% parts", %object_index %geo_index %parts.size());
+
+					if (hg->getDrawableCount(geo_index, object_index) < parts.size()) {
+						hg->addDrawable(parts.size() - hg->getDrawableCount(geo_index, object_index), geo_index, object_index);
+					}
+
+					hg->setGeoChanged(geos[geo_index].info().hasGeoChanged, geo_index, object_index);
+// 					ofmsg("process_assets: Geo %1%:%2% changed:  %3%", %object_index %geo_index %hg->getGeosChanged(object_index));
+
+					hg->clear(geo_index, object_index);
+					if (hg->getGeoChanged(geo_index, object_index)) {
+					    for (int part_index=0; part_index < int(parts.size()); ++part_index)
+						{
+			// 				ofmsg("processing %1% %2%", %s %parts[part_index].name());
+							process_geo_part(parts[part_index], object_index, geo_index, part_index, hg);
+						}
+					}
+				}
+			}
+
+ 			hg->setTransformChanged(objInfo.hasTransformChanged, object_index);
+// 			ofmsg("process_assets: Object Transform %1% changed:  %2%", %object_index %hg->getTransformChanged(object_index));
 		}
 
-		hg->getOsgNode()->asGroup()->getChild(object_index)->asTransform()->
-			asPositionAttitudeTransform()->setPosition(osg::Vec3d(
-				objTransforms[object_index].position[0],
-				objTransforms[object_index].position[1],
-				objTransforms[object_index].position[2]
-			)
-		);
+		HAPI_Transform* objTransforms = new HAPI_Transform[objects.size()];
+		// NB: this resets all ObjectInfo::hasTransformChanged flags to false
+		ENSURE_SUCCESS (HAPI_GetObjectTransforms(asset.id, HAPI_TRS, objTransforms, 0, objects.size()));
 
-		hg->getOsgNode()->asGroup()->getChild(object_index)->asTransform()->
-			asPositionAttitudeTransform()->setScale(osg::Vec3d(
-				objTransforms[object_index].scale[0],
-				objTransforms[object_index].scale[1],
-				objTransforms[object_index].scale[2]
-			)
-		);
+		for (int object_index=0; object_index < int(objects.size()); ++object_index)
+	    {
+			if (hg->getTransformChanged(object_index)) {
+				hg->getOsgNode()->asGroup()->getChild(object_index)->asTransform()->
+					asPositionAttitudeTransform()->setPosition(osg::Vec3d(
+						objTransforms[object_index].position[0],
+						objTransforms[object_index].position[1],
+						objTransforms[object_index].position[2]
+					)
+				);
 
-    }
+				hg->getOsgNode()->asGroup()->getChild(object_index)->asTransform()->
+					asPositionAttitudeTransform()->setScale(osg::Vec3d(
+						objTransforms[object_index].scale[0],
+						objTransforms[object_index].scale[1],
+						objTransforms[object_index].scale[2]
+					)
+				);
+			}
+	    }
+	    delete[] objTransforms;
+	}
 
 	if (mySceneManager->getModel(s) == NULL) {
 		mySceneManager->addModel(hg);
 	}
-    delete[] objTransforms;
 }
 
 // TODO: incrementally update the geometry?
@@ -761,7 +776,7 @@ void HoudiniEngine::update(const UpdateContext& context)
 void HoudiniEngine::onMenuItemEvent(MenuItem* mi)
 {
 
-	ofmsg("%1%: pressed a menu item", %SystemManager::instance()->getHostname());
+// 	ofmsg("%1%: pressed a menu item", %SystemManager::instance()->getHostname());
 
 	if (!SystemManager::instance()->isMaster())
 	{
@@ -784,13 +799,6 @@ void HoudiniEngine::onMenuItemEvent(MenuItem* mi)
 
 	hapi::Parm* parm = &(parmMap[mi->getUserTag().substr(0, z)]);
 	int index = atoi(mi->getUserTag().substr(z + 1).c_str());
-
-// 	cout << "parameter: " << mi->getUserTag() << endl;
-
-// 	cout << "first parameter: " << mi->getUserTag().substr(0, z) << endl;
-// 	cout << "last parameter: " << mi->getUserTag().substr(z + 1) << endl;
-// 	cout << "asset name: " << ((MenuItem*)mi->getUserData())->getUserTag() << endl;
-
 
 	if (myAsset == NULL) {
 		ofwarn("No instanced asset %1%", %asset_name);
@@ -819,22 +827,6 @@ void HoudiniEngine::onMenuItemEvent(MenuItem* mi)
 
 		myAsset->cook();
 		wait_for_cook();
-
-		// checking what has changed..
-		ofmsg("%1% geo input count: %2%", %myAsset->name() %myAsset->info().geoInputCount);
-		ofmsg("%1% have objects changed: %2%", %myAsset->name() %myAsset->info().haveObjectsChanged);
-		vector<hapi::Object> objects = myAsset->objects();
-
-		for (int i = 0; i < objects.size(); ++i) {
-			ofmsg("  %1% object transform changed: %2%", %i %objects[i].info().hasTransformChanged);
-			ofmsg("  %1% object geos changed: %2%", %i %objects[i].info().haveGeosChanged);
-			vector<hapi::Geo> geos = objects[i].geos();
-			for (int j = 0; j < geos.size(); ++j) {
-				ofmsg("    %1% geo transform changed: %2%", %j %geos[j].info().hasGeoChanged);
-			}
-		}
-
-
 
 		process_assets(*myAsset);
 
@@ -1024,26 +1016,33 @@ void HoudiniEngine::commitSharedData(SharedOStream& out)
 
 	updateGeos = false;
 
-// 	ofmsg("MASTER: sending %1% geos", %myHoudiniGeometrys.size());
+//  	ofmsg("MASTER: sending %1% assets", %myHoudiniGeometrys.size());
 
 	// TODO change this to count the number of changed objs, geos, parts
 	out << int(myHoudiniGeometrys.size());
 
-	// TODO: only share lists from the asset, not from the HoudiniGeometry
-	// we are currently sending duplicated data..
     foreach(HGDictionary::Item hg, myHoudiniGeometrys)
     {
-// 		ofmsg("Name: %1%", %hg->getName());
+		bool haveObjectsChanged = hg->objectsChanged;
+// 		ofmsg("MASTER: Objects changed:  %1%", %haveObjectsChanged);
+		out << haveObjectsChanged;
+
+		if (!haveObjectsChanged) {
+			continue;
+		}
+
+// 		ofmsg("MASTER: Name %1%", %hg->getName());
 		out << hg->getName();
 		out << hg->getObjectCount();
 
 		// objects
 		for (int obj = 0; obj < hg->getObjectCount(); ++obj) {
-// 			ofmsg("Geodes: %1%", %hg->getGeodeCount(obj));
-			out << hg->getGeodeCount(obj);
+			bool hasTransformChanged = hg->getTransformChanged(obj);
+// 			ofmsg("MASTER: Transforms changed:  %1%", %hasTransformChanged);
 
-			// geoms
-			for (int g = 0; g < hg->getGeodeCount(obj); ++g) {
+			out << hasTransformChanged;
+
+			if (hasTransformChanged) {
 				osg::Vec3d pos = hg->getOsgNode()->asGroup()->getChild(obj)->asTransform()->
 					asPositionAttitudeTransform()->getPosition();
 				osg::Quat rot = hg->getOsgNode()->asGroup()->getChild(obj)->asTransform()->
@@ -1054,6 +1053,28 @@ void HoudiniEngine::commitSharedData(SharedOStream& out)
 				out << pos[0] << pos[1] << pos[2];
 				out << rot.x() << rot.y() << rot.z() << rot.w();
 				out << scale[0] << scale[1] << scale[2];
+			}
+
+			bool haveGeosChanged = hg->getGeosChanged(obj);
+// 			ofmsg("MASTER: Geos changed:  %1%", %haveGeosChanged);
+			out << haveGeosChanged;
+
+			if (!haveGeosChanged) {
+				continue;
+			}
+
+// 			ofmsg("Geodes: %1%", %hg->getGeodeCount(obj));
+			out << hg->getGeodeCount(obj);
+
+			// geoms
+			for (int g = 0; g < hg->getGeodeCount(obj); ++g) {
+				bool hasGeoChanged = hg->getGeoChanged(g, obj);
+// 				ofmsg("MASTER: Geo changed:  %1%", %hasGeoChanged);
+				out << hasGeoChanged;
+
+				if (!hasGeoChanged) {
+					continue;
+				}
 
 // 				ofmsg("Drawables: %1%", %hg->getDrawableCount(g, obj));
 				out << hg->getDrawableCount(g, obj);
@@ -1133,17 +1154,29 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 // 	}
 
     for(int i = 0; i < numItems; i++) {
+
+		bool haveObjectsChanged;
+		in >> haveObjectsChanged;
+
+// 		ofmsg("SLAVE: objs changed: %1%", %haveObjectsChanged);
+
+		if (!haveObjectsChanged) {
+// 			continue;
+		}
+
         String name;
         in >> name;
+
+// 		ofmsg("SLAVE: name: '%1%'", %name);
 
  		int objectCount = 0;
         in >> objectCount;
 
-// 		ofmsg("SLAVE: obj count: '%1%'", %objectCount);
+//  		ofmsg("SLAVE: obj count: '%1%'", %objectCount);
 
        HoudiniGeometry* hg = myHoudiniGeometrys[name];
         if(hg == NULL) {
- 			ofmsg("SLAVE: no hg: '%1%'", %name);
+//  			ofmsg("SLAVE: no hg: '%1%'", %name);
 			hg = HoudiniGeometry::create(name);
 			hg->addObject(objectCount);
 			myHoudiniGeometrys[name] = hg;
@@ -1155,7 +1188,7 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 // 			ofmsg("SLAVE: end info for '%1%'", %name);
 		}
 
-		hg->clear();
+// 		hg->clear();
 
 // 		ofmsg("SLAVE: current obj count: '%1%'", %hg->getObjectCount());
 
@@ -1166,16 +1199,12 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 // 		ofmsg("SLAVE: new obj count: '%1%'", %hg->getObjectCount());
 
  		for (int obj = 0; obj < objectCount; ++obj) {
-			int geodeCount = 0;
-	        in >> geodeCount;
+			bool hasTransformChanged;
+			in >> hasTransformChanged;
 
-// 			ofmsg("SLAVE: geode count: '%1%'", %geodeCount);
+// 			ofmsg("SLAVE: transforms changed: '%1%'", %hasTransformChanged);
 
-			if (hg->getGeodeCount(obj) < geodeCount) {
-				hg->addGeode(geodeCount - hg->getGeodeCount(obj), obj);
-			}
-
-			for (int g = 0; g < geodeCount; ++g) {
+			if (hasTransformChanged) {
 				osg::Vec3d pos;
 				in >> pos[0] >> pos[1] >> pos[2];
 
@@ -1193,18 +1222,49 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 					asPositionAttitudeTransform()->setAttitude(qRot);
 				hg->getOsgNode()->asGroup()->getChild(obj)->asTransform()->
 					asPositionAttitudeTransform()->setScale(scale);
+			}
+
+			bool haveGeosChanged;
+			in >> haveGeosChanged;
+
+// 			ofmsg("SLAVE: geos changed: '%1%'", %haveGeosChanged);
+
+			if (!haveGeosChanged) {
+				continue;
+			}
+
+			int geodeCount = 0;
+	        in >> geodeCount;
+
+//  			ofmsg("SLAVE: geode count: '%1%'", %geodeCount);
+
+			if (hg->getGeodeCount(obj) < geodeCount) {
+				hg->addGeode(geodeCount - hg->getGeodeCount(obj), obj);
+			}
+
+			for (int g = 0; g < geodeCount; ++g) {
+
+				bool hasGeoChanged;
+				in >> hasGeoChanged;
+
+				if (!hasGeoChanged) {
+					continue;
+				}
 
 				int drawableCount = 0;
 		        in >> drawableCount;
 
-// 				ofmsg("SLAVE: drawable count: '%1%'", %drawableCount);
+//  				ofmsg("SLAVE: drawable count: '%1%'", %drawableCount);
 
 				// add drawables if needed
 				if (hg->getDrawableCount(g, obj) < drawableCount) {
 					hg->addDrawable(drawableCount - hg->getDrawableCount(g, obj), g, obj);
 				}
 
+				hg->clear(g, obj);
+
 				for (int d = 0; d < drawableCount; ++d) {
+
 					int vertCount = 0;
 					in >> vertCount;
 
@@ -1252,7 +1312,6 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 		}
 
 		hg->dirty();
-
     }
 
 	// read in menu parms

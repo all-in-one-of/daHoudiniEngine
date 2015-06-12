@@ -34,11 +34,14 @@ namespace houdiniEngine {
 	typedef struct {
 		vector < HPart > hparts;
 		Ref<osg::Geode> geode;
+		bool geoChanged;
 	} HGeom;
 
 	typedef struct {
 		vector < HGeom > hgeoms;
 		Ref<osg::PositionAttitudeTransform> pat;
+		bool transformChanged;
+		bool geosChanged;
 	} HObj;
 
 	/*
@@ -302,6 +305,32 @@ namespace houdiniEngine {
 		osg::Geode* getOsgNode(const int geodeIndex, const int objIndex) {
 			return myNode->getChild(objIndex)->asGroup()->getChild(geodeIndex)->asGeode();
 		};
+
+		bool objectsChanged;
+
+		bool getTransformChanged(const int objIndex) {
+			return hobjs[objIndex].transformChanged;
+		}
+
+		void setTransformChanged(bool value, const int objIndex) {
+			hobjs[objIndex].transformChanged = value;
+		}
+
+		bool getGeosChanged(const int objIndex) {
+			return hobjs[objIndex].geosChanged;
+		}
+
+		void setGeosChanged(bool value, const int objIndex) {
+			hobjs[objIndex].geosChanged = value;
+		}
+
+		bool getGeoChanged(const int geodeIndex, const int objIndex) {
+			return hobjs[objIndex].hgeoms[geodeIndex].geoChanged;
+		}
+
+		void setGeoChanged(bool value, const int geodeIndex, const int objIndex) {
+			hobjs[objIndex].hgeoms[geodeIndex].geoChanged = value;
+		}
 
 		void dirty();
 
