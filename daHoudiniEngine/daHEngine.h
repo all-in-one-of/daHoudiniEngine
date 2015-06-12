@@ -110,9 +110,6 @@ namespace houdiniEngine {
 		void createMenu(const String& asset_name);
 		void initializeParameters(const String& asset_name);
 
-		bool hasHG(const String &s);
-		void getHGInfo(const String &s);
-
 		float getFps();
 
 		float getTime();
@@ -124,9 +121,6 @@ namespace houdiniEngine {
 
 	private:
 		SceneManager* mySceneManager;
-		StaticObject* myObject;
-
-		SceneNode* sn;
 
 		// Scene editor. This will be used to manipulate the object.
 		SceneEditorModule* myEditor;
@@ -134,7 +128,6 @@ namespace houdiniEngine {
 		// Menu stuff.
 		MenuManager* myMenuManager;
 		MenuItem* myQuitMenuItem;
-		MenuItem* myEditorMenuItem;
 
 		// Houdini Engine Stuff
 	    int library_id; // need to put into an array for multiple libraries?
