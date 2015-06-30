@@ -644,6 +644,113 @@ void HEngineApp::process_geo_part(const hapi::Part &part)
         cout << face_counts[ii] << ",";
     }
     cout << "\n";
+
+	// begin materials
+	int mat_id = -1;
+	HAPI_MaterialInfo mat_info;
+    ENSURE_SUCCESS( HAPI_GetMaterialIdsOnFaces(
+		part.geo.object.asset.id,
+		part.geo.object.id,
+		part.geo.id,
+        part.id,
+		NULL /* are_all_the_same*/,
+		&mat_id, 0, 1));
+	ENSURE_SUCCESS( HAPI_GetMaterialInfo (
+		part.geo.object.asset.id,
+		mat_id,
+		&mat_info));
+
+	if (mat_info.exists) {
+		ofmsg("Material info for %1%: matId: %2% assetId: %3% nodeId: %4%",
+			  %mat_info.id %mat_info.id %mat_info.assetId %mat_info.nodeId
+		);
+
+		HAPI_NodeInfo node_info;
+		ENSURE_SUCCESS( HAPI_GetNodeInfo(
+			mat_info.nodeId, &node_info ));
+		ofmsg("Node info for %1%: id: %2% assetId: %3% internal path: %4%",
+			  %get_string(node_info.nameSH) %node_info.id %node_info.assetId
+			  %get_string(node_info.internalNodePathSH)
+		);
+
+		HAPI_ParmInfo* parm_infos = new HAPI_ParmInfo[node_info.parmCount];
+		ENSURE_SUCCESS( HAPI_GetParameters(
+			mat_info.nodeId,
+			parm_infos,
+			0 /* start */,
+			node_info.parmCount));
+
+		for (int i =0; i < node_info.parmCount; ++i) {
+			ofmsg("%3% %1% (%2%) id = %4%", %get_string(parm_infos[i].labelSH) %get_string(parm_infos[i].nameSH)
+				%i %parm_infos[i].id);
+			if (parm_infos[i].stringValuesIndex >= 0) {
+				int sh = -1;
+				ENSURE_SUCCESS( HAPI_GetParmStringValues(
+					mat_info.nodeId, true,
+					&sh,
+					parm_infos[i].stringValuesIndex, 1)
+				);
+				ofmsg("  %1%: %2%", %parm_infos[i].stringValuesIndex
+					%get_string(sh));
+			}
+		}
+
+		ofmsg("%1% %2% %3%", %mat_info.assetId %mat_info.id %parm_infos[7].id);
+
+//  		ENSURE_SUCCESS( HAPI_RenderTextureToImage(
+//  			mat_info.assetId,
+//  			mat_info.id,
+// 			parm_infos[7].id /* parmIndex for "map" */));
+
+		for (int i = 0; i < node_info.parmCount; ++i) {
+			for (int j = 0; j < 10; ++j) {
+				for (int k = 0; k < 10; ++k) {
+
+					std::string s = get_string(parm_infos[i].nameSH);
+
+					// TODO: check parm string values for each one of above.. looking for the
+					// filename..
+
+					ofmsg("name: %1%, %2%", %s %i);
+
+					int result = HAPI_RenderTextureToImage(
+						k,
+						j /*mat_info.id */,
+						i);
+
+					if ( result != HAPI_RESULT_SUCCESS) {
+						ofmsg("result = %4% (failed with %1% %2% %3%)", %k %j %i %result);
+					} else {
+						omsg("render success");
+					}
+				}
+			}
+		}
+
+//  		ENSURE_SUCCESS( HAPI_RenderMaterialToImage(
+//  			mat_info.assetId,
+//  			mat_info.id,
+// // 			HAPI_SHADER_MANTRA));
+// 			HAPI_SHADER_OPENGL));
+
+		HAPI_ImageInfo image_info;
+		ENSURE_SUCCESS( HAPI_GetImageInfo(
+			node_info.assetId,
+			mat_info.id,
+			&image_info));
+
+		ofmsg("width %1% height: %2% format: %3%",
+			  %image_info.xRes
+			  %image_info.yRes
+			  %get_string(image_info.imageFileFormatNameSH));
+
+	} else {
+		omsg("No material for this asset");
+	}
+
+	// end materials
+
+
     int * vertex_list = new int[ part.info().vertexCount ];
     ENSURE_SUCCESS( HAPI_GetVertexList(
 		part.geo.object.asset.id,

@@ -362,7 +362,7 @@ StaticObject* HoudiniEngine::instantiateGeometry(const String& asset)
 void HoudiniEngine::process_assets(const hapi::Asset &asset)
 {
     vector<hapi::Object> objects = asset.objects();
-// 	ofmsg("%1%: %2% objects", %asset.name() %objects.size());
+	ofmsg("%1%: %2% objects", %asset.name() %objects.size());
 
 	String s = ostr("%1%", %asset.name());
 
@@ -377,7 +377,7 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 	}
 
 	hg->objectsChanged = asset.info().haveObjectsChanged;
-// 	ofmsg("process_assets: Objects changed:  %1%", %hg->objectsChanged);
+	ofmsg("process_assets: Objects changed:  %1%", %hg->objectsChanged);
 
 	if (hg->getObjectCount() < objects.size()) {
 		hg->addObject(objects.size() - hg->getObjectCount());
@@ -395,34 +395,34 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 			}
 
 			vector<hapi::Geo> geos = objects[object_index].geos();
-	// 		ofmsg("%1%: %2%: %3% geos", %objects[object_index].name() %object_index %geos.size());
+			ofmsg("%1%: %2%: %3% geos", %objects[object_index].name() %object_index %geos.size());
 
 			if (hg->getGeodeCount(object_index) < geos.size()) {
 				hg->addGeode(geos.size() - hg->getGeodeCount(object_index), object_index);
 			}
 
 			hg->setGeosChanged(objInfo.haveGeosChanged, object_index);
-// 			ofmsg("process_assets: Object Geos %1% changed: %2%", %object_index %hg->getGeosChanged(object_index));
+			ofmsg("process_assets: Object Geos %1% changed: %2%", %object_index %hg->getGeosChanged(object_index));
 
 			if (hg->getGeosChanged(object_index)) {
 
 				for (int geo_index=0; geo_index < int(geos.size()); ++geo_index)
 				{
 				    vector<hapi::Part> parts = geos[geo_index].parts();
-// 					ofmsg("process_assets: Geo %1%:%2% %3% parts", %object_index %geo_index %parts.size());
+					ofmsg("process_assets: Geo %1%:%2% %3% parts", %object_index %geo_index %parts.size());
 
 					if (hg->getDrawableCount(geo_index, object_index) < parts.size()) {
 						hg->addDrawable(parts.size() - hg->getDrawableCount(geo_index, object_index), geo_index, object_index);
 					}
 
 					hg->setGeoChanged(geos[geo_index].info().hasGeoChanged, geo_index, object_index);
-// 					ofmsg("process_assets: Geo %1%:%2% changed:  %3%", %object_index %geo_index %hg->getGeosChanged(object_index));
+					ofmsg("process_assets: Geo %1%:%2% changed:  %3%", %object_index %geo_index %hg->getGeosChanged(object_index));
 
 					hg->clear(geo_index, object_index);
 					if (hg->getGeoChanged(geo_index, object_index)) {
 					    for (int part_index=0; part_index < int(parts.size()); ++part_index)
 						{
-			// 				ofmsg("processing %1% %2%", %s %parts[part_index].name());
+							ofmsg("processing %1% %2%", %s %parts[part_index].name());
 							process_geo_part(parts[part_index], object_index, geo_index, part_index, hg);
 						}
 					}
@@ -430,7 +430,7 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 			}
 
  			hg->setTransformChanged(objInfo.hasTransformChanged, object_index);
-// 			ofmsg("process_assets: Object Transform %1% changed:  %2%", %object_index %hg->getTransformChanged(object_index));
+			ofmsg("process_assets: Object Transform %1% changed:  %2%", %object_index %hg->getTransformChanged(object_index));
 		}
 
 		HAPI_Transform* objTransforms = new HAPI_Transform[objects.size()];
@@ -547,9 +547,9 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 
 	if (part.info().faceCount == 0) {
 		// this is to do with instancing
-// 		ofmsg ("No faces, points count? %1%", %points.size());
+ 		ofmsg ("No faces, points count? %1%", %points.size());
 		hg->dirty();
-		return;
+// 		return;
 	}
 
 
@@ -563,6 +563,172 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 		0,
 		part.info().faceCount
 	) );
+
+	// Material handling (WIP)
+
+	int mat_id = -1;
+	HAPI_MaterialInfo mat_info;
+//     ENSURE_SUCCESS( HAPI_GetMaterialIdsOnFaces(
+// 		part.geo.object.asset.id,
+// 		part.geo.object.id,
+// 		part.geo.id,
+//         part.id,
+// 		NULL /* are_all_the_same*/,
+// 		&mat_id, 0, 1));
+
+	ENSURE_SUCCESS( HAPI_GetMaterialOnPart(
+		part.geo.object.asset.id,
+		part.geo.object.id,
+		part.geo.id,
+        part.id,
+		&mat_info));
+
+
+// 	ENSURE_SUCCESS( HAPI_GetMaterialInfo (
+// 		part.geo.object.asset.id,
+// 		mat_id,
+// 		&mat_info));
+
+	if (mat_info.exists) {
+		ofmsg("Material info for %1%: matId: %2% assetId: %3% nodeId: %4%",
+			  %hg->getName() %mat_info.id %mat_info.assetId %mat_info.nodeId
+		);
+
+		HAPI_NodeInfo node_info;
+		ENSURE_SUCCESS( HAPI_GetNodeInfo(
+			mat_info.nodeId, &node_info ));
+		ofmsg("Node info for %1%: id: %2% assetId: %3% internal path: %4%",
+			  %get_string(node_info.nameSH) %node_info.id %node_info.assetId
+			  %get_string(node_info.internalNodePathSH)
+		);
+
+		HAPI_ParmInfo* parm_infos = new HAPI_ParmInfo[node_info.parmCount];
+		ENSURE_SUCCESS( HAPI_GetParameters(
+			mat_info.nodeId,
+			parm_infos,
+			0 /* start */,
+			node_info.parmCount));
+
+		int mapIndex = -1;
+
+		for (int i =0; i < node_info.parmCount; ++i) {
+			ofmsg("%1% %2% (%3%) id = %4%",
+				  %i
+				  %get_string(parm_infos[i].labelSH)
+				  %get_string(parm_infos[i].nameSH)
+				  %parm_infos[i].id);
+			if (parm_infos[i].stringValuesIndex >= 0) {
+				int sh = -1;
+				ENSURE_SUCCESS( HAPI_GetParmStringValues(
+					mat_info.nodeId, true,
+					&sh,
+					parm_infos[i].stringValuesIndex, 1)
+				);
+				ofmsg("%1%  %2%: %3%", %i %parm_infos[i].id
+					%get_string(sh));
+
+				if (sh != -1 && (get_string(parm_infos[i].nameSH) == "map")) {
+					mapIndex = i;
+				}
+			}
+		}
+
+		for (int i = 0; i < node_info.parmCount; ++i) {
+			ofmsg("index %1%: %2% '%3%'",
+				  %i
+				  %parm_infos[i].id
+				  %get_string(parm_infos[i].nameSH)
+			);
+		}
+
+		ofmsg("the texture path: assetId=%1% matInfo.id=%2% mapIndex=%3% parm_id=%4% string=%5%",
+			  %mat_info.assetId
+			  %mat_info.id
+			  %mapIndex
+			  %parm_infos[mapIndex].id
+			  %get_string(parm_infos[mapIndex].nameSH)
+		);
+
+		// NOTE this works if the image is a png
+ 		ENSURE_SUCCESS( HAPI_RenderTextureToImage(
+			mat_info.assetId,
+ 			mat_info.id,
+			parm_infos[mapIndex].id /* parmIndex for "map" */));
+
+
+		// render using mantra
+//  		ENSURE_SUCCESS( HAPI_RenderMaterialToImage(
+//  			mat_info.assetId,
+//  			mat_info.id,
+// 			HAPI_SHADER_MANTRA));
+// // 			HAPI_SHADER_OPENGL));
+
+		HAPI_ImageInfo image_info;
+		ENSURE_SUCCESS( HAPI_GetImageInfo(
+			mat_info.assetId,
+			mat_info.id,
+			&image_info));
+
+		ofmsg("width %1% height: %2% format: %3% dataFormat: %4% packing %5%",
+			  %image_info.xRes
+			  %image_info.yRes
+			  %get_string(image_info.imageFileFormatNameSH)
+			  %image_info.dataFormat
+			  %image_info.packing
+		);
+
+		HAPI_StringHandle imageSH;
+
+		ENSURE_SUCCESS( HAPI_GetImagePlanes(
+			mat_info.assetId,
+			mat_info.id,
+			&imageSH,
+			1
+		));
+
+		int imgBufSize = -1;
+
+		//TODO: get the image extraction working correctly..
+		//BUG: seems like the image buffer size is not exact.. look into it
+
+		// get image planes into a buffer (default is png.. change to RGBA?)
+		ENSURE_SUCCESS( HAPI_ExtractImageToMemory(
+			mat_info.assetId,
+			mat_info.id,
+			NULL /* HAPI_DEFAULT_IMAGE_FORMAT_NAME */,
+			"C A", /* image planes */
+			&imgBufSize
+		));
+
+		char *myBuffer = new char[imgBufSize];
+
+		// put into a buffer
+		ENSURE_SUCCESS( HAPI_GetImageMemoryBuffer(
+			mat_info.assetId,
+			mat_info.id,
+			myBuffer,
+// 			(char *)pd->map(),
+			imgBufSize
+		));
+
+		// load into a pixelData bufferObject
+// 		PixelData* pd = PixelData::create(128, 128, PixelData::FormatRgba);
+		PixelData* pd = new PixelData(PixelData::FormatRgba, image_info.xRes, image_info.yRes, (byte*) myBuffer, 0);
+
+// 		houdiniMenu->addImage(ImageUtils::loadImage("/tmp/orbolt_main.jpg", true));
+
+		MenuItem* myNewImage = myMenuManager->getMainMenu()->addItem(MenuItem::Image);
+// 		myNewImage->setImage(ImageUtils::loadImage("/tmp/orbolt_main.jpg", true));
+		myNewImage->setImage(pd);
+
+		ofmsg("my image width %1% height: %2%, size %3%, bufSize %4%",
+			%pd->getWidth() %pd->getHeight() %pd->getSize() %imgBufSize
+		);
+	} else {
+		ofmsg("No material for %1%", %hg->getName());
+	}
+
+	// end materials
 
     int * vertex_list = new int[ part.info().vertexCount ];
     ENSURE_SUCCESS( HAPI_GetVertexList(
