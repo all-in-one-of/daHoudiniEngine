@@ -552,6 +552,11 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 // 		return;
 	}
 
+	// TODO: render curves
+	if (part.info().isCurve) {
+ 		ofmsg ("This part is a curve: %1%", %part.name());
+		return;
+	}
 
     int *face_counts = new int[ part.info().faceCount ];
     ENSURE_SUCCESS( HAPI_GetFaceCounts(
