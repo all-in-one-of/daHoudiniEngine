@@ -1,7 +1,7 @@
 request_dependency(cyclops)
 
 #directory for HAPI
-set(HOUDINI_BASE /opt/hfs14.0.359)
+set(HOUDINI_BASE ${HFS} CACHE PATH "Set to Houdini base directory (/opt/hfs.x.y.z)")
 
 include_directories(${HOUDINI_BASE}/toolkit/include)
 include_directories(.)
