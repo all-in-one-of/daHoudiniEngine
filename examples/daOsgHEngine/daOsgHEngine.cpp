@@ -225,14 +225,19 @@ HelloApplication::HelloApplication():
 
 	    HAPI_CookOptions cook_options = HAPI_CookOptions_Create();
 
-	    ENSURE_SUCCESS(HAPI_Initialize(
-		getenv("$HOME"),
-		/*dso_search_path=*/NULL,
-	        &cook_options,
-		/*use_cooking_thread=*/true,
-		/*cooking_thread_max_size=*/-1));
+		ENSURE_SUCCESS(HAPI_Initialize(
+			/* session */ NULL,
+			&cook_options,
+			/*use_cooking_thread=*/true,
+			/*cooking_thread_max_size=*/-1,
+			/*otl search path*/ getenv("$HOME"),
+			/*dso_search_path=*/ NULL,
+			/*image_dso_search_path=*/ NULL,
+			/*audio_dso_search_path=*/ NULL
+		));
 
 	    HAPI_Result hr = HAPI_LoadAssetLibraryFromFile(
+				NULL,
 	            otl_file,
 				false, /* allow_overwrite */
 	            &library_id);
@@ -246,12 +251,13 @@ HelloApplication::HelloApplication():
 		ofwarn("HAPI load asset from file %1%", %otl_file);
 
 	    HAPI_StringHandle asset_name_sh;
-	    ENSURE_SUCCESS( HAPI_GetAvailableAssets( library_id, &asset_name_sh, 1 ) );
+	    ENSURE_SUCCESS( HAPI_GetAvailableAssets( NULL, library_id, &asset_name_sh, 1 ) );
 	    std::string asset_name = get_string( asset_name_sh );
 
 		ofwarn("instantiating asset: %1%", %asset_name);
 
 	    ENSURE_SUCCESS(HAPI_InstantiateAsset(
+				NULL,
 	            asset_name.c_str(),
 	            /* cook_on_load */ true,
 	            &asset_id ));
@@ -260,7 +266,7 @@ HelloApplication::HelloApplication():
 
 	    HAPI_AssetInfo asset_info;
 
-	    ENSURE_SUCCESS( HAPI_GetAssetInfo( asset_id, &asset_info ) );
+	    ENSURE_SUCCESS( HAPI_GetAssetInfo( NULL, asset_id, &asset_info ) );
 
 		myAsset = new hapi::Asset(asset_id); // make this a ref pointer later
 
@@ -279,7 +285,7 @@ HelloApplication::~HelloApplication() {
 
     try
     {
-	    ENSURE_SUCCESS(HAPI_Cleanup());
+	    ENSURE_SUCCESS(HAPI_Cleanup(NULL));
 		olog(Verbose, "done HAPI");
     }
     catch (hapi::Failure &failure)
@@ -405,6 +411,7 @@ void HelloApplication::process_geo_part(const hapi::Part &part)
 //     cout << "Number of faces: " << part.info().faceCount << endl;
     int * face_counts = new int[ part.info().faceCount ];
     ENSURE_SUCCESS( HAPI_GetFaceCounts(
+		NULL,
 		part.geo.object.asset.id,
 		part.geo.object.id,
 		part.geo.id,
@@ -416,6 +423,7 @@ void HelloApplication::process_geo_part(const hapi::Part &part)
 
     int * vertex_list = new int[ part.info().vertexCount ];
     ENSURE_SUCCESS( HAPI_GetVertexList(
+		NULL,
 		part.geo.object.asset.id,
 		part.geo.object.id,
 		part.geo.id,
@@ -791,6 +799,7 @@ void HelloApplication::wait_for_cook()
 
         int statusBufSize = 0;
         ENSURE_SUCCESS( HAPI_GetStatusStringBufLength(
+			NULL,
             HAPI_STATUS_COOK_STATE, HAPI_STATUSVERBOSITY_ERRORS,
             &statusBufSize ) );
         char * statusBuf = NULL;
@@ -798,6 +807,7 @@ void HelloApplication::wait_for_cook()
         {
             statusBuf = new char[statusBufSize];
             ENSURE_SUCCESS( HAPI_GetStatusString(
+				NULL,
                 HAPI_STATUS_COOK_STATE, statusBuf, statusBufSize ) );
         }
         if ( statusBuf )
@@ -806,7 +816,7 @@ void HelloApplication::wait_for_cook()
             ofmsg("cooking...:%1%", %result);
             delete[] statusBuf;
         }
-        HAPI_GetStatus(HAPI_STATUS_COOK_STATE, &status);
+        HAPI_GetStatus(NULL, HAPI_STATUS_COOK_STATE, &status);
     }
     while ( status > HAPI_STATE_MAX_READY_STATE );
     ENSURE_COOK_SUCCESS( status );
@@ -821,11 +831,11 @@ static std::string get_string(int string_handle)
 	return "";
 
     int buffer_length;
-    ENSURE_SUCCESS(HAPI_GetStringBufLength(string_handle, &buffer_length));
+    ENSURE_SUCCESS(HAPI_GetStringBufLength(NULL, string_handle, &buffer_length));
 
     char * buf = new char[ buffer_length ];
 
-    ENSURE_SUCCESS(HAPI_GetString(string_handle, buf, buffer_length));
+    ENSURE_SUCCESS(HAPI_GetString(NULL, string_handle, buf, buffer_length));
 
     std::string result( buf );
     delete[] buf;

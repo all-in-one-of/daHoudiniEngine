@@ -29,11 +29,12 @@ public:
     {
 	int buffer_length;
 	HAPI_GetStatusStringBufLength(
+			NULL,
             HAPI_STATUS_CALL_RESULT, HAPI_STATUSVERBOSITY_ERRORS, &buffer_length);
 
 	char * buf = new char[ buffer_length ];
 
-	HAPI_GetStatusString(HAPI_STATUS_CALL_RESULT, buf, buffer_length);
+	HAPI_GetStatusString(NULL, HAPI_STATUS_CALL_RESULT, buf, buffer_length);
         std::string result(buf);
 	return result;
     }
@@ -44,11 +45,12 @@ public:
     {
 	int buffer_length;
 	HAPI_GetStatusStringBufLength(
+			NULL,
             HAPI_STATUS_COOK_RESULT, HAPI_STATUSVERBOSITY_ERRORS, &buffer_length);
 
 	char * buf = new char[ buffer_length ];
 
-	HAPI_GetStatusString(HAPI_STATUS_CALL_RESULT, buf, buffer_length);
+	HAPI_GetStatusString(NULL, HAPI_STATUS_CALL_RESULT, buf, buffer_length);
         std::string result(buf);
 	return result;
     }
@@ -76,11 +78,11 @@ static std::string getString(int string_handle)
 	return "";
 
     int buffer_length;
-    throwOnFailure(HAPI_GetStringBufLength(string_handle, &buffer_length));
+    throwOnFailure(HAPI_GetStringBufLength(NULL, string_handle, &buffer_length));
 
     char * buf = new char[ buffer_length ];
 
-    throwOnFailure(HAPI_GetString(string_handle, buf, buffer_length));
+    throwOnFailure(HAPI_GetString(NULL, string_handle, buf, buffer_length));
     std::string result(buf);
     return result;
 }
@@ -129,7 +131,7 @@ public:
 	if (!this->_info)
 	{
 	    this->_info = new HAPI_AssetInfo();
-	    throwOnFailure(HAPI_GetAssetInfo(this->id, this->_info));
+	    throwOnFailure(HAPI_GetAssetInfo(NULL, this->id, this->_info));
 	}
 	return *this->_info;
     }
@@ -140,6 +142,7 @@ public:
 	{
 	    this->_nodeInfo = new HAPI_NodeInfo();
 	    throwOnFailure(HAPI_GetNodeInfo(
+		NULL,
 		this->info().nodeId, this->_nodeInfo));
 	}
 	return *this->_nodeInfo;
@@ -157,6 +160,7 @@ public:
 	    // Note that calling info() might fail if the info isn't cached
 	    // and the asest id is invalid.
 	    throwOnFailure(HAPI_IsAssetValid(
+		NULL,
 		this->id, this->info().validationId, &is_valid));
 	    return is_valid;
 	}
@@ -176,16 +180,17 @@ public:
     { return getString(info().filePathSH); }
 
     void destroyAsset() const
-    { throwOnFailure(HAPI_DestroyAsset(this->id)); }
+    { throwOnFailure(HAPI_DestroyAsset(NULL, this->id)); }
 
     void cook() const
-    { throwOnFailure(HAPI_CookAsset(this->id, NULL)); }
+    { throwOnFailure(HAPI_CookAsset(NULL, this->id, NULL)); }
 
     HAPI_TransformEuler getTransform( 
         HAPI_RSTOrder rst_order, HAPI_XYZOrder rot_order) const
     {
 	HAPI_TransformEuler result;
 	throwOnFailure(HAPI_GetAssetTransform(
+		NULL,
 	    this->id, rst_order, rot_order, &result));
 	return result;
     }
@@ -195,6 +200,7 @@ public:
         HAPI_TransformEuler transform =
             this->getTransform( HAPI_SRT, HAPI_XYZ );
 	throwOnFailure(HAPI_ConvertTransformEulerToMatrix(
+		NULL,
 	    &transform, result_matrix ) );
     }
 
@@ -246,6 +252,7 @@ public:
 	{
 	    this->_info = new HAPI_ObjectInfo();
 	    throwOnFailure(HAPI_GetObjects(
+		NULL,
 		this->asset.id, this->_info, this->id, /*length=*/1));
 	}
 	return *this->_info;
@@ -306,6 +313,7 @@ public:
 	{
 	    this->_info = new HAPI_GeoInfo();
 	    throwOnFailure(HAPI_GetGeoInfo(
+		NULL,
 		this->object.asset.id, this->object.id, this->id, this->_info));
 	}
 	return *this->_info;
@@ -361,6 +369,7 @@ public:
 	{
 	    this->_info = new HAPI_PartInfo();
 	    throwOnFailure(HAPI_GetPartInfo(
+		NULL, 
 		this->geo.object.asset.id, this->geo.object.id, this->geo.id,
 		this->id, this->_info));
 	}
@@ -396,6 +405,7 @@ public:
 	std::vector<int> attrib_names_sh(num_attribs);
 
 	throwOnFailure(HAPI_GetAttributeNames(
+		NULL,
 	    this->geo.object.asset.id, this->geo.object.id, this->geo.id,
 	    this->id, attrib_owner, &attrib_names_sh[0], num_attribs));
 
@@ -411,6 +421,7 @@ public:
     {
 	HAPI_AttributeInfo result;
 	throwOnFailure(HAPI_GetAttributeInfo(
+		NULL,
 	    this->geo.object.asset.id, this->geo.object.id, this->geo.id,
 	    this->id, attrib_name, attrib_owner, &result));
 	return result;
@@ -425,6 +436,7 @@ public:
 
 	float *result = new float[attrib_info.count * attrib_info.tupleSize];
 	throwOnFailure(HAPI_GetAttributeFloatData(
+		NULL,
 	    this->geo.object.asset.id, this->geo.object.id, this->geo.id,
 	    this->id, attrib_name, &attrib_info, result,
 	    /*start=*/0, attrib_info.count));
@@ -464,6 +476,7 @@ public:
     {
 	int result;
 	throwOnFailure(HAPI_GetParmIntValues(
+		NULL,
 	    this->node_id, &result, this->_info.intValuesIndex + sub_index,
 	    /*length=*/1));
 	return result;
@@ -473,6 +486,7 @@ public:
     {
 	float result;
 	throwOnFailure(HAPI_GetParmFloatValues(
+		NULL,
 	    this->node_id, &result, this->_info.floatValuesIndex + sub_index,
 	    /*length=*/1));
 	return result;
@@ -482,6 +496,7 @@ public:
     {
 	int string_handle;
 	throwOnFailure(HAPI_GetParmStringValues(
+		NULL,
 	    this->node_id, true, &string_handle,
 	    this->_info.stringValuesIndex + sub_index, /*length=*/1));
 	return getString(string_handle);
@@ -490,6 +505,7 @@ public:
     void setIntValue(int sub_index, int value)
     {
 	throwOnFailure(HAPI_SetParmIntValues(
+		NULL,
 	    this->node_id, &value, this->_info.intValuesIndex + sub_index,
 	    /*length=*/1));
     }
@@ -497,6 +513,7 @@ public:
     void setFloatValue(int sub_index, float value)
     {
 	throwOnFailure(HAPI_SetParmFloatValues(
+		NULL,
 	    this->node_id, &value, this->_info.floatValuesIndex + sub_index,
 	    /*length=*/1));
     }
@@ -504,18 +521,21 @@ public:
     void setStringValue(int sub_index, const char *value)
     {
 	throwOnFailure(HAPI_SetParmStringValue(
+		NULL,
 	    this->node_id, value, this->_info.id, sub_index));
     }
 
     void insertMultiparmInstance(int instance_position)
     {
 	throwOnFailure(HAPI_InsertMultiparmInstance(
+		NULL,
 	    this->node_id, this->_info.id, instance_position));
     }
 
     void removeMultiparmInstance(int instance_position)
     {
 	throwOnFailure(HAPI_RemoveMultiparmInstance(
+		NULL,
 	    this->node_id, this->_info.id, instance_position));
     }
 
@@ -571,12 +591,14 @@ inline std::vector<Parm> Asset::parms() const
     int num_parms = nodeInfo().parmCount;
     std::vector<HAPI_ParmInfo> parm_infos(num_parms);
     throwOnFailure(HAPI_GetParameters(
+	NULL,
 	this->info().nodeId, &parm_infos[0], /*start=*/0, num_parms));
 
     // Get all the parm choice infos.
     std::vector<HAPI_ParmChoiceInfo> parm_choice_infos(
 	this->nodeInfo().parmChoiceCount);
     throwOnFailure(HAPI_GetParmChoiceLists(
+	NULL,
 	this->info().nodeId, &parm_choice_infos[0], /*start=*/0,
 	this->nodeInfo().parmChoiceCount));
 

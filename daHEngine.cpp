@@ -80,7 +80,7 @@ HoudiniEngine::~HoudiniEngine()
 	{
 	    try
 	    {
-		    ENSURE_SUCCESS(HAPI_Cleanup());
+		    ENSURE_SUCCESS(HAPI_Cleanup(NULL));
 			olog(Verbose, "done HAPI");
 	    }
 	    catch (hapi::Failure &failure)
@@ -101,6 +101,7 @@ int HoudiniEngine::loadAssetLibraryFromFile(const String& otlFile)
 	}
 
     HAPI_Result hr = HAPI_LoadAssetLibraryFromFile(
+			NULL,
             otlFile.c_str(),
 			false, /* allow_overwrite */
             &library_id);
@@ -111,11 +112,11 @@ int HoudiniEngine::loadAssetLibraryFromFile(const String& otlFile)
 		return assetCount;
     }
 
-    ENSURE_SUCCESS( HAPI_GetAvailableAssetCount( library_id, &assetCount ) );
+    ENSURE_SUCCESS( HAPI_GetAvailableAssetCount( NULL, library_id, &assetCount ) );
 
 	ofmsg("%1% assets available", %assetCount);
     HAPI_StringHandle* asset_name_sh = new HAPI_StringHandle[assetCount];
-    ENSURE_SUCCESS( HAPI_GetAvailableAssets( library_id, asset_name_sh, assetCount ) );
+    ENSURE_SUCCESS( HAPI_GetAvailableAssets( NULL, library_id, asset_name_sh, assetCount ) );
 
 	for (int i =0; i < assetCount; ++i) {
 	    std::string asset_name = get_string( asset_name_sh[i] );
@@ -246,6 +247,7 @@ int HoudiniEngine::instantiateAsset(const String& asset_name)
 // 	ofmsg("about to instantiate %1%", %asset_name);
 
     ENSURE_SUCCESS(HAPI_InstantiateAsset(
+			NULL,
             asset_name.c_str(),
             /* cook_on_load */ true,
             &asset_id ));
@@ -288,11 +290,11 @@ int HoudiniEngine::instantiateAssetById(int asset_id)
 
 	int assetCount;
 
-    ENSURE_SUCCESS( HAPI_GetAvailableAssetCount( library_id, &assetCount ) );
+    ENSURE_SUCCESS( HAPI_GetAvailableAssetCount( NULL, library_id, &assetCount ) );
 
 	ofmsg("%1% assets available", %assetCount);
     HAPI_StringHandle* asset_name_sh = new HAPI_StringHandle[assetCount];
-    ENSURE_SUCCESS( HAPI_GetAvailableAssets( library_id, asset_name_sh, assetCount ) );
+    ENSURE_SUCCESS( HAPI_GetAvailableAssets( NULL, library_id, asset_name_sh, assetCount ) );
 
 	std::string asset_name;
 
@@ -304,6 +306,7 @@ int HoudiniEngine::instantiateAssetById(int asset_id)
 	asset_name = get_string(asset_name_sh[asset_id]);
 
     ENSURE_SUCCESS(HAPI_InstantiateAsset(
+			NULL,
             asset_name.c_str(),
             /* cook_on_load */ true,
             &asset_id ));
@@ -435,7 +438,7 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 
 		HAPI_Transform* objTransforms = new HAPI_Transform[objects.size()];
 		// NB: this resets all ObjectInfo::hasTransformChanged flags to false
-		ENSURE_SUCCESS (HAPI_GetObjectTransforms(asset.id, HAPI_TRS, objTransforms, 0, objects.size()));
+		ENSURE_SUCCESS (HAPI_GetObjectTransforms( NULL, asset.id, HAPI_TRS, objTransforms, 0, objects.size()));
 
 		for (int object_index=0; object_index < int(objects.size()); ++object_index)
 	    {
@@ -553,13 +556,14 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 	}
 
 	// TODO: render curves
-	if (part.info().isCurve) {
- 		ofmsg ("This part is a curve: %1%", %part.name());
-		return;
-	}
+// 	if (part.info().isCurve) {
+//  		ofmsg ("This part is a curve: %1%", %part.name());
+// 		return;
+// 	}
 
     int *face_counts = new int[ part.info().faceCount ];
     ENSURE_SUCCESS( HAPI_GetFaceCounts(
+		NULL,
 		part.geo.object.asset.id,
 		part.geo.object.id,
 		part.geo.id,
@@ -582,6 +586,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 // 		&mat_id, 0, 1));
 
 	ENSURE_SUCCESS( HAPI_GetMaterialOnPart(
+		NULL,
 		part.geo.object.asset.id,
 		part.geo.object.id,
 		part.geo.id,
@@ -601,6 +606,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 
 		HAPI_NodeInfo node_info;
 		ENSURE_SUCCESS( HAPI_GetNodeInfo(
+			NULL,
 			mat_info.nodeId, &node_info ));
 		ofmsg("Node info for %1%: id: %2% assetId: %3% internal path: %4%",
 			  %get_string(node_info.nameSH) %node_info.id %node_info.assetId
@@ -609,6 +615,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 
 		HAPI_ParmInfo* parm_infos = new HAPI_ParmInfo[node_info.parmCount];
 		ENSURE_SUCCESS( HAPI_GetParameters(
+			NULL,
 			mat_info.nodeId,
 			parm_infos,
 			0 /* start */,
@@ -625,6 +632,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 			if (parm_infos[i].stringValuesIndex >= 0) {
 				int sh = -1;
 				ENSURE_SUCCESS( HAPI_GetParmStringValues(
+					NULL,
 					mat_info.nodeId, true,
 					&sh,
 					parm_infos[i].stringValuesIndex, 1)
@@ -656,6 +664,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 
 		// NOTE this works if the image is a png
  		ENSURE_SUCCESS( HAPI_RenderTextureToImage(
+			NULL,
 			mat_info.assetId,
  			mat_info.id,
 			parm_infos[mapIndex].id /* parmIndex for "map" */));
@@ -670,6 +679,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 
 		HAPI_ImageInfo image_info;
 		ENSURE_SUCCESS( HAPI_GetImageInfo(
+			NULL,
 			mat_info.assetId,
 			mat_info.id,
 			&image_info));
@@ -685,6 +695,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 		HAPI_StringHandle imageSH;
 
 		ENSURE_SUCCESS( HAPI_GetImagePlanes(
+			NULL,
 			mat_info.assetId,
 			mat_info.id,
 			&imageSH,
@@ -698,6 +709,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 
 		// get image planes into a buffer (default is png.. change to RGBA?)
 		ENSURE_SUCCESS( HAPI_ExtractImageToMemory(
+			NULL,
 			mat_info.assetId,
 			mat_info.id,
 			NULL /* HAPI_DEFAULT_IMAGE_FORMAT_NAME */,
@@ -709,6 +721,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 
 		// put into a buffer
 		ENSURE_SUCCESS( HAPI_GetImageMemoryBuffer(
+			NULL,
 			mat_info.assetId,
 			mat_info.id,
 			myBuffer,
@@ -737,6 +750,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 
     int * vertex_list = new int[ part.info().vertexCount ];
     ENSURE_SUCCESS( HAPI_GetVertexList(
+		NULL,
 		part.geo.object.asset.id,
 		part.geo.object.id,
 		part.geo.id,
@@ -891,12 +905,16 @@ void HoudiniEngine::initialize()
 	    {
 		    HAPI_CookOptions cook_options = HAPI_CookOptions_Create();
 
-		    ENSURE_SUCCESS(HAPI_Initialize(
-			getenv("$HOME"),
-			/*dso_search_path=*/NULL,
-		        &cook_options,
-			/*use_cooking_thread=*/true,
-			/*cooking_thread_max_size=*/-1));
+			ENSURE_SUCCESS(HAPI_Initialize(
+				/* session */ NULL,
+				&cook_options,
+				/*use_cooking_thread=*/true,
+				/*cooking_thread_max_size=*/-1,
+				/*otl search path*/ getenv("$HOME"),
+				/*dso_search_path=*/ NULL,
+				/*image_dso_search_path=*/ NULL,
+				/*audio_dso_search_path=*/ NULL
+			));
 	    }
 	    catch (hapi::Failure &failure)
 	    {
@@ -1041,6 +1059,7 @@ void HoudiniEngine::wait_for_cook()
 		if (myLogEnabled) {
 	        int statusBufSize = 0;
 	        ENSURE_SUCCESS( HAPI_GetStatusStringBufLength(
+				NULL,
 /* 	            HAPI_STATUS_COOK_STATE, HAPI_STATUSVERBOSITY_MESSAGES, */
 	            HAPI_STATUS_COOK_STATE, HAPI_STATUSVERBOSITY_ERRORS,
 	            &statusBufSize ) );
@@ -1049,6 +1068,7 @@ void HoudiniEngine::wait_for_cook()
 	        {
 	            statusBuf = new char[statusBufSize];
 	            ENSURE_SUCCESS( HAPI_GetStatusString(
+					NULL,
 	                HAPI_STATUS_COOK_STATE, statusBuf, statusBufSize ) );
 	        }
 	        if ( statusBuf )
@@ -1058,7 +1078,7 @@ void HoudiniEngine::wait_for_cook()
 	            delete[] statusBuf;
 	        }
 		}
-        HAPI_GetStatus(HAPI_STATUS_COOK_STATE, &status);
+        HAPI_GetStatus(NULL, HAPI_STATUS_COOK_STATE, &status);
     }
     while ( status > HAPI_STATE_MAX_READY_STATE );
     ENSURE_COOK_SUCCESS( status );
@@ -1073,11 +1093,11 @@ static std::string houdiniEngine::get_string(int string_handle)
 	return "";
 
     int buffer_length;
-    ENSURE_SUCCESS(HAPI_GetStringBufLength(string_handle, &buffer_length));
+    ENSURE_SUCCESS(HAPI_GetStringBufLength(NULL, string_handle, &buffer_length));
 
     char * buf = new char[ buffer_length ];
 
-    ENSURE_SUCCESS(HAPI_GetString(string_handle, buf, buffer_length));
+    ENSURE_SUCCESS(HAPI_GetString(NULL, string_handle, buf, buffer_length));
 
     std::string result( buf );
     delete[] buf;
@@ -1554,7 +1574,7 @@ float HoudiniEngine::getFps()
 {
 	if (SystemManager::instance()->isMaster()) {
 		HAPI_TimelineOptions to;
-		HAPI_GetTimelineOptions(&to);
+		HAPI_GetTimelineOptions(NULL, &to);
 
 		return to.fps;
 	}
@@ -1568,7 +1588,7 @@ float HoudiniEngine::getTime()
 	float myTime = -1.0;
 
 	if (SystemManager::instance()->isMaster()) {
-		HAPI_GetTime(&myTime);
+		HAPI_GetTime(NULL, &myTime);
 	}
 
 	return myTime;
@@ -1577,7 +1597,7 @@ float HoudiniEngine::getTime()
 void HoudiniEngine::setTime(float time)
 {
 	if (SystemManager::instance()->isMaster()) {
-		HAPI_SetTime(time);
+		HAPI_SetTime(NULL, time);
 	}
 }
 

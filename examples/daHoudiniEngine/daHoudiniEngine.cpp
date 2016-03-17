@@ -170,16 +170,21 @@ HEngineApp::HEngineApp():
 
 	    HAPI_CookOptions cook_options = HAPI_CookOptions_Create();
 
-	    ENSURE_SUCCESS(HAPI_Initialize(
-		getenv("$HOME"),
-		/*dso_search_path=*/NULL,
-	        &cook_options,
-		/*use_cooking_thread=*/true,
-		/*cooking_thread_max_size=*/-1));
+		ENSURE_SUCCESS(HAPI_Initialize(
+			/* session */ NULL,
+			&cook_options,
+			/*use_cooking_thread=*/true,
+			/*cooking_thread_max_size=*/-1,
+			/*otl search path*/ getenv("$HOME"),
+			/*dso_search_path=*/ NULL,
+			/*image_dso_search_path=*/ NULL,
+			/*audio_dso_search_path=*/ NULL
+		));
 
 		omsg("HAPI Loaded");
 
 	    if (HAPI_LoadAssetLibraryFromFile(
+				NULL,
 	            otl_file,
 				false, /* allow_overwrite */
 	            &library_id) != HAPI_RESULT_SUCCESS)
@@ -191,10 +196,11 @@ HEngineApp::HEngineApp():
 		ofmsg("HAPI load asset from file %1%",  %otl_file);
 
 	    HAPI_StringHandle asset_name_sh;
-	    ENSURE_SUCCESS( HAPI_GetAvailableAssets( library_id, &asset_name_sh, 1 ) );
+	    ENSURE_SUCCESS( HAPI_GetAvailableAssets( NULL, library_id, &asset_name_sh, 1 ) );
 	    std::string asset_name = get_string( asset_name_sh );
 
 	    ENSURE_SUCCESS(HAPI_InstantiateAsset(
+				NULL,
 	            asset_name.c_str(),
 	            /* cook_on_load */ true,
 	            &asset_id ));
@@ -203,7 +209,7 @@ HEngineApp::HEngineApp():
 
 	    HAPI_AssetInfo asset_info;
 
-	    ENSURE_SUCCESS( HAPI_GetAssetInfo( asset_id, &asset_info ) );
+	    ENSURE_SUCCESS( HAPI_GetAssetInfo( NULL, asset_id, &asset_info ) );
 
 		myAsset = new hapi::Asset(asset_id); // make this a ref pointer later
 
@@ -226,7 +232,7 @@ HEngineApp::~HEngineApp() {
     try
     {
 		if (SystemManager::instance()->isMaster()) {
-		    ENSURE_SUCCESS(HAPI_Cleanup());
+		    ENSURE_SUCCESS(HAPI_Cleanup(NULL));
 			cout << "done HAPI" << endl;
 		}
     }
@@ -567,7 +573,7 @@ void HEngineApp::wait_for_cook()
 //         }
 //         update_counter++;
 		osleep(100); // sleeping..
-        HAPI_GetStatus(HAPI_STATUS_COOK_STATE, &status);
+        HAPI_GetStatus(NULL, HAPI_STATUS_COOK_STATE, &status);
     }
     while ( status > HAPI_STATE_MAX_READY_STATE );
     ENSURE_COOK_SUCCESS( status );
@@ -582,11 +588,11 @@ static std::string get_string(int string_handle)
 	return "";
 
     int buffer_length;
-    ENSURE_SUCCESS(HAPI_GetStringBufLength(string_handle, &buffer_length));
+    ENSURE_SUCCESS(HAPI_GetStringBufLength(NULL, string_handle, &buffer_length));
 
     char * buf = new char[ buffer_length ];
 
-    ENSURE_SUCCESS(HAPI_GetString(string_handle, buf, buffer_length));
+    ENSURE_SUCCESS(HAPI_GetString(NULL, string_handle, buf, buffer_length));
 
     std::string result( buf );
     delete[] buf;
@@ -630,6 +636,7 @@ void HEngineApp::process_geo_part(const hapi::Part &part)
     cout << "Number of faces: " << part.info().faceCount << endl;
     int * face_counts = new int[ part.info().faceCount ];
     ENSURE_SUCCESS( HAPI_GetFaceCounts(
+		NULL,
 		part.geo.object.asset.id,
 		part.geo.object.id,
 		part.geo.id,
@@ -649,6 +656,7 @@ void HEngineApp::process_geo_part(const hapi::Part &part)
 	int mat_id = -1;
 	HAPI_MaterialInfo mat_info;
     ENSURE_SUCCESS( HAPI_GetMaterialIdsOnFaces(
+		NULL,
 		part.geo.object.asset.id,
 		part.geo.object.id,
 		part.geo.id,
@@ -656,6 +664,7 @@ void HEngineApp::process_geo_part(const hapi::Part &part)
 		NULL /* are_all_the_same*/,
 		&mat_id, 0, 1));
 	ENSURE_SUCCESS( HAPI_GetMaterialInfo (
+		NULL,
 		part.geo.object.asset.id,
 		mat_id,
 		&mat_info));
@@ -667,6 +676,7 @@ void HEngineApp::process_geo_part(const hapi::Part &part)
 
 		HAPI_NodeInfo node_info;
 		ENSURE_SUCCESS( HAPI_GetNodeInfo(
+			NULL,
 			mat_info.nodeId, &node_info ));
 		ofmsg("Node info for %1%: id: %2% assetId: %3% internal path: %4%",
 			  %get_string(node_info.nameSH) %node_info.id %node_info.assetId
@@ -675,6 +685,7 @@ void HEngineApp::process_geo_part(const hapi::Part &part)
 
 		HAPI_ParmInfo* parm_infos = new HAPI_ParmInfo[node_info.parmCount];
 		ENSURE_SUCCESS( HAPI_GetParameters(
+			NULL,
 			mat_info.nodeId,
 			parm_infos,
 			0 /* start */,
@@ -686,6 +697,7 @@ void HEngineApp::process_geo_part(const hapi::Part &part)
 			if (parm_infos[i].stringValuesIndex >= 0) {
 				int sh = -1;
 				ENSURE_SUCCESS( HAPI_GetParmStringValues(
+					NULL,
 					mat_info.nodeId, true,
 					&sh,
 					parm_infos[i].stringValuesIndex, 1)
@@ -714,6 +726,7 @@ void HEngineApp::process_geo_part(const hapi::Part &part)
 					ofmsg("name: %1%, %2%", %s %i);
 
 					int result = HAPI_RenderTextureToImage(
+						NULL,
 						k,
 						j /*mat_info.id */,
 						i);
@@ -735,6 +748,7 @@ void HEngineApp::process_geo_part(const hapi::Part &part)
 
 		HAPI_ImageInfo image_info;
 		ENSURE_SUCCESS( HAPI_GetImageInfo(
+			NULL,
 			node_info.assetId,
 			mat_info.id,
 			&image_info));
@@ -753,6 +767,7 @@ void HEngineApp::process_geo_part(const hapi::Part &part)
 
     int * vertex_list = new int[ part.info().vertexCount ];
     ENSURE_SUCCESS( HAPI_GetVertexList(
+		NULL,
 		part.geo.object.asset.id,
 		part.geo.object.id,
 		part.geo.id,

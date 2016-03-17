@@ -158,6 +158,10 @@ namespace houdiniEngine {
 		// logging
 		bool myLogEnabled;
 
+		// session
+
+// 		HAPI_Session session;
+
 	};
 };
 
