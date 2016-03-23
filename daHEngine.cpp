@@ -59,6 +59,21 @@ BOOST_PYTHON_MODULE(daHEngine)
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 HoudiniEngine* HoudiniEngine::createAndInitialize()
 {
+	int minHoudiniVersion = 15;
+	int minHEngineVersion = 2;
+	int houdiniVersionMajor = 0;
+	int hEngineVersionMajor = 0;
+
+	ENSURE_SUCCESS(HAPI_GetEnvInt(HAPI_ENVINT_VERSION_HOUDINI_MAJOR, &houdiniVersionMajor ));
+	ENSURE_SUCCESS(HAPI_GetEnvInt(HAPI_ENVINT_VERSION_HOUDINI_ENGINE_MAJOR, &hEngineVersionMajor ));
+
+	if (hEngineVersionMajor < minHEngineVersion || houdiniVersionMajor < minHoudiniVersion) {
+		oerror("Could not find appropriate version of Houdini or Houdini Engine");
+		oferror("Houdini Version: %1% (needed %2%), Houdini Engine Version %2% (needed %4%)",
+				%houdiniVersionMajor %minHoudiniVersion %hEngineVersionMajor %minHEngineVersion);
+		return NULL;
+	}
+
 	// Initialize and register the HoudiniEngine module.
 	HoudiniEngine* instance = new HoudiniEngine();
 	ModuleServices::addModule(instance);
