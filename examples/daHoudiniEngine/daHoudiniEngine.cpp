@@ -44,7 +44,7 @@ using namespace omega;
     if ((result) != HAPI_RESULT_SUCCESS) \
     { \
 	cout << "failure at " << __FILE__ << ":" << __LINE__ << endl; \
-	cout << hapi::Failure::lastErrorMessage() << endl;\
+	cout << hapi::Failure::lastErrorMessage(NULL) << endl;\
 	exit(1); \
     }
 
@@ -52,7 +52,7 @@ using namespace omega;
     if ((result) != HAPI_STATE_READY) \
     { \
 	cout << "failure at " << __FILE__ << ":" << __LINE__ << endl; \
-	cout << hapi::Failure::lastCookErrorMessage() << endl;\
+	cout << hapi::Failure::lastCookErrorMessage(NULL) << endl;\
 	exit(1); \
     }
 
@@ -211,14 +211,14 @@ HEngineApp::HEngineApp():
 
 	    ENSURE_SUCCESS( HAPI_GetAssetInfo( NULL, asset_id, &asset_info ) );
 
-		myAsset = new hapi::Asset(asset_id); // make this a ref pointer later
+		myAsset = new hapi::Asset(asset_id, NULL); // make this a ref pointer later
 
 	    print_asset_info(*myAsset);
 
     }
     catch (hapi::Failure &failure)
     {
-	cout << failure.lastErrorMessage() << endl;
+	cout << failure.lastErrorMessage(NULL) << endl;
 	throw;
     }
 }
@@ -238,7 +238,7 @@ HEngineApp::~HEngineApp() {
     }
     catch (hapi::Failure &failure)
     {
-		cout << failure.lastErrorMessage() << endl;
+		cout << failure.lastErrorMessage(NULL) << endl;
 		throw;
     }
 }

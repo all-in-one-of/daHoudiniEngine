@@ -25,32 +25,32 @@ public:
     // Retrieve details about the last non-successful HAPI function call.
     // You would typically call this method after catching a Failure exception,
     // but it can be called as a static method after calling a C HAPI function.
-    static std::string lastErrorMessage()
+    static std::string lastErrorMessage(HAPI_Session* session)
     {
 	int buffer_length;
 	HAPI_GetStatusStringBufLength(
-			NULL,
+			session,
             HAPI_STATUS_CALL_RESULT, HAPI_STATUSVERBOSITY_ERRORS, &buffer_length);
 
 	char * buf = new char[ buffer_length ];
 
-	HAPI_GetStatusString(NULL, HAPI_STATUS_CALL_RESULT, buf, buffer_length);
+	HAPI_GetStatusString(session, HAPI_STATUS_CALL_RESULT, buf, buffer_length);
         std::string result(buf);
 	return result;
     }
 
     // Retrieve details about the last non-successful HAPI_CookAsset() or
     // HAPI_InstantiateAsset() function call.    
-    static std::string lastCookErrorMessage()
+    static std::string lastCookErrorMessage(HAPI_Session* session)
     {
 	int buffer_length;
 	HAPI_GetStatusStringBufLength(
-			NULL,
+			session,
             HAPI_STATUS_COOK_RESULT, HAPI_STATUSVERBOSITY_ERRORS, &buffer_length);
 
 	char * buf = new char[ buffer_length ];
 
-	HAPI_GetStatusString(NULL, HAPI_STATUS_CALL_RESULT, buf, buffer_length);
+	HAPI_GetStatusString(session, HAPI_STATUS_CALL_RESULT, buf, buffer_length);
         std::string result(buf);
 	return result;
     }
@@ -69,7 +69,7 @@ static void throwOnFailure(HAPI_Result result)
 // Utility functions:
 
 // Return a std::string corresponding to a string handle.
-static std::string getString(int string_handle)
+static std::string getString(HAPI_Session* session, int string_handle)
 {
     // A string handle of 0 means an invalid string handle -- similar to
     // a null pointer.  Since we can't return NULL, though, return an empty
@@ -78,11 +78,11 @@ static std::string getString(int string_handle)
 	return "";
 
     int buffer_length;
-    throwOnFailure(HAPI_GetStringBufLength(NULL, string_handle, &buffer_length));
+    throwOnFailure(HAPI_GetStringBufLength(session, string_handle, &buffer_length));
 
     char * buf = new char[ buffer_length ];
 
-    throwOnFailure(HAPI_GetString(NULL, string_handle, buf, buffer_length));
+    throwOnFailure(HAPI_GetString(session, string_handle, buf, buffer_length));
     std::string result(buf);
     return result;
 }
@@ -96,14 +96,15 @@ class Parm;
 class Asset
 {
 public:
-    Asset(int id)
-    : id(id), _info(NULL), _nodeInfo(NULL)
+    Asset(int id, HAPI_Session* mySession)
+    : id(id), _info(NULL), _nodeInfo(NULL), session(mySession)
     {}
 
     Asset(const Asset &asset)
     : id(asset.id)
     , _info(asset._info ? new HAPI_AssetInfo(*asset._info) : NULL)
     , _nodeInfo(asset._nodeInfo ? new HAPI_NodeInfo(*asset._nodeInfo) : NULL)
+	, session(asset.session)
     {}
 
     ~Asset()
@@ -131,7 +132,7 @@ public:
 	if (!this->_info)
 	{
 	    this->_info = new HAPI_AssetInfo();
-	    throwOnFailure(HAPI_GetAssetInfo(NULL, this->id, this->_info));
+	    throwOnFailure(HAPI_GetAssetInfo(session, this->id, this->_info));
 	}
 	return *this->_info;
     }
@@ -142,7 +143,7 @@ public:
 	{
 	    this->_nodeInfo = new HAPI_NodeInfo();
 	    throwOnFailure(HAPI_GetNodeInfo(
-		NULL,
+		session,
 		this->info().nodeId, this->_nodeInfo));
 	}
 	return *this->_nodeInfo;
@@ -160,7 +161,7 @@ public:
 	    // Note that calling info() might fail if the info isn't cached
 	    // and the asest id is invalid.
 	    throwOnFailure(HAPI_IsAssetValid(
-		NULL,
+		session,
 		this->id, this->info().validationId, &is_valid));
 	    return is_valid;
 	}
@@ -171,26 +172,26 @@ public:
     }
 
     std::string name() const
-    { return getString(info().nameSH); }
+    { return getString(session, info().nameSH); }
 
     std::string label() const
-    { return getString(info().labelSH); }
+    { return getString(session, info().labelSH); }
 
     std::string filePath() const
-    { return getString(info().filePathSH); }
+    { return getString(session, info().filePathSH); }
 
     void destroyAsset() const
-    { throwOnFailure(HAPI_DestroyAsset(NULL, this->id)); }
+    { throwOnFailure(HAPI_DestroyAsset(session, this->id)); }
 
     void cook() const
-    { throwOnFailure(HAPI_CookAsset(NULL, this->id, NULL)); }
+    { throwOnFailure(HAPI_CookAsset(session, this->id, NULL)); }
 
     HAPI_TransformEuler getTransform( 
         HAPI_RSTOrder rst_order, HAPI_XYZOrder rot_order) const
     {
 	HAPI_TransformEuler result;
 	throwOnFailure(HAPI_GetAssetTransform(
-		NULL,
+		session,
 	    this->id, rst_order, rot_order, &result));
 	return result;
     }
@@ -200,11 +201,12 @@ public:
         HAPI_TransformEuler transform =
             this->getTransform( HAPI_SRT, HAPI_XYZ );
 	throwOnFailure(HAPI_ConvertTransformEulerToMatrix(
-		NULL,
+		session,
 	    &transform, result_matrix ) );
     }
 
     int id;
+	HAPI_Session* session;
 
 private:
     mutable HAPI_AssetInfo *_info;
@@ -216,18 +218,19 @@ class Geo;
 class Object
 {
 public:
-    Object(int asset_id, int object_id)
-    : asset(asset_id), id(object_id), _info(NULL)
+    Object(int asset_id, int object_id, HAPI_Session* mySession)
+    : asset(asset_id, mySession), id(object_id), _info(NULL), session(mySession)
     {}
 
     Object(const Asset &asset, int id)
-    : asset(asset), id(id), _info(NULL)
+    : asset(asset), id(id), _info(NULL), session(asset.session)
     {}
 
     Object(const Object &object)
     : asset(object.asset)
     , id(object.id)
     , _info(object._info ? new HAPI_ObjectInfo(*object._info) : NULL)
+	, session(object.session)
     {}
 
     ~Object()
@@ -252,7 +255,7 @@ public:
 	{
 	    this->_info = new HAPI_ObjectInfo();
 	    throwOnFailure(HAPI_GetObjects(
-		NULL,
+		session,
 		this->asset.id, this->_info, this->id, /*length=*/1));
 	}
 	return *this->_info;
@@ -261,13 +264,14 @@ public:
     std::vector<Geo> geos() const;
 
     std::string name() const
-    { return getString(info().nameSH); }
+    { return getString(session, info().nameSH); }
 
     std::string objectInstancePath() const
-    { return getString(info().objectInstancePathSH); }
+    { return getString(session, info().objectInstancePathSH); }
 
     Asset asset;
     int id;
+	HAPI_Session* session;
 
 private:
     mutable HAPI_ObjectInfo *_info;
@@ -279,17 +283,18 @@ class Geo
 {
 public:
     Geo(const Object &object, int id)
-    : object(object), id(id), _info(NULL)
+    : object(object), id(id), _info(NULL), session(object.session)
     {}
 
-    Geo(int asset_id, int object_id, int geo_id)
-    : object(asset_id, object_id), id(geo_id), _info(NULL)
+    Geo(int asset_id, int object_id, int geo_id, HAPI_Session* mySession)
+    : object(asset_id, object_id, mySession), id(geo_id), _info(NULL), session(mySession)
     {}
 
     Geo(const Geo &geo)
     : object(geo.object)
     , id(geo.id)
     , _info(geo._info ? new HAPI_GeoInfo(*geo._info) : NULL)
+	, session(geo.session)
     {}
 
     ~Geo()
@@ -313,19 +318,20 @@ public:
 	{
 	    this->_info = new HAPI_GeoInfo();
 	    throwOnFailure(HAPI_GetGeoInfo(
-		NULL,
+		session,
 		this->object.asset.id, this->object.id, this->id, this->_info));
 	}
 	return *this->_info;
     }
 
     std::string name() const
-    { return getString(info().nameSH); }
+    { return getString(session, info().nameSH); }
 
     std::vector<Part> parts() const;
 
     Object object;
     int id;
+	HAPI_Session* session;
 
 private:
     mutable HAPI_GeoInfo *_info;
@@ -335,17 +341,18 @@ class Part
 {
 public:
     Part(const Geo &geo, int id)
-    : geo(geo), id(id), _info(NULL)
+    : geo(geo), id(id), _info(NULL), session(geo.session)
     {}
 
-    Part(int asset_id, int object_id, int geo_id, int part_id)
-    : geo(asset_id, object_id, geo_id), id(part_id), _info(NULL)
+    Part(int asset_id, int object_id, int geo_id, int part_id, HAPI_Session* mySession)
+    : geo(asset_id, object_id, geo_id, mySession), id(part_id), _info(NULL), session(mySession)
     {}
 
     Part(const Part &part)
     : geo(part.geo)
     , id(part.id)
     , _info(part._info ? new HAPI_PartInfo(*part._info) : NULL)
+	, session(part.session)
     {}
 
     ~Part()
@@ -369,7 +376,7 @@ public:
 	{
 	    this->_info = new HAPI_PartInfo();
 	    throwOnFailure(HAPI_GetPartInfo(
-		NULL, 
+		session,
 		this->geo.object.asset.id, this->geo.object.id, this->geo.id,
 		this->id, this->_info));
 	}
@@ -377,7 +384,7 @@ public:
     }
 
     std::string name() const
-    { return getString(info().nameSH); }
+    { return getString(session, info().nameSH); }
 
     int numAttribs(HAPI_AttributeOwner attrib_owner) const
     {
@@ -405,14 +412,14 @@ public:
 	std::vector<int> attrib_names_sh(num_attribs);
 
 	throwOnFailure(HAPI_GetAttributeNames(
-		NULL,
+		session,
 	    this->geo.object.asset.id, this->geo.object.id, this->geo.id,
 	    this->id, attrib_owner, &attrib_names_sh[0], num_attribs));
 
 	std::vector<std::string> result;
 	for (int attrib_index=0; attrib_index < int(attrib_names_sh.size());
 		++attrib_index)
-	    result.push_back(getString(attrib_names_sh[attrib_index]));
+	    result.push_back(getString(session, attrib_names_sh[attrib_index]));
 	return result;
     }
 
@@ -421,7 +428,7 @@ public:
     {
 	HAPI_AttributeInfo result;
 	throwOnFailure(HAPI_GetAttributeInfo(
-		NULL,
+		session,
 	    this->geo.object.asset.id, this->geo.object.id, this->geo.id,
 	    this->id, attrib_name, attrib_owner, &result));
 	return result;
@@ -436,7 +443,7 @@ public:
 
 	float *result = new float[attrib_info.count * attrib_info.tupleSize];
 	throwOnFailure(HAPI_GetAttributeFloatData(
-		NULL,
+		session,
 	    this->geo.object.asset.id, this->geo.object.id, this->geo.id,
 	    this->id, attrib_name, &attrib_info, result,
 	    /*start=*/0, attrib_info.count));
@@ -445,6 +452,7 @@ public:
 
     Geo geo;
     int id;
+	HAPI_Session* session;
 
 private:
     mutable HAPI_PartInfo *_info;
@@ -461,22 +469,22 @@ public:
     { throw std::out_of_range("Invalid parameter name"); }
 
     Parm(int node_id, const HAPI_ParmInfo &info,
-	HAPI_ParmChoiceInfo *all_choice_infos);
+	HAPI_ParmChoiceInfo *all_choice_infos, HAPI_Session* mySession);
 
     const HAPI_ParmInfo &info() const
     { return _info; }
 
     std::string name() const
-    { return getString(_info.nameSH); }
+    { return getString(session, _info.nameSH); }
 
     std::string label() const
-    { return getString(_info.labelSH); }
+    { return getString(session, _info.labelSH); }
 
     int getIntValue(int sub_index) const
     {
 	int result;
 	throwOnFailure(HAPI_GetParmIntValues(
-		NULL,
+		session,
 	    this->node_id, &result, this->_info.intValuesIndex + sub_index,
 	    /*length=*/1));
 	return result;
@@ -486,26 +494,26 @@ public:
     {
 	float result;
 	throwOnFailure(HAPI_GetParmFloatValues(
-		NULL,
+		session,
 	    this->node_id, &result, this->_info.floatValuesIndex + sub_index,
 	    /*length=*/1));
 	return result;
     }
 
-    std::string getStringValue(int sub_index) const
+    std::string getStringValue(HAPI_Session* session, int sub_index) const
     {
 	int string_handle;
 	throwOnFailure(HAPI_GetParmStringValues(
-		NULL,
+		session,
 	    this->node_id, true, &string_handle,
 	    this->_info.stringValuesIndex + sub_index, /*length=*/1));
-	return getString(string_handle);
+	return getString(session, string_handle);
     }
 
     void setIntValue(int sub_index, int value)
     {
 	throwOnFailure(HAPI_SetParmIntValues(
-		NULL,
+		session,
 	    this->node_id, &value, this->_info.intValuesIndex + sub_index,
 	    /*length=*/1));
     }
@@ -513,7 +521,7 @@ public:
     void setFloatValue(int sub_index, float value)
     {
 	throwOnFailure(HAPI_SetParmFloatValues(
-		NULL,
+		session,
 	    this->node_id, &value, this->_info.floatValuesIndex + sub_index,
 	    /*length=*/1));
     }
@@ -521,26 +529,27 @@ public:
     void setStringValue(int sub_index, const char *value)
     {
 	throwOnFailure(HAPI_SetParmStringValue(
-		NULL,
+		session,
 	    this->node_id, value, this->_info.id, sub_index));
     }
 
     void insertMultiparmInstance(int instance_position)
     {
 	throwOnFailure(HAPI_InsertMultiparmInstance(
-		NULL,
+		session,
 	    this->node_id, this->_info.id, instance_position));
     }
 
     void removeMultiparmInstance(int instance_position)
     {
 	throwOnFailure(HAPI_RemoveMultiparmInstance(
-		NULL,
+		session,
 	    this->node_id, this->_info.id, instance_position));
     }
 
     int node_id;
     std::vector<ParmChoice> choices;
+	HAPI_Session* session;
 
 private:
     HAPI_ParmInfo _info;
@@ -549,19 +558,20 @@ private:
 class ParmChoice
 {
 public:
-    ParmChoice(HAPI_ParmChoiceInfo &info)
-    : _info(info)
+    ParmChoice(HAPI_ParmChoiceInfo &info, HAPI_Session* mySession)
+    : _info(info), session(mySession)
     {}
 
     const HAPI_ParmChoiceInfo &info() const
     { return _info; }
 
     std::string label() const
-    { return getString(_info.labelSH); }
+    { return getString(session, _info.labelSH); }
 
     std::string value() const
-    { return getString(_info.valueSH); }
+    { return getString(session, _info.valueSH); }
 
+	HAPI_Session* session;
 private:
     HAPI_ParmChoiceInfo _info;
 };
@@ -569,12 +579,12 @@ private:
 // Methods that could not be declared inside the classes:
 
 inline Parm::Parm(int node_id, const HAPI_ParmInfo &info,
-	HAPI_ParmChoiceInfo *all_choice_infos)
-    : node_id(node_id), _info(info)
+	HAPI_ParmChoiceInfo *all_choice_infos, HAPI_Session* mySession)
+    : node_id(node_id), _info(info), session(mySession)
 {
     for (int i=0; i < info.choiceCount; ++i)
 	this->choices.push_back(ParmChoice(
-	    all_choice_infos[info.choiceIndex + i]));
+	    all_choice_infos[info.choiceIndex + i], session));
 }
 
 inline std::vector<Object> Asset::objects() const
@@ -591,14 +601,14 @@ inline std::vector<Parm> Asset::parms() const
     int num_parms = nodeInfo().parmCount;
     std::vector<HAPI_ParmInfo> parm_infos(num_parms);
     throwOnFailure(HAPI_GetParameters(
-	NULL,
+	this->session,
 	this->info().nodeId, &parm_infos[0], /*start=*/0, num_parms));
 
     // Get all the parm choice infos.
     std::vector<HAPI_ParmChoiceInfo> parm_choice_infos(
 	this->nodeInfo().parmChoiceCount);
     throwOnFailure(HAPI_GetParmChoiceLists(
-	NULL,
+	session,
 	this->info().nodeId, &parm_choice_infos[0], /*start=*/0,
 	this->nodeInfo().parmChoiceCount));
 
@@ -606,7 +616,7 @@ inline std::vector<Parm> Asset::parms() const
     std::vector<Parm> result;
     for (int i=0; i < num_parms; ++i)
 	result.push_back(Parm(
-	    this->info().nodeId, parm_infos[i], &parm_choice_infos[0]));
+	    this->info().nodeId, parm_infos[i], &parm_choice_infos[0], this->session));
     return result;
 }
 

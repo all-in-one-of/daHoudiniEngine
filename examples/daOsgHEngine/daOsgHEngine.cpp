@@ -55,7 +55,7 @@ using namespace omegaToolkit::ui;
     if ((result) != HAPI_RESULT_SUCCESS) \
     { \
 	ofmsg("failure at %1%:%2%", %__FILE__ %__LINE__); \
-	ofmsg("%1%", %hapi::Failure::lastErrorMessage());\
+	ofmsg("%1%", %hapi::Failure::lastErrorMessage(NULL));\
 	exit(1); \
     }
 
@@ -63,7 +63,7 @@ using namespace omegaToolkit::ui;
     if ((result) != HAPI_STATE_READY) \
     { \
 	ofmsg("failure at %1%:%2%", %__FILE__ %__LINE__); \
-	ofmsg("%1%", %hapi::Failure::lastErrorMessage());\
+	ofmsg("%1%", %hapi::Failure::lastErrorMessage(NULL));\
 	exit(1); \
     }
 
@@ -268,12 +268,12 @@ HelloApplication::HelloApplication():
 
 	    ENSURE_SUCCESS( HAPI_GetAssetInfo( NULL, asset_id, &asset_info ) );
 
-		myAsset = new hapi::Asset(asset_id); // make this a ref pointer later
+		myAsset = new hapi::Asset(asset_id, NULL); // make this a ref pointer later
 
     }
     catch (hapi::Failure &failure)
     {
-		ofwarn("%1%", %failure.lastErrorMessage());
+		ofwarn("%1%", %failure.lastErrorMessage(NULL));
 	throw;
     }
 }
@@ -290,7 +290,7 @@ HelloApplication::~HelloApplication() {
     }
     catch (hapi::Failure &failure)
     {
-		ofwarn("%1%", %failure.lastErrorMessage());
+		ofwarn("%1%", %failure.lastErrorMessage(NULL));
 		throw;
     }
 }
@@ -334,12 +334,14 @@ void HelloApplication::process_geo_part(const hapi::Part &part)
 	vector<Vector3f> points;
 	vector<Vector3f> normals;
 	vector<Vector3f> colors;
+	vector<Vector3f> alphas;
 
 	bool has_point_normals = false;
 	bool has_vertex_normals = false;
 	bool has_point_colors = false;
 	bool has_vertex_colors = false;
 	bool has_primitive_colors = false;
+	bool has_alpha = false;
 
 	//  attrib owners:
 	// 	HAPI_ATTROWNER_VERTEX
@@ -377,6 +379,11 @@ void HelloApplication::process_geo_part(const hapi::Part &part)
 // 		    cout << "point colors:" << endl;
 			has_point_colors = true;
 		    process_float_attrib(part, HAPI_ATTROWNER_POINT, "Cd", colors);
+		}
+		if (point_attrib_names[attrib_index] == "Alpha") {
+// 		    cout << "point colors:" << endl;
+			has_alpha = true;
+		    process_float_attrib(part, HAPI_ATTROWNER_POINT, "Alpha", alphas);
 		}
 	}
 
@@ -499,14 +506,14 @@ void HelloApplication::process_geo_part(const hapi::Part &part)
 					colors[vertex_list[ myIndex ]][0],
 					colors[vertex_list[ myIndex ]][1],
 					colors[vertex_list[ myIndex ]][2],
-					1.0
+					has_alpha ? alphas[vertex_list[ myIndex ]][0] : 1.0
 				));
 			} else if (has_primitive_colors) {
 				hg->addColor(Color(
 					colors[ii][0],
 					colors[ii][1],
 					colors[ii][2],
-					1.0
+					has_alpha ? alphas[ii][0] : 1.0
 				));
 			}
 

@@ -36,30 +36,30 @@ namespace houdiniEngine {
 	using namespace omegaToolkit;
 	using namespace omegaToolkit::ui;
 
-	#define ENSURE_SUCCESS(result) \
+	#define ENSURE_SUCCESS(session, result) \
 	    if ((result) != HAPI_RESULT_SUCCESS) \
 	    { \
 		ofmsg("failure at %1%:%2%", %__FILE__ %__LINE__); \
-		ofmsg("%1%", %hapi::Failure::lastErrorMessage());\
+		ofmsg("%1%", %hapi::Failure::lastErrorMessage(session));\
 		exit(1); \
 	    }
 
-	#define ENSURE_COOK_SUCCESS(result) \
+	#define ENSURE_COOK_SUCCESS(session, result) \
 	    if ((result) != HAPI_STATE_READY) \
 	    { \
 		ofmsg("failure at %1%:%2%", %__FILE__ %__LINE__); \
-		ofmsg("%1%", %hapi::Failure::lastErrorMessage());\
+		ofmsg("%1%", %hapi::Failure::lastErrorMessage(session));\
 		exit(1); \
 	    }
 
-	static std::string get_string(int string_handle);
+	static std::string get_string(HAPI_Session* session, int string_handle);
 
 	String sOtl_file;
 
 	class HE_API RefAsset: public hapi::Asset, public ReferenceType
 	{
 	public:
-		RefAsset(int id) : Asset(id)
+		RefAsset(int id, HAPI_Session* mySession) : Asset(id, mySession)
 		{ ofmsg("Constructing refAsset of id %1%", %id); }
 		RefAsset(const hapi::Asset &asset) : hapi::Asset(asset)
 		{ ofmsg("Constructing refAsset from asset %1%", %asset.name()); }
@@ -160,7 +160,8 @@ namespace houdiniEngine {
 
 		// session
 
-// 		HAPI_Session session;
+		HAPI_Session* session;
+		HAPI_Session mySession;
 
 	};
 };

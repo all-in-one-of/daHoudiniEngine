@@ -24,7 +24,7 @@ target_link_libraries(${MODULE_NAME}
 	omega
 	omegaToolkit
 	omegaOsg
-	HAPI
+	HAPIL
 )
 
 # # need to add some compiler flags

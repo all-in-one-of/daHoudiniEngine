@@ -64,8 +64,8 @@ HoudiniEngine* HoudiniEngine::createAndInitialize()
 	int houdiniVersionMajor = 0;
 	int hEngineVersionMajor = 0;
 
-	ENSURE_SUCCESS(HAPI_GetEnvInt(HAPI_ENVINT_VERSION_HOUDINI_MAJOR, &houdiniVersionMajor ));
-	ENSURE_SUCCESS(HAPI_GetEnvInt(HAPI_ENVINT_VERSION_HOUDINI_ENGINE_MAJOR, &hEngineVersionMajor ));
+	ENSURE_SUCCESS(NULL, HAPI_GetEnvInt(HAPI_ENVINT_VERSION_HOUDINI_MAJOR, &houdiniVersionMajor ));
+	ENSURE_SUCCESS(NULL, HAPI_GetEnvInt(HAPI_ENVINT_VERSION_HOUDINI_ENGINE_MAJOR, &hEngineVersionMajor ));
 
 	if (hEngineVersionMajor < minHEngineVersion || houdiniVersionMajor < minHoudiniVersion) {
 		oerror("Could not find appropriate version of Houdini or Houdini Engine");
@@ -95,12 +95,12 @@ HoudiniEngine::~HoudiniEngine()
 	{
 	    try
 	    {
-		    ENSURE_SUCCESS(HAPI_Cleanup(NULL));
+		    ENSURE_SUCCESS(session, HAPI_Cleanup(session));
 			olog(Verbose, "done HAPI");
 	    }
 	    catch (hapi::Failure &failure)
 	    {
-			ofwarn("Houdini Failure on cleanup %1%", %failure.lastErrorMessage());
+			ofwarn("Houdini Failure on cleanup %1%", %failure.lastErrorMessage(session));
 			throw;
 	    }
 	}
@@ -116,7 +116,7 @@ int HoudiniEngine::loadAssetLibraryFromFile(const String& otlFile)
 	}
 
     HAPI_Result hr = HAPI_LoadAssetLibraryFromFile(
-			NULL,
+			session,
             otlFile.c_str(),
 			false, /* allow_overwrite */
             &library_id);
@@ -127,14 +127,14 @@ int HoudiniEngine::loadAssetLibraryFromFile(const String& otlFile)
 		return assetCount;
     }
 
-    ENSURE_SUCCESS( HAPI_GetAvailableAssetCount( NULL, library_id, &assetCount ) );
+    ENSURE_SUCCESS(session,  HAPI_GetAvailableAssetCount( session, library_id, &assetCount ) );
 
 	ofmsg("%1% assets available", %assetCount);
     HAPI_StringHandle* asset_name_sh = new HAPI_StringHandle[assetCount];
-    ENSURE_SUCCESS( HAPI_GetAvailableAssets( NULL, library_id, asset_name_sh, assetCount ) );
+    ENSURE_SUCCESS(session,  HAPI_GetAvailableAssets( session, library_id, asset_name_sh, assetCount ) );
 
 	for (int i =0; i < assetCount; ++i) {
-	    std::string asset_name = get_string( asset_name_sh[i] );
+	    std::string asset_name = get_string( session, asset_name_sh[i] );
 		ofmsg("asset %1%: %2%", %(i + 1) %asset_name);
 	}
 
@@ -259,10 +259,10 @@ int HoudiniEngine::instantiateAsset(const String& asset_name)
 
 	try {
 
-// 	ofmsg("about to instantiate %1%", %asset_name);
+ 	ofmsg("about to instantiate %1%", %asset_name);
 
-    ENSURE_SUCCESS(HAPI_InstantiateAsset(
-			NULL,
+    ENSURE_SUCCESS(session, HAPI_InstantiateAsset(
+			session,
             asset_name.c_str(),
             /* cook_on_load */ true,
             &asset_id ));
@@ -272,14 +272,14 @@ int HoudiniEngine::instantiateAsset(const String& asset_name)
 		return -1;
 	}
 
-// 	ofmsg("instantiated %1%, id: %2%", %asset_name %asset_id);
+ 	ofmsg("instantiated %1%, id: %2%", %asset_name %asset_id);
 
 	wait_for_cook();
 
 //     HAPI_AssetInfo asset_info;
-//     ENSURE_SUCCESS( HAPI_GetAssetInfo( asset_id, &asset_info ) );
+//     ENSURE_SUCCESS(session,  HAPI_GetAssetInfo( asset_id, &asset_info ) );
 
-	Ref <RefAsset> myAsset = new RefAsset(asset_id);
+	Ref <RefAsset> myAsset = new RefAsset(asset_id, session);
 	instancedHEAssets[asset_name] = myAsset;
     process_assets(*myAsset.get());
 
@@ -288,7 +288,7 @@ int HoudiniEngine::instantiateAsset(const String& asset_name)
 
 	} catch (hapi::Failure &failure)
 	{
-		ofwarn("%1%", %failure.lastErrorMessage());
+		ofwarn("%1%", %failure.lastErrorMessage(session));
 		throw;
 	}
 
@@ -305,23 +305,23 @@ int HoudiniEngine::instantiateAssetById(int asset_id)
 
 	int assetCount;
 
-    ENSURE_SUCCESS( HAPI_GetAvailableAssetCount( NULL, library_id, &assetCount ) );
+    ENSURE_SUCCESS(session,  HAPI_GetAvailableAssetCount( session, library_id, &assetCount ) );
 
 	ofmsg("%1% assets available", %assetCount);
     HAPI_StringHandle* asset_name_sh = new HAPI_StringHandle[assetCount];
-    ENSURE_SUCCESS( HAPI_GetAvailableAssets( NULL, library_id, asset_name_sh, assetCount ) );
+    ENSURE_SUCCESS(session,  HAPI_GetAvailableAssets( session, library_id, asset_name_sh, assetCount ) );
 
 	std::string asset_name;
 
 	for (int i =0; i < assetCount; ++i) {
-	    asset_name = get_string( asset_name_sh[i] );
+	    asset_name = get_string( session, asset_name_sh[i] );
 		ofmsg("asset %1%: %2%", %(i + 1) %asset_name);
 	}
 
-	asset_name = get_string(asset_name_sh[asset_id]);
+	asset_name = get_string( session, asset_name_sh[asset_id]);
 
-    ENSURE_SUCCESS(HAPI_InstantiateAsset(
-			NULL,
+    ENSURE_SUCCESS(session, HAPI_InstantiateAsset(
+			session,
             asset_name.c_str(),
             /* cook_on_load */ true,
             &asset_id ));
@@ -338,9 +338,9 @@ int HoudiniEngine::instantiateAssetById(int asset_id)
 	wait_for_cook();
 
 //     HAPI_AssetInfo asset_info;
-//     ENSURE_SUCCESS( HAPI_GetAssetInfo( asset_id, &asset_info ) );
+//     ENSURE_SUCCESS(session,  HAPI_GetAssetInfo( asset_id, &asset_info ) );
 
-	Ref <RefAsset> myAsset = new RefAsset(asset_id);
+	Ref <RefAsset> myAsset = new RefAsset(asset_id, session);
 	instancedHEAssets[asset_name] = myAsset;
     process_assets(*myAsset.get());
 
@@ -453,7 +453,7 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 
 		HAPI_Transform* objTransforms = new HAPI_Transform[objects.size()];
 		// NB: this resets all ObjectInfo::hasTransformChanged flags to false
-		ENSURE_SUCCESS (HAPI_GetObjectTransforms( NULL, asset.id, HAPI_TRS, objTransforms, 0, objects.size()));
+		ENSURE_SUCCESS(session, HAPI_GetObjectTransforms( session, asset.id, HAPI_TRS, objTransforms, 0, objects.size()));
 
 		for (int object_index=0; object_index < int(objects.size()); ++object_index)
 	    {
@@ -577,8 +577,8 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 // 	}
 
     int *face_counts = new int[ part.info().faceCount ];
-    ENSURE_SUCCESS( HAPI_GetFaceCounts(
-		NULL,
+    ENSURE_SUCCESS(session,  HAPI_GetFaceCounts(
+		session,
 		part.geo.object.asset.id,
 		part.geo.object.id,
 		part.geo.id,
@@ -592,7 +592,8 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 
 	int mat_id = -1;
 	HAPI_MaterialInfo mat_info;
-//     ENSURE_SUCCESS( HAPI_GetMaterialIdsOnFaces(
+//     ENSURE_SUCCESS(session,  HAPI_GetMaterialIdsOnFaces(
+// 		session,
 // 		part.geo.object.asset.id,
 // 		part.geo.object.id,
 // 		part.geo.id,
@@ -600,172 +601,172 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 // 		NULL /* are_all_the_same*/,
 // 		&mat_id, 0, 1));
 
-	ENSURE_SUCCESS( HAPI_GetMaterialOnPart(
-		NULL,
-		part.geo.object.asset.id,
-		part.geo.object.id,
-		part.geo.id,
-        part.id,
-		&mat_info));
+// 	ENSURE_SUCCESS(session,  HAPI_GetMaterialOnPart(
+// 		session,
+// 		part.geo.object.asset.id,
+// 		part.geo.object.id,
+// 		part.geo.id,
+//         part.id,
+// 		&mat_info));
 
 
-// 	ENSURE_SUCCESS( HAPI_GetMaterialInfo (
+// 	ENSURE_SUCCESS(session,  HAPI_GetMaterialInfo (
 // 		part.geo.object.asset.id,
 // 		mat_id,
 // 		&mat_info));
 
-	if (mat_info.exists) {
-		ofmsg("Material info for %1%: matId: %2% assetId: %3% nodeId: %4%",
-			  %hg->getName() %mat_info.id %mat_info.assetId %mat_info.nodeId
-		);
-
-		HAPI_NodeInfo node_info;
-		ENSURE_SUCCESS( HAPI_GetNodeInfo(
-			NULL,
-			mat_info.nodeId, &node_info ));
-		ofmsg("Node info for %1%: id: %2% assetId: %3% internal path: %4%",
-			  %get_string(node_info.nameSH) %node_info.id %node_info.assetId
-			  %get_string(node_info.internalNodePathSH)
-		);
-
-		HAPI_ParmInfo* parm_infos = new HAPI_ParmInfo[node_info.parmCount];
-		ENSURE_SUCCESS( HAPI_GetParameters(
-			NULL,
-			mat_info.nodeId,
-			parm_infos,
-			0 /* start */,
-			node_info.parmCount));
-
-		int mapIndex = -1;
-
-		for (int i =0; i < node_info.parmCount; ++i) {
-			ofmsg("%1% %2% (%3%) id = %4%",
-				  %i
-				  %get_string(parm_infos[i].labelSH)
-				  %get_string(parm_infos[i].nameSH)
-				  %parm_infos[i].id);
-			if (parm_infos[i].stringValuesIndex >= 0) {
-				int sh = -1;
-				ENSURE_SUCCESS( HAPI_GetParmStringValues(
-					NULL,
-					mat_info.nodeId, true,
-					&sh,
-					parm_infos[i].stringValuesIndex, 1)
-				);
-				ofmsg("%1%  %2%: %3%", %i %parm_infos[i].id
-					%get_string(sh));
-
-				if (sh != -1 && (get_string(parm_infos[i].nameSH) == "map")) {
-					mapIndex = i;
-				}
-			}
-		}
-
-		for (int i = 0; i < node_info.parmCount; ++i) {
-			ofmsg("index %1%: %2% '%3%'",
-				  %i
-				  %parm_infos[i].id
-				  %get_string(parm_infos[i].nameSH)
-			);
-		}
-
-		ofmsg("the texture path: assetId=%1% matInfo.id=%2% mapIndex=%3% parm_id=%4% string=%5%",
-			  %mat_info.assetId
-			  %mat_info.id
-			  %mapIndex
-			  %parm_infos[mapIndex].id
-			  %get_string(parm_infos[mapIndex].nameSH)
-		);
-
-		// NOTE this works if the image is a png
- 		ENSURE_SUCCESS( HAPI_RenderTextureToImage(
-			NULL,
-			mat_info.assetId,
- 			mat_info.id,
-			parm_infos[mapIndex].id /* parmIndex for "map" */));
-
-
-		// render using mantra
-//  		ENSURE_SUCCESS( HAPI_RenderMaterialToImage(
-//  			mat_info.assetId,
+// 	if (mat_info.exists) {
+// 		ofmsg("Material info for %1%: matId: %2% assetId: %3% nodeId: %4%",
+// 			  %hg->getName() %mat_info.id %mat_info.assetId %mat_info.nodeId
+// 		);
+//
+// 		HAPI_NodeInfo node_info;
+// 		ENSURE_SUCCESS(session,  HAPI_GetNodeInfo(
+// 			session,
+// 			mat_info.nodeId, &node_info ));
+// 		ofmsg("Node info for %1%: id: %2% assetId: %3% internal path: %4%",
+// 			  %get_string( session, node_info.nameSH) %node_info.id %node_info.assetId
+// 			  %get_string( session, node_info.internalNodePathSH)
+// 		);
+//
+// 		HAPI_ParmInfo* parm_infos = new HAPI_ParmInfo[node_info.parmCount];
+// 		ENSURE_SUCCESS(session,  HAPI_GetParameters(
+// 			session,
+// 			mat_info.nodeId,
+// 			parm_infos,
+// 			0 /* start */,
+// 			node_info.parmCount));
+//
+// 		int mapIndex = -1;
+//
+// 		for (int i =0; i < node_info.parmCount; ++i) {
+// 			ofmsg("%1% %2% (%3%) id = %4%",
+// 				  %i
+// 				  %get_string( session, parm_infos[i].labelSH)
+// 				  %get_string( session, parm_infos[i].nameSH)
+// 				  %parm_infos[i].id);
+// 			if (parm_infos[i].stringValuesIndex >= 0) {
+// 				int sh = -1;
+// 				ENSURE_SUCCESS(session,  HAPI_GetParmStringValues(
+// 					session,
+// 					mat_info.nodeId, true,
+// 					&sh,
+// 					parm_infos[i].stringValuesIndex, 1)
+// 				);
+// 				ofmsg("%1%  %2%: %3%", %i %parm_infos[i].id
+// 					%get_string(session, sh));
+//
+// 				if (sh != -1 && (get_string(session, parm_infos[i].nameSH) == "map")) {
+// 					mapIndex = i;
+// 				}
+// 			}
+// 		}
+//
+// 		for (int i = 0; i < node_info.parmCount; ++i) {
+// 			ofmsg("index %1%: %2% '%3%'",
+// 				  %i
+// 				  %parm_infos[i].id
+// 				  %get_string(session, parm_infos[i].nameSH)
+// 			);
+// 		}
+//
+// 		ofmsg("the texture path: assetId=%1% matInfo.id=%2% mapIndex=%3% parm_id=%4% string=%5%",
+// 			  %mat_info.assetId
+// 			  %mat_info.id
+// 			  %mapIndex
+// 			  %parm_infos[mapIndex].id
+// 			  %get_string(session, parm_infos[mapIndex].nameSH)
+// 		);
+//
+// 		// NOTE this works if the image is a png
+//  		ENSURE_SUCCESS(session,  HAPI_RenderTextureToImage(
+// 			session,
+// 			mat_info.assetId,
 //  			mat_info.id,
-// 			HAPI_SHADER_MANTRA));
-// // 			HAPI_SHADER_OPENGL));
-
-		HAPI_ImageInfo image_info;
-		ENSURE_SUCCESS( HAPI_GetImageInfo(
-			NULL,
-			mat_info.assetId,
-			mat_info.id,
-			&image_info));
-
-		ofmsg("width %1% height: %2% format: %3% dataFormat: %4% packing %5%",
-			  %image_info.xRes
-			  %image_info.yRes
-			  %get_string(image_info.imageFileFormatNameSH)
-			  %image_info.dataFormat
-			  %image_info.packing
-		);
-
-		HAPI_StringHandle imageSH;
-
-		ENSURE_SUCCESS( HAPI_GetImagePlanes(
-			NULL,
-			mat_info.assetId,
-			mat_info.id,
-			&imageSH,
-			1
-		));
-
-		int imgBufSize = -1;
-
-		//TODO: get the image extraction working correctly..
-		//BUG: seems like the image buffer size is not exact.. look into it
-
-		// get image planes into a buffer (default is png.. change to RGBA?)
-		ENSURE_SUCCESS( HAPI_ExtractImageToMemory(
-			NULL,
-			mat_info.assetId,
-			mat_info.id,
-			NULL /* HAPI_DEFAULT_IMAGE_FORMAT_NAME */,
-			"C A", /* image planes */
-			&imgBufSize
-		));
-
-		char *myBuffer = new char[imgBufSize];
-
-		// put into a buffer
-		ENSURE_SUCCESS( HAPI_GetImageMemoryBuffer(
-			NULL,
-			mat_info.assetId,
-			mat_info.id,
-			myBuffer,
-// 			(char *)pd->map(),
-			imgBufSize
-		));
-
-		// load into a pixelData bufferObject
-// 		PixelData* pd = PixelData::create(128, 128, PixelData::FormatRgba);
-		PixelData* pd = new PixelData(PixelData::FormatRgba, image_info.xRes, image_info.yRes, (byte*) myBuffer, 0);
-
-// 		houdiniMenu->addImage(ImageUtils::loadImage("/tmp/orbolt_main.jpg", true));
-
-		MenuItem* myNewImage = myMenuManager->getMainMenu()->addItem(MenuItem::Image);
-// 		myNewImage->setImage(ImageUtils::loadImage("/tmp/orbolt_main.jpg", true));
-		myNewImage->setImage(pd);
-
-		ofmsg("my image width %1% height: %2%, size %3%, bufSize %4%",
-			%pd->getWidth() %pd->getHeight() %pd->getSize() %imgBufSize
-		);
-	} else {
-		ofmsg("No material for %1%", %hg->getName());
-	}
+// 			parm_infos[mapIndex].id /* parmIndex for "map" */));
+//
+//
+// 		// render using mantra
+// //  		ENSURE_SUCCESS(session,  HAPI_RenderMaterialToImage(
+// //  			mat_info.assetId,
+// //  			mat_info.id,
+// // 			HAPI_SHADER_MANTRA));
+// // // 			HAPI_SHADER_OPENGL));
+//
+// 		HAPI_ImageInfo image_info;
+// 		ENSURE_SUCCESS(session,  HAPI_GetImageInfo(
+// 			session,
+// 			mat_info.assetId,
+// 			mat_info.id,
+// 			&image_info));
+//
+// 		ofmsg("width %1% height: %2% format: %3% dataFormat: %4% packing %5%",
+// 			  %image_info.xRes
+// 			  %image_info.yRes
+// 			  %get_string(session, image_info.imageFileFormatNameSH)
+// 			  %image_info.dataFormat
+// 			  %image_info.packing
+// 		);
+//
+// 		HAPI_StringHandle imageSH;
+//
+// 		ENSURE_SUCCESS(session,  HAPI_GetImagePlanes(
+// 			session,
+// 			mat_info.assetId,
+// 			mat_info.id,
+// 			&imageSH,
+// 			1
+// 		));
+//
+// 		int imgBufSize = -1;
+//
+// 		//TODO: get the image extraction working correctly..
+// 		//BUG: seems like the image buffer size is not exact.. look into it
+//
+// 		// get image planes into a buffer (default is png.. change to RGBA?)
+// 		ENSURE_SUCCESS(session,  HAPI_ExtractImageToMemory(
+// 			session,
+// 			mat_info.assetId,
+// 			mat_info.id,
+// 			NULL /* HAPI_DEFAULT_IMAGE_FORMAT_NAME */,
+// 			"C A", /* image planes */
+// 			&imgBufSize
+// 		));
+//
+// 		char *myBuffer = new char[imgBufSize];
+//
+// 		// put into a buffer
+// 		ENSURE_SUCCESS(session,  HAPI_GetImageMemoryBuffer(
+// 			session,
+// 			mat_info.assetId,
+// 			mat_info.id,
+// 			myBuffer,
+// // 			(char *)pd->map(),
+// 			imgBufSize
+// 		));
+//
+// 		// load into a pixelData bufferObject
+// // 		PixelData* pd = PixelData::create(128, 128, PixelData::FormatRgba);
+// 		PixelData* pd = new PixelData(PixelData::FormatRgba, image_info.xRes, image_info.yRes, (byte*) myBuffer, 0);
+//
+// // 		houdiniMenu->addImage(ImageUtils::loadImage("/tmp/orbolt_main.jpg", true));
+//
+// 		MenuItem* myNewImage = myMenuManager->getMainMenu()->addItem(MenuItem::Image);
+// // 		myNewImage->setImage(ImageUtils::loadImage("/tmp/orbolt_main.jpg", true));
+// 		myNewImage->setImage(pd);
+//
+// 		ofmsg("my image width %1% height: %2%, size %3%, bufSize %4%",
+// 			%pd->getWidth() %pd->getHeight() %pd->getSize() %imgBufSize
+// 		);
+// 	} else {
+// 		ofmsg("No material for %1%", %hg->getName());
+// 	}
 
 	// end materials
 
     int * vertex_list = new int[ part.info().vertexCount ];
-    ENSURE_SUCCESS( HAPI_GetVertexList(
-		NULL,
+    ENSURE_SUCCESS(session,  HAPI_GetVertexList(
+		session,
 		part.geo.object.asset.id,
 		part.geo.object.id,
 		part.geo.id,
@@ -918,10 +919,20 @@ void HoudiniEngine::initialize()
 	if (SystemManager::instance()->isMaster()) {
 	    try
 	    {
+			// create sessions
+			session = &mySession;
+// 			session = NULL; // NULL means use in-process session
+
+			if (session != NULL) {
+				HAPI_StartThriftSocketServer( true, 7788, 5000, NULL);
+				HAPI_CreateThriftSocketSession(session, "localhost", 7788);
+			}
+
 		    HAPI_CookOptions cook_options = HAPI_CookOptions_Create();
 
-			ENSURE_SUCCESS(HAPI_Initialize(
-				/* session */ NULL,
+			ENSURE_SUCCESS(session, HAPI_Initialize(
+// 				/* session */ NULL,
+				session,
 				&cook_options,
 				/*use_cooking_thread=*/true,
 				/*cooking_thread_max_size=*/-1,
@@ -933,7 +944,7 @@ void HoudiniEngine::initialize()
 	    }
 	    catch (hapi::Failure &failure)
 	    {
-			ofwarn("Houdini Failure.. %1%", %failure.lastErrorMessage());
+			ofwarn("Houdini Failure.. %1%", %failure.lastErrorMessage(session));
 			throw;
 	    }
 	}
@@ -1073,8 +1084,8 @@ void HoudiniEngine::wait_for_cook()
 
 		if (myLogEnabled) {
 	        int statusBufSize = 0;
-	        ENSURE_SUCCESS( HAPI_GetStatusStringBufLength(
-				NULL,
+	        ENSURE_SUCCESS(session,  HAPI_GetStatusStringBufLength(
+				session,
 /* 	            HAPI_STATUS_COOK_STATE, HAPI_STATUSVERBOSITY_MESSAGES, */
 	            HAPI_STATUS_COOK_STATE, HAPI_STATUSVERBOSITY_ERRORS,
 	            &statusBufSize ) );
@@ -1082,8 +1093,8 @@ void HoudiniEngine::wait_for_cook()
 	        if ( statusBufSize > 0 )
 	        {
 	            statusBuf = new char[statusBufSize];
-	            ENSURE_SUCCESS( HAPI_GetStatusString(
-					NULL,
+	            ENSURE_SUCCESS(session,  HAPI_GetStatusString(
+					session,
 	                HAPI_STATUS_COOK_STATE, statusBuf, statusBufSize ) );
 	        }
 	        if ( statusBuf )
@@ -1093,13 +1104,13 @@ void HoudiniEngine::wait_for_cook()
 	            delete[] statusBuf;
 	        }
 		}
-        HAPI_GetStatus(NULL, HAPI_STATUS_COOK_STATE, &status);
+        HAPI_GetStatus(session, HAPI_STATUS_COOK_STATE, &status);
     }
     while ( status > HAPI_STATE_MAX_READY_STATE );
-    ENSURE_COOK_SUCCESS( status );
+    ENSURE_COOK_SUCCESS( session, status );
 }
 
-static std::string houdiniEngine::get_string(int string_handle)
+static std::string houdiniEngine::get_string(HAPI_Session* session, int string_handle)
 {
     // A string handle of 0 means an invalid string handle -- similar to
     // a null pointer.  Since we can't return NULL, though, return an empty
@@ -1108,11 +1119,11 @@ static std::string houdiniEngine::get_string(int string_handle)
 	return "";
 
     int buffer_length;
-    ENSURE_SUCCESS(HAPI_GetStringBufLength(NULL, string_handle, &buffer_length));
+    ENSURE_SUCCESS(session, HAPI_GetStringBufLength(session, string_handle, &buffer_length));
 
     char * buf = new char[ buffer_length ];
 
-    ENSURE_SUCCESS(HAPI_GetString(NULL, string_handle, buf, buffer_length));
+    ENSURE_SUCCESS(session, HAPI_GetString(session, string_handle, buf, buffer_length));
 
     std::string result( buf );
     delete[] buf;
@@ -1589,7 +1600,7 @@ float HoudiniEngine::getFps()
 {
 	if (SystemManager::instance()->isMaster()) {
 		HAPI_TimelineOptions to;
-		HAPI_GetTimelineOptions(NULL, &to);
+		HAPI_GetTimelineOptions(session, &to);
 
 		return to.fps;
 	}
@@ -1603,7 +1614,7 @@ float HoudiniEngine::getTime()
 	float myTime = -1.0;
 
 	if (SystemManager::instance()->isMaster()) {
-		HAPI_GetTime(NULL, &myTime);
+		HAPI_GetTime(session, &myTime);
 	}
 
 	return myTime;
@@ -1612,7 +1623,7 @@ float HoudiniEngine::getTime()
 void HoudiniEngine::setTime(float time)
 {
 	if (SystemManager::instance()->isMaster()) {
-		HAPI_SetTime(NULL, time);
+		HAPI_SetTime(session, time);
 	}
 }
 
