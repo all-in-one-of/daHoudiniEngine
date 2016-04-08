@@ -167,6 +167,8 @@ void HoudiniEngine::createMenu(const String& asset_name)
 	if (parmMap.count(daFolderName) > 0) {
 		HAPI_ParmId daFolderId = parmMap[daFolderName].info().id;
 		while (daFolderIndex < parms.size()) {
+			hapi::Parm* parm = &parms[daFolderIndex];
+			ofmsg("(before) PARM %1%: %2%", %parm->label() %parm->info().type);
 			if (daFolderId == parms[daFolderIndex].info().id) {
 				break;
 			}
@@ -179,11 +181,15 @@ void HoudiniEngine::createMenu(const String& asset_name)
 	mi->setText(asset_name);
 	mi->setUserTag(asset_name);
 
+
+	// todo: group as menu items
 	for (int i = daFolderIndex; i < parms.size(); i++) {
 		hapi::Parm* parm = &parms[i];
 
 		// skip if invisible
 		if (parm->info().invisible) continue;
+
+		ofmsg("PARM %1%: %2%", %parm->label() %parm->info().type);
 
 		mi = houdiniMenu->addItem(MenuItem::Label);
 		mi->setText(parm->label());
@@ -198,6 +204,30 @@ void HoudiniEngine::createMenu(const String& asset_name)
 		// use checkbox for HAPI_PARMTYPE_TOGGLE
 		// use text box for string
 		// do multiparms
+		// do menu layout
+
+		// HAPI_PARMTYPE_INT 				= 0,
+		// HAPI_PARMTYPE_MULTIPARMLIST,		= 1
+		// HAPI_PARMTYPE_TOGGLE,			= 2
+		// HAPI_PARMTYPE_BUTTON,			= 3
+		//
+		// HAPI_PARMTYPE_FLOAT,				= 4
+		// HAPI_PARMTYPE_COLOR,				= 5
+		//
+		// HAPI_PARMTYPE_STRING,			= 6
+		// HAPI_PARMTYPE_PATH_FILE,			= 7
+		// HAPI_PARMTYPE_PATH_FILE_GEO,		= 8
+		// HAPI_PARMTYPE_PATH_FILE_IMAGE,	= 9
+		// HAPI_PARMTYPE_PATH_NODE,			= 10
+		//
+		// HAPI_PARMTYPE_FOLDERLIST,		= 11
+		//
+		// HAPI_PARMTYPE_FOLDER,			= 12
+		// HAPI_PARMTYPE_LABEL,				= 13
+		// HAPI_PARMTYPE_SEPARATOR,			= 14
+		//
+		// HAPI_PARMTYPE_MAX - total supported parms = 15?
+
 		if (parm->info().size == 1) {
 			if (parm->info().type == HAPI_PARMTYPE_INT) {
 				int val = parm->getIntValue(0);
@@ -208,6 +238,18 @@ void HoudiniEngine::createMenu(const String& asset_name)
 				mi = houdiniMenu->addSlider(parm->info().max + 1, "");
 				mi->getSlider()->setValue(val);
 				mi->setUserData(miLabel); // reference to the label, for updating values
+
+			} else if (parm->info().type == HAPI_PARMTYPE_TOGGLE) {
+				int val = parm->getIntValue(0);
+				mi->setText(parm->label());
+				mi->setUserTag(asset_name); // reference to the asset this param belongs to
+				assetParams[asset_name].push_back(*mi);
+				MenuItem* miLabel = mi;
+				mi = houdiniMenu->addButton("", "");
+				mi->getButton()->setCheckable(true);
+				mi->getButton()->setChecked(val);
+				mi->setUserData(miLabel); // reference to the label, for updating values
+
 			} else if (parm->info().type == HAPI_PARMTYPE_FLOAT) {
 				float val = parm->getFloatValue(0);
 				mi->setText(parm->label() + ": " + ostr("%1%", %val));
@@ -1057,6 +1099,13 @@ void HoudiniEngine::onMenuItemEvent(MenuItem* mi)
 
 		((MenuItem*)mi->getUserData())->setText(parm->label() + ": " +
 		ostr("%1%", %mi->getSlider()->getValue()));
+
+		update = true;
+
+	} else if (parm->info().type == HAPI_PARMTYPE_TOGGLE) {
+		parm->setIntValue(index, mi->getButton()->isChecked());
+
+		((MenuItem*)mi->getUserData())->setText(parm->label());
 
 		update = true;
 
