@@ -604,86 +604,82 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 
 	// Material handling (WIP)
 
-	int mat_id = -1;
+	bool all_same = true;
+	HAPI_MaterialId* mat_ids = new HAPI_MaterialId[ part.info().faceCount ];
+
+    ENSURE_SUCCESS(session,  HAPI_GetMaterialIdsOnFaces(
+		session,
+		part.geo.object.asset.id,
+		part.geo.object.id,
+		part.geo.id,
+        part.id,
+		&all_same /* are_all_the_same*/,
+		mat_ids, 0, part.info().faceCount ));
+
 	HAPI_MaterialInfo mat_info;
-//     ENSURE_SUCCESS(session,  HAPI_GetMaterialIdsOnFaces(
-// 		session,
-// 		part.geo.object.asset.id,
-// 		part.geo.object.id,
-// 		part.geo.id,
-//         part.id,
-// 		NULL /* are_all_the_same*/,
-// 		&mat_id, 0, 1));
 
-// 	ENSURE_SUCCESS(session,  HAPI_GetMaterialOnPart(
-// 		session,
-// 		part.geo.object.asset.id,
-// 		part.geo.object.id,
-// 		part.geo.id,
-//         part.id,
-// 		&mat_info));
+	ENSURE_SUCCESS(session,  HAPI_GetMaterialInfo (
+		session,
+		part.geo.object.asset.id,
+		mat_ids[0],
+		&mat_info));
 
+	if (mat_info.exists) {
+		ofmsg("Material info for %1%: matId: %2% assetId: %3% nodeId: %4%",
+			  %hg->getName() %mat_info.id %mat_info.assetId %mat_info.nodeId
+		);
 
-// 	ENSURE_SUCCESS(session,  HAPI_GetMaterialInfo (
-// 		part.geo.object.asset.id,
-// 		mat_id,
-// 		&mat_info));
+		HAPI_NodeInfo node_info;
+		ENSURE_SUCCESS(session,  HAPI_GetNodeInfo(
+			session,
+			mat_info.nodeId, &node_info ));
+		ofmsg("Node info for %1%: id: %2% assetId: %3% internal path: %4%",
+			  %get_string( session, node_info.nameSH) %node_info.id %node_info.assetId
+			  %get_string( session, node_info.internalNodePathSH)
+		);
 
-// 	if (mat_info.exists) {
-// 		ofmsg("Material info for %1%: matId: %2% assetId: %3% nodeId: %4%",
-// 			  %hg->getName() %mat_info.id %mat_info.assetId %mat_info.nodeId
-// 		);
-//
-// 		HAPI_NodeInfo node_info;
-// 		ENSURE_SUCCESS(session,  HAPI_GetNodeInfo(
-// 			session,
-// 			mat_info.nodeId, &node_info ));
-// 		ofmsg("Node info for %1%: id: %2% assetId: %3% internal path: %4%",
-// 			  %get_string( session, node_info.nameSH) %node_info.id %node_info.assetId
-// 			  %get_string( session, node_info.internalNodePathSH)
-// 		);
-//
-// 		HAPI_ParmInfo* parm_infos = new HAPI_ParmInfo[node_info.parmCount];
-// 		ENSURE_SUCCESS(session,  HAPI_GetParameters(
-// 			session,
-// 			mat_info.nodeId,
-// 			parm_infos,
-// 			0 /* start */,
-// 			node_info.parmCount));
-//
-// 		int mapIndex = -1;
-//
-// 		for (int i =0; i < node_info.parmCount; ++i) {
-// 			ofmsg("%1% %2% (%3%) id = %4%",
-// 				  %i
-// 				  %get_string( session, parm_infos[i].labelSH)
-// 				  %get_string( session, parm_infos[i].nameSH)
-// 				  %parm_infos[i].id);
-// 			if (parm_infos[i].stringValuesIndex >= 0) {
-// 				int sh = -1;
-// 				ENSURE_SUCCESS(session,  HAPI_GetParmStringValues(
-// 					session,
-// 					mat_info.nodeId, true,
-// 					&sh,
-// 					parm_infos[i].stringValuesIndex, 1)
-// 				);
-// 				ofmsg("%1%  %2%: %3%", %i %parm_infos[i].id
-// 					%get_string(session, sh));
-//
+		HAPI_ParmInfo* parm_infos = new HAPI_ParmInfo[node_info.parmCount];
+		ENSURE_SUCCESS(session,  HAPI_GetParameters(
+			session,
+			mat_info.nodeId,
+			parm_infos,
+			0 /* start */,
+			node_info.parmCount));
+
+		int mapIndex = -1;
+
+		for (int i =0; i < node_info.parmCount; ++i) {
+			ofmsg("%1% %2% (%3%) id = %4%",
+				  %i
+				  %get_string( session, parm_infos[i].labelSH)
+				  %get_string( session, parm_infos[i].nameSH)
+				  %parm_infos[i].id);
+			if (parm_infos[i].stringValuesIndex >= 0) {
+				int sh = -1;
+				ENSURE_SUCCESS(session,  HAPI_GetParmStringValues(
+					session,
+					mat_info.nodeId, true,
+					&sh,
+					parm_infos[i].stringValuesIndex, 1)
+				);
+				ofmsg("%1%  %2%: %3%", %i %parm_infos[i].id
+					%get_string(session, sh));
+
+				if (sh != -1 && (get_string(session, parm_infos[i].nameSH) == "baseColorMap")) {
 // 				if (sh != -1 && (get_string(session, parm_infos[i].nameSH) == "map")) {
-// 					mapIndex = i;
-// 				}
-// 			}
-// 		}
-//
-// 		for (int i = 0; i < node_info.parmCount; ++i) {
-// 			ofmsg("index %1%: %2% '%3%'",
-// 				  %i
-// 				  %parm_infos[i].id
-// 				  %get_string(session, parm_infos[i].nameSH)
-// 			);
-// 		}
-//
+					mapIndex = i;
+				}
+			}
+		}
+
+		for (int i = 0; i < node_info.parmCount; ++i) {
+			ofmsg("index %1%: %2% '%3%'",
+				  %i
+				  %parm_infos[i].id
+				  %get_string(session, parm_infos[i].nameSH)
+			);
+		}
+
 // 		ofmsg("the texture path: assetId=%1% matInfo.id=%2% mapIndex=%3% parm_id=%4% string=%5%",
 // 			  %mat_info.assetId
 // 			  %mat_info.id
@@ -691,90 +687,101 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 // 			  %parm_infos[mapIndex].id
 // 			  %get_string(session, parm_infos[mapIndex].nameSH)
 // 		);
-//
-// 		// NOTE this works if the image is a png
-//  		ENSURE_SUCCESS(session,  HAPI_RenderTextureToImage(
-// 			session,
-// 			mat_info.assetId,
+
+		// NOTE this works if the image is a png
+ 		ENSURE_SUCCESS(session,  HAPI_RenderTextureToImage(
+			session,
+			mat_info.assetId,
+ 			mat_info.id,
+			parm_infos[mapIndex].id /* parmIndex for "map" */));
+
+
+		// render using mantra
+//  		ENSURE_SUCCESS(session,  HAPI_RenderMaterialToImage(
+//  			mat_info.assetId,
 //  			mat_info.id,
-// 			parm_infos[mapIndex].id /* parmIndex for "map" */));
-//
-//
-// 		// render using mantra
-// //  		ENSURE_SUCCESS(session,  HAPI_RenderMaterialToImage(
-// //  			mat_info.assetId,
-// //  			mat_info.id,
-// // 			HAPI_SHADER_MANTRA));
-// // // 			HAPI_SHADER_OPENGL));
-//
-// 		HAPI_ImageInfo image_info;
-// 		ENSURE_SUCCESS(session,  HAPI_GetImageInfo(
-// 			session,
-// 			mat_info.assetId,
-// 			mat_info.id,
-// 			&image_info));
-//
-// 		ofmsg("width %1% height: %2% format: %3% dataFormat: %4% packing %5%",
-// 			  %image_info.xRes
-// 			  %image_info.yRes
-// 			  %get_string(session, image_info.imageFileFormatNameSH)
-// 			  %image_info.dataFormat
-// 			  %image_info.packing
-// 		);
-//
-// 		HAPI_StringHandle imageSH;
-//
-// 		ENSURE_SUCCESS(session,  HAPI_GetImagePlanes(
-// 			session,
-// 			mat_info.assetId,
-// 			mat_info.id,
-// 			&imageSH,
-// 			1
-// 		));
-//
-// 		int imgBufSize = -1;
-//
-// 		//TODO: get the image extraction working correctly..
-// 		//BUG: seems like the image buffer size is not exact.. look into it
-//
-// 		// get image planes into a buffer (default is png.. change to RGBA?)
-// 		ENSURE_SUCCESS(session,  HAPI_ExtractImageToMemory(
-// 			session,
-// 			mat_info.assetId,
-// 			mat_info.id,
+// 			HAPI_SHADER_MANTRA));
+// // 			HAPI_SHADER_OPENGL));
+
+		HAPI_ImageInfo image_info;
+		ENSURE_SUCCESS(session,  HAPI_GetImageInfo(
+			session,
+			mat_info.assetId,
+			mat_info.id,
+			&image_info));
+
+		ofmsg("width %1% height: %2% format: %3% dataFormat: %4% packing %5%",
+			  %image_info.xRes
+			  %image_info.yRes
+			  %get_string(session, image_info.imageFileFormatNameSH)
+			  %image_info.dataFormat
+			  %image_info.packing
+		);
+		// ---------
+
+		HAPI_StringHandle imageSH;
+
+		ENSURE_SUCCESS(session,  HAPI_GetImagePlanes(
+			session,
+			mat_info.assetId,
+			mat_info.id,
+			&imageSH,
+			1
+		));
+
+		int imgBufSize = -1;
+
+		//TODO: get the image extraction working correctly..
+		// needed to convert from PNG/JPG/etc to RGBA.. use decode() from omegalib
+
+		// get image planes into a buffer (default is png.. change to RGBA?)
+		ENSURE_SUCCESS(session,  HAPI_ExtractImageToMemory(
+			session,
+			mat_info.assetId,
+			mat_info.id,
+			HAPI_PNG_FORMAT_NAME,
 // 			NULL /* HAPI_DEFAULT_IMAGE_FORMAT_NAME */,
-// 			"C A", /* image planes */
-// 			&imgBufSize
-// 		));
-//
-// 		char *myBuffer = new char[imgBufSize];
-//
-// 		// put into a buffer
-// 		ENSURE_SUCCESS(session,  HAPI_GetImageMemoryBuffer(
-// 			session,
-// 			mat_info.assetId,
-// 			mat_info.id,
-// 			myBuffer,
-// // 			(char *)pd->map(),
-// 			imgBufSize
-// 		));
-//
-// 		// load into a pixelData bufferObject
-// // 		PixelData* pd = PixelData::create(128, 128, PixelData::FormatRgba);
-// 		PixelData* pd = new PixelData(PixelData::FormatRgba, image_info.xRes, image_info.yRes, (byte*) myBuffer, 0);
-//
-// // 		houdiniMenu->addImage(ImageUtils::loadImage("/tmp/orbolt_main.jpg", true));
-//
+			"C A", /* image planes */
+			&imgBufSize
+		));
+
+		char *myBuffer = new char[imgBufSize];
+
+		// put into a buffer
+		ENSURE_SUCCESS(session,  HAPI_GetImageMemoryBuffer(
+			session,
+			mat_info.assetId,
+			mat_info.id,
+			myBuffer /* tried (char *)pd->map() */,
+			imgBufSize
+		));
+
+		// load into a pixelData bufferObject
+		// this works!
+		Ref<PixelData> refPd = ImageUtils::decode((void *) myBuffer, image_info.xRes * image_info.xRes * 4, "");
+
+		// TODO: set this in the object's material(s)!
+		osg::Image* myImg = OsgModule::pixelDataToOsg(refPd, true); //transferBufferOwnership = true
+
+		// TODO: image is correct, and UVs also seem correct (bind per vertex regardless?)
+		// so apply iamge to texture to the object, probably do through houdiniGeometry? refer to
+		osg::Texture2D* tex = new osg::Texture2D;
+		tex->setImage(myImg);
+
+		// should have something else here.. this doesn't seem to be working..
+		// TODO: put textures in HoudiniGeometry, use default shader to show everything properly
+// 		hg->getOsgNode(geoIndex, objIndex)->getOrCreateStateSet()->setTextureAttributeAndModes(0, tex, osg::StateAttribute::ON);
+
+		// just trying this out.. it works??
 // 		MenuItem* myNewImage = myMenuManager->getMainMenu()->addItem(MenuItem::Image);
-// // 		myNewImage->setImage(ImageUtils::loadImage("/tmp/orbolt_main.jpg", true));
-// 		myNewImage->setImage(pd);
-//
+// 		myNewImage->setImage(refPd);
+
 // 		ofmsg("my image width %1% height: %2%, size %3%, bufSize %4%",
-// 			%pd->getWidth() %pd->getHeight() %pd->getSize() %imgBufSize
+// 			%refPd->getWidth() %refPd->getHeight() %refPd->getSize() %imgBufSize
 // 		);
-// 	} else {
-// 		ofmsg("No material for %1%", %hg->getName());
-// 	}
+	} else {
+		ofmsg("No material for %1%", %hg->getName());
+	}
 
 	// end materials
 
@@ -916,6 +923,8 @@ void HoudiniEngine::process_float_attrib(
     HAPI_AttributeInfo attrib_info = part.attribInfo(attrib_owner, attrib_name);
     float *attrib_data = part.getNewFloatAttribData(attrib_info, attrib_name);
 
+// 	cout << attrib_name << " (" << attrib_info.tupleSize << ")" << endl;
+
 	points.clear();
 	points.resize(attrib_info.count);
     for (int elem_index=0; elem_index < attrib_info.count; ++elem_index)
@@ -928,6 +937,7 @@ void HoudiniEngine::process_float_attrib(
 			v[tuple_index] = attrib_data[elem_index * attrib_info.tupleSize + tuple_index ];
 		}
 		points[elem_index] = v;
+// 		cout << elem_index << ": " << v << endl;
     }
 
     delete [] attrib_data;
