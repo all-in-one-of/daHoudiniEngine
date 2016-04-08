@@ -491,11 +491,17 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 	vector<Vector3f> normals;
 	vector<Vector3f> colors;
 
+	// texture coordinates
+	vector<Vector3f> uvs;
+
 	bool has_point_normals = false;
 	bool has_vertex_normals = false;
 	bool has_point_colors = false;
 	bool has_vertex_colors = false;
 	bool has_primitive_colors = false;
+
+	bool has_point_uvs = false;
+	bool has_vertex_uvs = false;
 
 // 	ofmsg("clearing %1%", %hg->getName());
 // 	hg->clear();
@@ -535,6 +541,10 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 			has_point_colors = true;
 		    process_float_attrib(part, HAPI_ATTROWNER_POINT, "Cd", colors);
 		}
+		if (point_attrib_names[attrib_index] == "uv") {
+			has_point_uvs = true;
+		    process_float_attrib(part, HAPI_ATTROWNER_POINT, "uv", uvs);
+		}
 	}
 
     vector<std::string> vertex_attrib_names = part.attribNames(
@@ -547,6 +557,10 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 		if (vertex_attrib_names[attrib_index] == "N") {
 			has_vertex_normals = true;
 		    process_float_attrib(part, HAPI_ATTROWNER_VERTEX, "N", normals);
+		}
+		if (vertex_attrib_names[attrib_index] == "uv") {
+			has_vertex_uvs = true;
+		    process_float_attrib(part, HAPI_ATTROWNER_VERTEX, "uv", uvs);
 		}
 	}
 
@@ -850,6 +864,14 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 					colors[ii][2],
 					1.0
 				), partIndex, geoIndex, objIndex);
+			}
+			if (has_point_uvs) {
+				hg->addUV(uvs[vertex_list[ myIndex ]], partIndex, geoIndex, objIndex);
+// 				cout << "(p)uvs: " << uvs[vertex_list[ myIndex ]][0] << ", " << uvs[vertex_list[ myIndex ]][1] << endl;
+			} else if (has_vertex_uvs) {
+// 				hg->addUV(uvs[vertex_list[ myIndex ]], partIndex, geoIndex, objIndex);
+				hg->addUV(uvs[myIndex], partIndex, geoIndex, objIndex);
+// 				cout << "(v)uvs: " << uvs[myIndex][0] << ", " << uvs[myIndex][1] << endl;
 			}
 
 //             cout << "v:" << myIndex << ", i: "

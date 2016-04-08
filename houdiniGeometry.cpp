@@ -228,3 +228,37 @@ Vector3f HoudiniGeometry::getNormal(int index, const int drawableIndex, const in
 	const osg::Vec3f& c = hobjs[objIndex].hgeoms[geodeIndex].hparts[drawableIndex].normals->at(index);
 	return Vector3f(c[0], c[1], c[2]);
 }
+
+///////////////////////////////////////////////////////////////////////////////
+int HoudiniGeometry::addUV(const Vector3f& uv, const int drawableIndex, const int geodeIndex, const int objIndex)
+{
+	oassert(hobjs[objIndex].hgeoms[geodeIndex].hparts.size() > drawableIndex);
+	if(hobjs[objIndex].hgeoms[geodeIndex].hparts[drawableIndex].uvs == NULL) {
+		hobjs[objIndex].hgeoms[geodeIndex].hparts[drawableIndex].uvs = new osg::Vec3Array();
+		hobjs[objIndex].hgeoms[geodeIndex].hparts[drawableIndex].geometry->
+			setTexCoordArray(0, hobjs[objIndex].hgeoms[geodeIndex].hparts[drawableIndex].uvs, osg::Array::BIND_PER_VERTEX);
+	}
+
+	hobjs[objIndex].hgeoms[geodeIndex].hparts[drawableIndex].uvs->push_back(osg::Vec3d(uv[0], uv[1], uv[2]));
+	return hobjs[objIndex].hgeoms[geodeIndex].hparts[drawableIndex].uvs->size() - 1;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+void HoudiniGeometry::setUV(int index, const Vector3f& uv, const int drawableIndex, const int geodeIndex, const int objIndex)
+{
+	oassert(hobjs[objIndex].hgeoms[geodeIndex].hparts[drawableIndex].uvs->size() > index);
+	osg::Vec3f& c = hobjs[objIndex].hgeoms[geodeIndex].hparts[drawableIndex].uvs->at(index);
+	c[0] = uv[0];
+	c[1] = uv[1];
+	c[2] = uv[2];
+	hobjs[objIndex].hgeoms[geodeIndex].hparts[drawableIndex].uvs->dirty();
+}
+
+///////////////////////////////////////////////////////////////////////////////
+Vector3f HoudiniGeometry::getUV(int index, const int drawableIndex, const int geodeIndex, const int objIndex)
+{
+	oassert(hobjs[objIndex].hgeoms[geodeIndex].hparts[drawableIndex].uvs->size() > index);
+	const osg::Vec3f& c = hobjs[objIndex].hgeoms[geodeIndex].hparts[drawableIndex].uvs->at(index);
+	return Vector3f(c[0], c[1], c[2]);
+}
+

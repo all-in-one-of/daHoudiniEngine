@@ -28,6 +28,7 @@ namespace houdiniEngine {
  		Ref<osg::Vec3Array> vertices;
  		Ref<osg::Vec4Array> colors;
 		Ref<osg::Vec3Array> normals;
+		Ref<osg::Vec3Array> uvs;
  		Ref<osg::Geometry> geometry;
 	} HPart;
 
@@ -216,6 +217,27 @@ namespace houdiniEngine {
 			const int objIndex
 		);
 		Vector3f getNormal(
+			int index,
+			const int drawableIndex,
+			const int geodeIndex,
+			const int objIndex
+		);
+
+		//! Adds uv indices
+		int addUV(
+			const Vector3f& uv,
+			const int drawableIndex,
+			const int geodeIndex,
+			const int objIndex
+		);
+		void setUV(
+			int index,
+			const Vector3f& uv,
+			const int drawableIndex,
+			const int geodeIndex,
+			const int objIndex
+		);
+		Vector3f getUV(
 			int index,
 			const int drawableIndex,
 			const int geodeIndex,
