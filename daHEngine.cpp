@@ -144,6 +144,45 @@ int HoudiniEngine::loadAssetLibraryFromFile(const String& otlFile)
 
 }
 
+void HoudiniEngine::createMenuItem(ui::Menu* menu, const String& asset_name, hapi::Parm* parm, int index) {
+	MenuItem* mi = NULL;
+
+	ofmsg("%1% PARM %2%: %3% s-%4% id-%5%", %index %parm->label() %parm->info().type %parm->info().size %parm->info().parentId );
+
+	// TODO: generalise this so the following works:
+	// check for uiMin/uiMax, then use sliders
+	// use text boxes for vectors and non min/max things
+	// use submenus/containers for choices
+	// use the joinNext variable for displaying items
+	// use checkbox for HAPI_PARMTYPE_TOGGLE
+	// use text box for string
+	// do multiparms
+	// do menu layout
+
+	// HAPI_PARMTYPE_INT 				= 0,
+	// HAPI_PARMTYPE_MULTIPARMLIST,		= 1
+	// HAPI_PARMTYPE_TOGGLE,			= 2
+	// HAPI_PARMTYPE_BUTTON,			= 3
+	//
+	// HAPI_PARMTYPE_FLOAT,				= 4
+	// HAPI_PARMTYPE_COLOR,				= 5
+	//
+	// HAPI_PARMTYPE_STRING,			= 6
+	// HAPI_PARMTYPE_PATH_FILE,			= 7
+	// HAPI_PARMTYPE_PATH_FILE_GEO,		= 8
+	// HAPI_PARMTYPE_PATH_FILE_IMAGE,	= 9
+	// HAPI_PARMTYPE_PATH_NODE,			= 10
+	//
+	// HAPI_PARMTYPE_FOLDERLIST,		= 11
+	//
+	// HAPI_PARMTYPE_FOLDER,			= 12
+	// HAPI_PARMTYPE_LABEL,				= 13
+	// HAPI_PARMTYPE_SEPARATOR,			= 14
+	//
+	// HAPI_PARMTYPE_MAX - total supported parms = 15?
+
+}
+
 
 // only run on master
 // identical-looking menus get created on slaves

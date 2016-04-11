@@ -123,6 +123,8 @@ namespace houdiniEngine {
 		void setLoggingEnabled(const bool toggle);
 
 	private:
+		void createMenuItem(ui::Menu* menu, const String& asset_name, hapi::Parm* parm, int index);
+
 		SceneManager* mySceneManager;
 
 		// Scene editor. This will be used to manipulate the object.
