@@ -494,7 +494,16 @@ StaticObject* HoudiniEngine::instantiateGeometry(const String& asset)
 		}
 	}
 
-	return new StaticObject(mySceneManager, s);
+	StaticObject* so = new StaticObject(mySceneManager, s);
+
+	// TODO: make this general
+	if (mySceneManager->getTexture("testing", false) != NULL) {
+		so->setEffect("textured-emissive -d white -e white");
+		so->getMaterial()->setDiffuseTexture("testing");
+
+	}
+
+	return so;
 }
 
 // put houdini engine asset data into a houdiniGeometry
@@ -879,23 +888,23 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 
 		// load into a pixelData bufferObject
 		// this works!
-		Ref<PixelData> refPd = ImageUtils::decode((void *) myBuffer, image_info.xRes * image_info.xRes * 4, "");
+// 		Ref<PixelData> refPd = ImageUtils::decode((void *) myBuffer, image_info.xRes * image_info.yRes * 4);
+		pds.push_back(ImageUtils::decode((void *) myBuffer, image_info.xRes * image_info.yRes * 4));
 
-		// TODO: set this in the object's material(s)!
-		osg::Image* myImg = OsgModule::pixelDataToOsg(refPd, true); //transferBufferOwnership = true
+		// TODO: general case for texture names (diffuse, spec, env, etc)
+		osg::Texture2D* texture = mySceneManager->createTexture("testing", pds[0]);
 
-		// TODO: image is correct, and UVs also seem correct (bind per vertex regardless?)
-		// so apply iamge to texture to the object, probably do through houdiniGeometry? refer to
-		osg::Texture2D* tex = new osg::Texture2D;
-		tex->setImage(myImg);
+		// need to set wrap modes too
+		osg::Texture::WrapMode textureWrapMode;
+		textureWrapMode = osg::Texture::REPEAT;
+
+		texture->setWrap(osg::Texture2D::WRAP_R, textureWrapMode);
+		texture->setWrap(osg::Texture2D::WRAP_S, textureWrapMode);
+		texture->setWrap(osg::Texture2D::WRAP_T, textureWrapMode);
 
 		// should have something else here.. this doesn't seem to be working..
 		// TODO: put textures in HoudiniGeometry, use default shader to show everything properly
 // 		hg->getOsgNode(geoIndex, objIndex)->getOrCreateStateSet()->setTextureAttributeAndModes(0, tex, osg::StateAttribute::ON);
-
-		// just trying this out.. it works??
-// 		MenuItem* myNewImage = myMenuManager->getMainMenu()->addItem(MenuItem::Image);
-// 		myNewImage->setImage(refPd);
 
 // 		ofmsg("my image width %1% height: %2%, size %3%, bufSize %4%",
 // 			%refPd->getWidth() %refPd->getHeight() %refPd->getSize() %imgBufSize

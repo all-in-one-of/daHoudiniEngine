@@ -150,6 +150,9 @@ namespace houdiniEngine {
 		// geometries
 		HGDictionary myHoudiniGeometrys;
 
+		// Materials/textures
+		vector <Ref<PixelData> > pds;
+
 		// this is only maintained on the master
 		Mapping instancedHEAssets;
 
