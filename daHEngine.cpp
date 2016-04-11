@@ -1450,7 +1450,9 @@ void HoudiniEngine::commitSharedData(SharedOStream& out)
 	}
 
 	// distribute the parameter list
-	int parmCount = assetParams.size();
+	// int parmCount = assetParams.size();
+	// disable parm distribution until menu is improved (WIP)
+	int parmCount = 0;
 	out << parmCount;
 
     foreach(Menus::Item mis, assetParams) {
