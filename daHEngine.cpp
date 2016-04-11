@@ -1200,6 +1200,13 @@ void HoudiniEngine::onMenuItemEvent(MenuItem* mi)
 
 	if (update) {
 
+		// TODO: do incremental checks for what i need to update:
+		// HAPI_ObjectInfo::hasTransformChanged
+		// HAPI_ObjectInfo::haveGeosChanged
+		// HAPI_GeoInfo::hasGeoChanged
+		// HAPI_GeoInfo::hasMaterialChanged
+
+
 		myAsset->cook();
 		wait_for_cook();
 
