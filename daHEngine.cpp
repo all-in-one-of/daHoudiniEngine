@@ -215,116 +215,156 @@ void HoudiniEngine::createMenu(const String& asset_name)
 		}
 	}
 
-	MenuItem* mi = NULL;
-	mi = houdiniMenu->addItem(MenuItem::Label);
-	mi->setText(asset_name);
-	mi->setUserTag(asset_name);
-
-
+	ui::Menu* menu = houdiniMenu;
 	// todo: group as menu items
-	for (int i = daFolderIndex; i < parms.size(); i++) {
+// 	for (int i = daFolderIndex; i < parms.size(); i++) {
+	int i = daFolderIndex;
+
+	Dictionary<int, Menu* > subMenus; // keep refs to submenus
+
+	while (i < parms.size()) {
 		hapi::Parm* parm = &parms[i];
+		ofmsg("PARM %1%: %2% %3% %4% %5%", %parm->label()
+										   %parm->info().id
+										   %parm->info().type
+										   %parm->info().size
+										   %parm->info().parentId
+		);
 
-		// skip if invisible
-		if (parm->info().invisible) continue;
-
-		ofmsg("PARM %1%: %2%", %parm->label() %parm->info().type);
-
-		mi = houdiniMenu->addItem(MenuItem::Label);
-		mi->setText(parm->label());
-
-		assetParams[asset_name].push_back(*mi);
-
-		// TODO: generalise this so the following works:
-		// check for uiMin/uiMax, then use sliders
-		// use text boxes for vectors and non min/max things
-		// use submenus/containers for choices
-		// use the joinNext variable for displaying items
-		// use checkbox for HAPI_PARMTYPE_TOGGLE
-		// use text box for string
-		// do multiparms
-		// do menu layout
-
-		// HAPI_PARMTYPE_INT 				= 0,
-		// HAPI_PARMTYPE_MULTIPARMLIST,		= 1
-		// HAPI_PARMTYPE_TOGGLE,			= 2
-		// HAPI_PARMTYPE_BUTTON,			= 3
-		//
-		// HAPI_PARMTYPE_FLOAT,				= 4
-		// HAPI_PARMTYPE_COLOR,				= 5
-		//
-		// HAPI_PARMTYPE_STRING,			= 6
-		// HAPI_PARMTYPE_PATH_FILE,			= 7
-		// HAPI_PARMTYPE_PATH_FILE_GEO,		= 8
-		// HAPI_PARMTYPE_PATH_FILE_IMAGE,	= 9
-		// HAPI_PARMTYPE_PATH_NODE,			= 10
-		//
-		// HAPI_PARMTYPE_FOLDERLIST,		= 11
-		//
-		// HAPI_PARMTYPE_FOLDER,			= 12
-		// HAPI_PARMTYPE_LABEL,				= 13
-		// HAPI_PARMTYPE_SEPARATOR,			= 14
-		//
-		// HAPI_PARMTYPE_MAX - total supported parms = 15?
-
-		if (parm->info().size == 1) {
-			if (parm->info().type == HAPI_PARMTYPE_INT) {
-				int val = parm->getIntValue(0);
-				mi->setText(parm->label() + ": " + ostr("%1%", %val));
-				mi->setUserTag(asset_name); // reference to the asset this param belongs to
-				assetParams[asset_name].push_back(*mi);
-				MenuItem* miLabel = mi;
-				mi = houdiniMenu->addSlider(parm->info().max + 1, "");
-				mi->getSlider()->setValue(val);
-				mi->setUserData(miLabel); // reference to the label, for updating values
-
-			} else if (parm->info().type == HAPI_PARMTYPE_TOGGLE) {
-				int val = parm->getIntValue(0);
-				mi->setText(parm->label());
-				mi->setUserTag(asset_name); // reference to the asset this param belongs to
-				assetParams[asset_name].push_back(*mi);
-				MenuItem* miLabel = mi;
-				mi = houdiniMenu->addButton("", "");
-				mi->getButton()->setCheckable(true);
-				mi->getButton()->setChecked(val);
-				mi->setUserData(miLabel); // reference to the label, for updating values
-
-			} else if (parm->info().type == HAPI_PARMTYPE_FLOAT) {
-				float val = parm->getFloatValue(0);
-				mi->setText(parm->label() + ": " + ostr("%1%", %val));
-				mi->setUserTag(asset_name);
-				assetParams[asset_name].push_back(*mi);
-				MenuItem* miLabel = mi;
-				mi = houdiniMenu->addSlider(100 * (parm->info().max), "");
-				mi->getSlider()->setValue(int(val) * 100);
-				// use userData to store ref to the label, for changing values
-				// when updating
-				mi->setUserData(miLabel);
+		if (parm->info().type == HAPI_PARMTYPE_FOLDERLIST) {
+			cout << "doing folderList " << parm->info().id << endl;
+			ui::Menu* subMenu = NULL;
+			if (parm->info().parentId == -1) {
+				subMenu = houdiniMenu;
+			} else {
+				subMenu = menu->addSubMenu(parm->label() + "-->");
 			}
-			mi->setUserTag(parm->name());
-			mi->setListener(this);
-			assetParams[asset_name].push_back(*mi);
+
+			subMenus[parm->info().id] = subMenu;
+		} else if (parm->info().type == HAPI_PARMTYPE_FOLDER) {
+			cout << "doing folder " << parm->info().id << endl;
+			ui::Menu* subMenu = menu->addSubMenu(parm->label());
+			subMenus[parm->info().id] = subMenu;
 		} else {
-			// use sliders for floats
-			if (parm->info().type == HAPI_PARMTYPE_FLOAT) {
+			cout << "doing param " << parm->info().id << endl;
+			if (parm->info().parentId == -1) {
+				menu = houdiniMenu;
+			} else {
+				menu = subMenus[parm->info().parentId];
+			}
+			MenuItem* mi = NULL;
+
+			// skip if invisible, BUG: but this affects submenus too..
+			if (parm->info().invisible) {
+				i++;
+				continue;
+			}
+
+			if (parm->info().size == 1) {
+				mi = menu->addItem(MenuItem::Label);
 				mi->setText(parm->label());
-				mi->setUserTag(asset_name);
-				MenuItem* miLabel = mi;
-				for (int j = 0; j < parm->info().size; ++j) {
-					float val = parm->getFloatValue(j);
-					mi = houdiniMenu->addSlider(100 * (parm->info().max), "");
+
+				assetParams[asset_name].push_back(*mi);
+
+				if (parm->info().type == HAPI_PARMTYPE_INT) {
+					int val = parm->getIntValue(0);
+					mi->setText(parm->label() + ": " + ostr("%1%", %val));
+					mi->setUserTag(asset_name); // reference to the asset this param belongs to
+					assetParams[asset_name].push_back(*mi);
+					MenuItem* miLabel = mi;
+					mi = menu->addSlider(parm->info().max + 1, "");
+					mi->getSlider()->setValue(val);
+					mi->setUserData(miLabel); // reference to the label, for updating values
+
+				} else if (parm->info().type == HAPI_PARMTYPE_TOGGLE) {
+					int val = parm->getIntValue(0);
+					mi->setText(parm->label());
+					mi->setUserTag(asset_name); // reference to the asset this param belongs to
+					assetParams[asset_name].push_back(*mi);
+					MenuItem* miLabel = mi;
+					mi = menu->addButton("", "");
+					mi->getButton()->setCheckable(true);
+					mi->getButton()->setChecked(val);
+					mi->setUserData(miLabel); // reference to the label, for updating values
+
+				} else if (parm->info().type == HAPI_PARMTYPE_BUTTON) {
+					int val = parm->getIntValue(0);
+					mi->setText(parm->label());
+					mi->setUserTag(asset_name); // reference to the asset this param belongs to
+					assetParams[asset_name].push_back(*mi);
+					MenuItem* miLabel = mi;
+					mi = menu->addButton("", "");
+// 					mi->getButton()->setCheckable(true);
+					mi->getButton()->setChecked(val);
+					mi->setUserData(miLabel); // reference to the label, for updating values
+
+				} else if (parm->info().type == HAPI_PARMTYPE_FLOAT ||
+						   parm->info().type == HAPI_PARMTYPE_COLOR) {
+					float val = parm->getFloatValue(0);
+					mi->setText(parm->label() + ": " + ostr("%1%", %val));
+					mi->setUserTag(asset_name);
+					assetParams[asset_name].push_back(*mi);
+					MenuItem* miLabel = mi;
+					mi = menu->addSlider(100 * (parm->info().max), "");
 					mi->getSlider()->setValue(int(val) * 100);
 					// use userData to store ref to the label, for changing values
 					// when updating
 					mi->setUserData(miLabel);
-					mi->setUserTag(parm->name() + ostr(" %1%", %j));
-					mi->setListener(this);
-					miLabel->setText(ostr("%1% %2%", %miLabel->getText() %val));
+				} else if (parm->info().type == HAPI_PARMTYPE_STRING ||
+						   parm->info().type == HAPI_PARMTYPE_PATH_FILE ||
+						   parm->info().type == HAPI_PARMTYPE_PATH_FILE_GEO	||
+						   parm->info().type == HAPI_PARMTYPE_PATH_FILE_IMAGE) { // TODO: update with TextBox
+					std::string val = parm->getStringValue(0);
+					mi->setText(parm->label() + ": " + ostr("%1%", %val));
+					mi->setUserTag(asset_name); // reference to the asset this param belongs to
 					assetParams[asset_name].push_back(*mi);
+					MenuItem* miLabel = mi;
+					mi = menu->addItem(MenuItem::Label);
+					mi->setText(val);
+					mi->setUserData(miLabel); // reference to the label, for updating values
+				} else if (parm->info().type == HAPI_PARMTYPE_SEPARATOR) { // TODO: don't double up
+					mi->setText("");
+					mi->setUserTag(asset_name); // reference to the asset this param belongs to
+					assetParams[asset_name].push_back(*mi);
+					MenuItem* miLabel = mi;
+					mi = menu->addItem(MenuItem::Label);
+					mi->setText("");
+					mi->setUserData(miLabel); // reference to the label, for updating values
+				}
+				mi->setUserTag(parm->name());
+				mi->setListener(this);
+				assetParams[asset_name].push_back(*mi);
+			} else {
+				mi = menu->addItem(MenuItem::Label);
+				mi->setText(parm->label());
+
+				assetParams[asset_name].push_back(*mi);
+
+				// use sliders for floats
+				if (parm->info().type == HAPI_PARMTYPE_FLOAT ||
+					parm->info().type == HAPI_PARMTYPE_COLOR) {
+					mi->setText(parm->label());
+					mi->setUserTag(asset_name);
+					MenuItem* miLabel = mi;
+					for (int j = 0; j < parm->info().size; ++j) {
+						float val = parm->getFloatValue(j);
+						mi = menu->addSlider(100 * (parm->info().max), "");
+						mi->getSlider()->setValue(int(val) * 100);
+						// use userData to store ref to the label, for changing values
+						// when updating
+						mi->setUserData(miLabel);
+						mi->setUserTag(parm->name() + ostr(" %1%", %j));
+						mi->setListener(this);
+						miLabel->setText(ostr("%1% %2%", %miLabel->getText() %val));
+						assetParams[asset_name].push_back(*mi);
+					}
 				}
 			}
 		}
+
+		i++;
 	}
+
 }
 
 
@@ -1467,6 +1507,8 @@ void HoudiniEngine::commitSharedData(SharedOStream& out)
 			} else if (mi->getType() == MenuItem::Slider) {
 				out << mi->getSlider()->getTicks();
 				out << mi->getSlider()->getValue();
+			} else if (mi->getType() == MenuItem::Button) { // checkbox is actually a button
+				out << mi->isChecked();
 			}
 		}
 	}
@@ -1713,6 +1755,20 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 					assetParams[name].push_back(*slider);
 				}
 				slider->getSlider()->setValue(value);
+			} else if (t == MenuItem::Button) {
+				int value;
+				in >> value;
+// 				ofmsg("SLAVE: slider : %1% out of %2%", %value %ticks);
+				MenuItem* button = NULL;
+
+				if (assetParams[name].size() > k) {
+					button = &(assetParams[name][k]);
+				} else {
+					button = houdiniMenu->addButton("", "");
+					assetParams[name].push_back(*button);
+				}
+				button->getButton()->setCheckable(true);
+				button->getButton()->setChecked(value);
 			}
 		}
 	}
