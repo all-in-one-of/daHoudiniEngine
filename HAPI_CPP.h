@@ -500,7 +500,7 @@ public:
 	return result;
     }
 
-    std::string getStringValue(HAPI_Session* session, int sub_index) const
+    std::string getStringValue(int sub_index) const
     {
 	int string_handle;
 	throwOnFailure(HAPI_GetParmStringValues(
