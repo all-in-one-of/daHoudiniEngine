@@ -498,7 +498,7 @@ StaticObject* HoudiniEngine::instantiateGeometry(const String& asset)
 
 	// TODO: make this general
 	if (mySceneManager->getTexture("testing", false) != NULL) {
-		so->setEffect("textured-emissive -d white -e white");
+		so->setEffect("textured -d white -e white");
 		so->getMaterial()->setDiffuseTexture("testing");
 
 	}
