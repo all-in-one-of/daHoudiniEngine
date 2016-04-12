@@ -1081,7 +1081,10 @@ void HoudiniEngine::initialize()
 				HAPI_CreateThriftSocketSession(session, "localhost", 7788);
 			}
 
+			// TODO: expose these in python to allow changeable options
 		    HAPI_CookOptions cook_options = HAPI_CookOptions_Create();
+			cook_options.cookTemplatedGeos = true; // default false
+
 
 			ENSURE_SUCCESS(session, HAPI_Initialize(
 // 				/* session */ NULL,
