@@ -715,10 +715,109 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 	}
 
 	// TODO: render curves
-// 	if (part.info().isCurve) {
-//  		ofmsg ("This part is a curve: %1%", %part.name());
-// 		return;
-// 	}
+	// CONTINUE FROM HERE, rendering these curves!
+	if (part.info().type == HAPI_PARTTYPE_CURVE) {
+ 		ofmsg ("This part is a curve: %1% %2%", %part.name() %part.id);
+
+		HAPI_CurveInfo curve_info;
+		ENSURE_SUCCESS(session, HAPI_GetCurveInfo(
+			session,
+			part.geo.object.asset.id,
+			part.geo.object.id,
+			part.geo.id,
+	        part.id,
+			&curve_info
+		) );
+
+		if ( curve_info.curveType == HAPI_CURVETYPE_LINEAR )
+			std::cout << "curve mesh type = Linear" << std::endl;
+		else if ( curve_info.curveType == HAPI_CURVETYPE_BEZIER )
+			std::cout << "curve mesh type = Bezier" << std::endl;
+		else if ( curve_info.curveType == HAPI_CURVETYPE_NURBS )
+			std::cout << "curve mesh type = Nurbs" << std::endl;
+		else
+			std::cout << "curve mesh type = Unknown" << std::endl;
+
+		std::cout << "curve count: " << curve_info.curveCount << std::endl;
+		int vertex_offset = 0;
+		int knot_offset = 0;
+		for ( int i = 0; i < curve_info.curveCount; i++ ) {
+			std::cout
+				<< "curve " << i + 1 << " of "
+				<< curve_info.curveCount << ":" << std::endl;
+			// Number of CVs
+			int num_vertices;
+			HAPI_GetCurveCounts(
+				session,
+				part.geo.object.asset.id,
+				part.geo.object.id,
+				part.geo.id,
+		        part.id,
+				&num_vertices,
+				i,
+				1
+			);
+			std::cout << "num vertices: " << num_vertices << std::endl;
+			// Order of this particular curve
+			int order;
+			if ( curve_info.order != HAPI_CURVE_ORDER_VARYING
+				&& curve_info.order != HAPI_CURVE_ORDER_INVALID )
+				order = curve_info.order;
+			else
+				HAPI_GetCurveOrders(
+					session,
+					part.geo.object.asset.id,
+					part.geo.object.id,
+					part.geo.id,
+			        part.id,
+					&order,
+					i,
+					1
+				);
+			std::cout << "curve order: " << order << std::endl;
+			// If there's not enough vertices, then don't try to
+			// create the curve.
+			if ( num_vertices < order )
+			{
+				std::cout << "not enought vertices on curve " << i << " of "
+					<< curve_info.curveCount << ": skipping" << std::endl;
+				// The curve at i will have numVertices vertices, and may have
+				// some knots. The knot count will be numVertices + order for
+				// nurbs curves.
+				vertex_offset += num_vertices * 4;
+				knot_offset += num_vertices + order;
+				continue;
+			}
+
+			cout << "points size: " << points.size() << endl;
+			cout << "vert size: " << num_vertices << endl;
+
+			// draw the curve
+			// TODO: add bezier function, segmentalise curves
+			hg->addPrimitiveOsg(
+				osg::PrimitiveSet::LINE_STRIP,
+				0,
+				num_vertices - 1,
+				partIndex,
+				geoIndex,
+				objIndex
+			);
+
+			for (int j = 0; j < points.size(); ++j) {
+				hg->addVertex(points[j], partIndex, geoIndex, objIndex);
+				cout << points[j] << endl;
+				hg->addColor(Color(
+					colors[j][0],
+					colors[j][1],
+					colors[j][2],
+					1.0
+				), partIndex, geoIndex, objIndex);
+			}
+
+		}
+		hg->dirty();
+		return;
+	}
 
     int *face_counts = new int[ part.info().faceCount ];
     ENSURE_SUCCESS(session,  HAPI_GetFaceCounts(
