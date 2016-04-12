@@ -613,6 +613,15 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 	}
 }
 
+// TODO: expand on this..
+Vector3f bez(float t, Vector3f a, Vector3f b) {
+	return Vector3f(
+		a[0] + t *(b[0] - a[0]),
+		a[1] + t *(b[1] - a[1]),
+		a[2] + t *(b[2] - a[2])
+	);
+}
+
 // TODO: incrementally update the geometry?
 // send a new version, and still have the old version?
 void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex, const int geoIndex, const int partIndex, HoudiniGeometry* hg)
@@ -741,6 +750,8 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 		std::cout << "curve count: " << curve_info.curveCount << std::endl;
 		int vertex_offset = 0;
 		int knot_offset = 0;
+		int segments = 20;
+
 		for ( int i = 0; i < curve_info.curveCount; i++ ) {
 			std::cout
 				<< "curve " << i + 1 << " of "
@@ -796,23 +807,64 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 			// TODO: add bezier function, segmentalise curves
 			hg->addPrimitiveOsg(
 				osg::PrimitiveSet::LINE_STRIP,
-				0,
-				num_vertices - 1,
+				vertex_offset * segments,
+				(vertex_offset + num_vertices) * segments - 1,
 				partIndex,
 				geoIndex,
 				objIndex
 			);
 
-			for (int j = 0; j < points.size(); ++j) {
-				hg->addVertex(points[j], partIndex, geoIndex, objIndex);
-				cout << points[j] << endl;
-				hg->addColor(Color(
-					colors[j][0],
-					colors[j][1],
-					colors[j][2],
-					1.0
-				), partIndex, geoIndex, objIndex);
+			for (int j = 0; j < num_vertices - 1; ++j) {
+				for (int seg = 0; seg < segments; ++seg) {
+
+					Vector3f p = bez(
+						(float) seg / segments,
+						points[vertex_offset + j],
+					    points[vertex_offset + j + 1]
+					);
+
+					hg->addVertex(p, partIndex, geoIndex, objIndex);
+					cout << p << endl;
+					if(has_point_colors) {
+						hg->addColor(Color(
+							colors[vertex_offset + j][0],
+							colors[vertex_offset + j][1],
+							colors[vertex_offset + j][2],
+							1.0
+						), partIndex, geoIndex, objIndex);
+					} else if (has_primitive_colors) {
+						hg->addColor(Color(
+							colors[i][0],
+							colors[i][1],
+							colors[i][2],
+							1.0
+						), partIndex, geoIndex, objIndex);
+					}
+				}
 			}
+
+			vertex_offset += num_vertices;
+
+			omsg("done this curve");
+
+// 			if (curve_info.hasKnots) {
+// 				std::vector< float > knots;
+// 				knots.resize( num_vertices + order );
+// 				HAPI_GetCurveKnots(
+// 					session,
+// 					part.geo.object.asset.id,
+// 					part.geo.object.id,
+// 					part.geo.id,
+// 			        part.id,
+// 					&knots.front(),
+// 					knot_offset,
+// 					num_vertices + order
+//
+// 				);
+// 				for( int j = 0; j < num_vertices + order; j++ ) {
+// 					cout << "knot " << j << ": " << knots[ j ] << endl;
+// 				}
+// 			}
 
 		}
 		hg->dirty();
