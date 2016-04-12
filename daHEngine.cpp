@@ -646,10 +646,13 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 	// TODO: improve this..
     vector<std::string> point_attrib_names = part.attribNames(
 	HAPI_ATTROWNER_POINT);
+
+	omsg("Point Attributes:");
+
     for (int attrib_index=0; attrib_index < int(point_attrib_names.size());
 	    ++attrib_index) {
 
-// 		ofmsg("has %1%", %point_attrib_names[attrib_index]);
+		ofmsg("has %1%", %point_attrib_names[attrib_index]);
 
 		if (point_attrib_names[attrib_index] == "P") {
 		    process_float_attrib(part, HAPI_ATTROWNER_POINT, "P", points);
@@ -670,10 +673,13 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 
     vector<std::string> vertex_attrib_names = part.attribNames(
 	HAPI_ATTROWNER_VERTEX);
-    for (int attrib_index=0; attrib_index < int(vertex_attrib_names.size());
+
+	omsg("Vertex Attributes");
+
+	for (int attrib_index=0; attrib_index < int(vertex_attrib_names.size());
 	    ++attrib_index) {
 
-// 		ofmsg("has %1%", %vertex_attrib_names[attrib_index]);
+		ofmsg("has %1%", %vertex_attrib_names[attrib_index]);
 
 		if (vertex_attrib_names[attrib_index] == "N") {
 			has_vertex_normals = true;
@@ -687,10 +693,13 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 
     vector<std::string> primitive_attrib_names = part.attribNames(
 	HAPI_ATTROWNER_PRIM);
-    for (int attrib_index=0; attrib_index < int(primitive_attrib_names.size());
+
+	omsg("Primitive Attributes");
+
+	for (int attrib_index=0; attrib_index < int(primitive_attrib_names.size());
 	    ++attrib_index) {
 
-// 		ofmsg("has %1%", %primitive_attrib_names[attrib_index]);
+		ofmsg("has %1%", %primitive_attrib_names[attrib_index]);
 
 		if (primitive_attrib_names[attrib_index] == "Cd") {
 			has_primitive_colors = true;
