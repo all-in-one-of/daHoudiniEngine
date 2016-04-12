@@ -250,7 +250,9 @@ void HoudiniEngine::createMenu(const String& asset_name)
 			if (parm->info().parentId == -1) {
 				menu = houdiniMenu;
 			} else {
-				menu = subMenus[parm->info().parentId];
+				if (subMenus.find(parm->info().parentId) != subMenus.end()) {
+					menu = subMenus[parm->info().parentId];
+				}
 			}
 			MenuItem* mi = NULL;
 
