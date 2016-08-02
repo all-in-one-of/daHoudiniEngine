@@ -30,6 +30,7 @@
 
 #include <daHoudiniEngine/daHEngine.h>
 #include <daHoudiniEngine/houdiniGeometry.h>
+#include <daHoudiniEngine/loaderTools.h>
 
 using namespace houdiniEngine;
 
@@ -52,8 +53,13 @@ BOOST_PYTHON_MODULE(daHEngine)
  		PYAPI_METHOD(HoudiniEngine, cook)
  		PYAPI_METHOD(HoudiniEngine, setLoggingEnabled)
 		;
+
+	// tools for generic models exported from houdini
+	PYAPI_REF_BASE_CLASS(LoaderTools)
+		PYAPI_STATIC_METHOD(LoaderTools, createBillboardNodes); 
 }
 #endif
+
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -106,6 +112,8 @@ HoudiniEngine::~HoudiniEngine()
 	}
 }
 
+
+
 int HoudiniEngine::loadAssetLibraryFromFile(const String& otlFile)
 {
     int assetCount = -1;
@@ -143,6 +151,8 @@ int HoudiniEngine::loadAssetLibraryFromFile(const String& otlFile)
     return assetCount;
 
 }
+
+
 
 void HoudiniEngine::createMenuItem(ui::Menu* menu, const String& asset_name, hapi::Parm* parm, int index) {
 	MenuItem* mi = NULL;
@@ -402,6 +412,8 @@ int HoudiniEngine::instantiateAsset(const String& asset_name)
 //     HAPI_AssetInfo asset_info;
 //     ENSURE_SUCCESS(session,  HAPI_GetAssetInfo( asset_id, &asset_info ) );
 
+
+
 	Ref <RefAsset> myAsset = new RefAsset(asset_id, session);
 	instancedHEAssets[asset_name] = myAsset;
     process_assets(*myAsset.get());
@@ -494,6 +506,7 @@ StaticObject* HoudiniEngine::instantiateGeometry(const String& asset)
 		if (mySceneManager->getModel(s) == NULL) {
 			mySceneManager->addModel(hg);
 		}
+
 	}
 
 	StaticObject* so = new StaticObject(mySceneManager, s);
@@ -523,8 +536,8 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 	} else {
 		hg = HoudiniGeometry::create(s);
 		myHoudiniGeometrys[s] = hg;
-
 	}
+
 
 	hg->objectsChanged = asset.info().haveObjectsChanged;
 	ofmsg("process_assets: Objects changed:  %1%", %hg->objectsChanged);
@@ -549,6 +562,9 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 
 			if (hg->getGeodeCount(object_index) < geos.size()) {
 				hg->addGeode(geos.size() - hg->getGeodeCount(object_index), object_index);
+
+				// [max] TODO: make conditional check for billboard type (eg. labels) here
+				// hg->addBillboard(geos.size() - hg->getGeodeCount(object_index), object_index); 
 			}
 
 			hg->setGeosChanged(objInfo.haveGeosChanged, object_index);
@@ -590,16 +606,16 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 		for (int object_index=0; object_index < int(objects.size()); ++object_index)
 	    {
 			if (hg->getTransformChanged(object_index)) {
-				hg->getOsgNode()->asGroup()->getChild(object_index)->asTransform()->
-					asPositionAttitudeTransform()->setPosition(osg::Vec3d(
+				osg::Transform* osgObjectTransform = hg->getOsgNode()->asGroup()->getChild(object_index)->asTransform();
+
+				osgObjectTransform->asPositionAttitudeTransform()->setPosition(osg::Vec3d(
 						objTransforms[object_index].position[0],
 						objTransforms[object_index].position[1],
 						objTransforms[object_index].position[2]
 					)
 				);
 
-				hg->getOsgNode()->asGroup()->getChild(object_index)->asTransform()->
-					asPositionAttitudeTransform()->setScale(osg::Vec3d(
+				osgObjectTransform->asPositionAttitudeTransform()->setScale(osg::Vec3d(
 						objTransforms[object_index].scale[0],
 						objTransforms[object_index].scale[1],
 						objTransforms[object_index].scale[2]
@@ -607,6 +623,9 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 				);
 			}
 	    }
+
+
+
 	    delete[] objTransforms;
 	}
 
@@ -1279,6 +1298,8 @@ void HoudiniEngine::initialize()
 	// Create and initialize the cyclops scene manager.
 	mySceneManager = SceneManager::createAndInitialize();
 
+
+
 	// Create the scene editor and add our loaded object to it.
 // 	myEditor = SceneEditorModule::createAndInitialize();
 // 	myEditor->addNode(myObject);
@@ -1308,6 +1329,7 @@ void HoudiniEngine::initialize()
 	myQuitMenuItem->setText("Quit");
 	myQuitMenuItem->setCommand("oexit()");
 }
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 void HoudiniEngine::update(const UpdateContext& context)
@@ -2001,3 +2023,7 @@ void HoudiniEngine::cook()
 		updateGeos = true;
 	}
 }
+
+
+
+

@@ -18,6 +18,7 @@ set(MODULE_NAME daHEngine)
 add_library(${MODULE_NAME} MODULE
 	houdiniGeometry.cpp
 	daHEngine.cpp
+	loaderTools.cpp
 )
 
 target_link_libraries(${MODULE_NAME}

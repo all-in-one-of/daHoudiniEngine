@@ -11,6 +11,7 @@
 #include <osg/PositionAttitudeTransform>
 #include <osg/Geode>
 #include <osg/Geometry>
+#include <osg/Billboard>
 
 #define OMEGA_NO_GL_HEADERS
 #include <omega.h>
@@ -290,6 +291,7 @@ namespace houdiniEngine {
 		int addDrawable(const int count, const int geodeIndex, const int objIndex);
 
 		int addGeode(const int count, const int objIndex);
+		int addBillboard(const int count, const int objIndex);
 
 		int getGeodeCount(const int objIndex) {
 			if (objIndex < myNode->getNumChildren()) {

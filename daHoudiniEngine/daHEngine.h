@@ -72,6 +72,8 @@ namespace houdiniEngine {
 	//forward references
 	class HE_API HoudiniGeometry;
 
+	class BillboardCallback;
+
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 	class HE_API HoudiniEngine: public EngineModule, IMenuItemListener, SceneNodeListener
 	{
@@ -167,6 +169,7 @@ namespace houdiniEngine {
 
 		HAPI_Session* session;
 		HAPI_Session mySession;
+
 
 	};
 };
