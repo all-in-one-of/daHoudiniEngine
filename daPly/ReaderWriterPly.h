@@ -21,6 +21,8 @@ public:
     }
 
     virtual const char* className() { return "ReaderWriterPLY"; }
+
+
 	
 	// register with Registry to instantiate the above reader/writer.
 	// REGISTER_OSGPLUGIN(ply, ReaderWriterPLY)

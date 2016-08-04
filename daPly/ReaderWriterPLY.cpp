@@ -52,8 +52,17 @@ osgDB::ReaderWriter::ReadResult ReaderWriterPLY::readNode(const std::string& fil
     std::string fileName = osgDB::findDataFile(filename, options);
     if (fileName.empty()) return ReadResult::FILE_NOT_FOUND;
 
+    // custom options for our ply readerwriter
+    std::string optionString = options->getOptionString () ;
+
+    bool shiftVerts = optionString.find("shiftVerts") != string::npos;
+    bool usePivot = optionString.find("usePivot") != string::npos;
+
+    bool faceScreen = optionString.find("faceScreen") != string::npos;
+
+
     //Instance of vertex data which will read the ply file and convert in to osg::Node
-    ply::VertexData vertexData;
+    ply::VertexData vertexData(shiftVerts, usePivot, faceScreen);
     osg::Node* node = vertexData.readPlyFile(fileName.c_str());
 
     if (node)

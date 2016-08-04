@@ -13,7 +13,8 @@ void LoaderTools::registerDAPlyLoader()
 	// register our custom ply plugin
 	osgDB::Registry* reg = osgDB::Registry::instance();
 
-    reg->addReaderWriter(new ReaderWriterPLY());
+	osg::ref_ptr<ReaderWriterPLY> plyRW = new ReaderWriterPLY();
+    reg->addReaderWriter(plyRW);
 }
 
 

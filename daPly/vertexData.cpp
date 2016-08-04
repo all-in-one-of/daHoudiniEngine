@@ -18,6 +18,9 @@
 #include <osg/Geode>
 #include <osg/io_utils>
 #include <osgUtil/SmoothingVisitor>
+#include <osg/MatrixTransform>
+#include <osg/PositionAttitudeTransform>
+#include <osg/AutoTransform>
 
 #include <vector>
 #include <algorithm>
@@ -29,7 +32,7 @@ using namespace ply;
 
 
 /*  Contructor.  */
-VertexData::VertexData()
+VertexData::VertexData(bool shiftVerts, bool usePivot, bool faceScreen)
     : _invertFaces( false ), _numGroups(1)
 {
     // Initialize the members
@@ -40,6 +43,11 @@ VertexData::VertexData()
     _diffuse = NULL;
     _ambient = NULL;
     _specular = NULL;
+
+    _faceScreen = faceScreen;
+
+    _shiftVerts = shiftVerts;
+    _useSuppliedPivotPoint = usePivot;
 }
 
 
@@ -71,7 +79,11 @@ void VertexData::readVertices( PlyFile* file, const int nVertices,
         unsigned char   specular_blue;
         float           specular_coeff;
         float           specular_power;
-        int    object_id; //for data arena
+        //for data arena
+        int               object_id; 
+        float           pivotpoint_x;
+        float           pivotpoint_y;
+        float           pivotpoint_z;
     } vertex;
 
     PlyProperty vertexProps[] =
@@ -98,6 +110,9 @@ void VertexData::readVertices( PlyFile* file, const int nVertices,
         { "specular_coeff", PLY_FLOAT, PLY_FLOAT, offsetof( _Vertex, specular_coeff ), 0, 0, 0, 0 },
         { "specular_power", PLY_FLOAT, PLY_FLOAT, offsetof( _Vertex, specular_power ), 0, 0, 0, 0 },
         { "object_id", PLY_INT, PLY_INT, offsetof( _Vertex, object_id ), 0, 0, 0, 0 },
+        { "pivotpoint_x", PLY_FLOAT, PLY_FLOAT, offsetof( _Vertex, pivotpoint_x), 0, 0, 0, 0 },
+        { "pivotpoint_y", PLY_FLOAT, PLY_FLOAT, offsetof( _Vertex, pivotpoint_y), 0, 0, 0, 0 },
+        { "pivotpoint_z", PLY_FLOAT, PLY_FLOAT, offsetof( _Vertex, pivotpoint_z), 0, 0, 0, 0 },
     };
 
     // use all 6 properties when reading colors, only the first 3 otherwise
@@ -129,6 +144,10 @@ void VertexData::readVertices( PlyFile* file, const int nVertices,
 
     if (fields & OBJECTID)
         ply_get_property( file, "vertex", &vertexProps[21] );
+
+    if (fields & PIVOT)
+      for( int i = 22; i < 24; ++i )
+        ply_get_property( file, "vertex", &vertexProps[i] );
 
     // check whether array is valid otherwise allocate the space
     if(!_vertices.valid())
@@ -165,13 +184,12 @@ void VertexData::readVertices( PlyFile* file, const int nVertices,
             _specular = new osg::Vec4Array;
     }
 
-    // if (fields & OBJECTID)
-    // {
-    //     if (_object_ids.valid())
-    //         _object_ids = new std::vector<int>;
-    // }
-
-
+    if ( fields & PIVOT && _useSuppliedPivotPoint)
+    {
+        // std::cout << "using pivot" << std::endl;
+        if(!_pivotPerGeode.valid())
+            _pivotPerGeode = new osg::Vec3Array;
+    }
 
     // read in the vertices
     for( int i = 0; i < nVertices; ++i )
@@ -213,7 +231,16 @@ void VertexData::readVertices( PlyFile* file, const int nVertices,
             if (i > 0 && _object_ids[i-1] != _object_ids[i])
                 _group_base_offset.push_back(i);
         }
+
+        if ( fields & PIVOT && _useSuppliedPivotPoint){
+            //check if we have a new group
+            if (i == 0 || _object_ids[i-1] != _object_ids[i])
+                _pivotPerGeode->push_back(
+                    osg::Vec3( vertex.pivotpoint_x, vertex.pivotpoint_y, vertex.pivotpoint_z ));
+        }
+
     }
+
 }
 
 
@@ -252,16 +279,6 @@ void VertexData::readTriangles( PlyFile* file, const int nFaces )
         }
     }
 
-
-    //triangles.clear();
-    //triangles.reserve( nFaces );
-    // if(!_triangles.valid())
-    //     _triangles = new osg::DrawElementsUInt(osg::PrimitiveSet::TRIANGLES, 0);
-    // if(!_quads.valid())
-    //     _quads = new osg::DrawElementsUInt(osg::PrimitiveSet::QUADS, 0);
-
-
-
     // read the faces, reversing the reading direction if _invertFaces is true
     for( int i = 0 ; i < nFaces; i++ )
     {
@@ -289,10 +306,11 @@ void VertexData::readTriangles( PlyFile* file, const int nFaces )
             }
             else{
                 _triangles[groupIndex]->push_back(face.vertices[index] - _group_base_offset[groupIndex]);
-                 // std::cout << "tri. group:" << groupIndex << " " <<  _triangles[groupIndex]->index(j) << std::endl;
+                // Extremly verbose debug
+                // std::cout << "tri. group: " << groupIndex << " boffset: " << _group_base_offset[groupIndex] 
+                //         << " tri rel idx: " <<  _triangles[groupIndex]->index(j) 
+                //         << " face v: " << face.vertices[index] << std::endl;
             }
-
-            // if(face.nVertices == 4)
 
         }
 
@@ -315,6 +333,7 @@ osg::Node* VertexData::readPlyFile( const char* filename, const bool ignoreColor
     bool    result = false;
     int     nComments;
     char**  comments;
+    int     fields;
 
     PlyFile* file = NULL;
 
@@ -390,7 +409,7 @@ osg::Node* VertexData::readPlyFile( const char* filename, const bool ignoreColor
         // if the string is vertex means vertex data is started
         if( equal_strings( elemNames[i], "vertex" ) )
         {
- 	    int fields = NONE;
+ 	      fields = NONE;
             // determine if the file stores vertex colors
             for( int j = 0; j < nProps; ++j )
 	      {
@@ -411,6 +430,8 @@ osg::Node* VertexData::readPlyFile( const char* filename, const bool ignoreColor
                     fields |= SPECULAR;
                 if( equal_strings( props[j]->name, "object_id" ) )
                     fields |= OBJECTID;
+                if( equal_strings( props[j]->name, "pivotpoint_x" ) )
+                    fields |= PIVOT;
           }
 
             if( ignoreColors )
@@ -455,6 +476,7 @@ osg::Node* VertexData::readPlyFile( const char* filename, const bool ignoreColor
                 }
                 else
                 {
+                    // always have as many object ids as vertices. Set all to group 0
                     _object_ids.resize(nElems, 0);
                 }
 
@@ -515,17 +537,12 @@ osg::Node* VertexData::readPlyFile( const char* filename, const bool ignoreColor
    if(result)
    {
 
-
-
-        // std::vector<osg::Geode*> geodes;
         osg::Group* nodeGroup = new osg::Group;
-
-
 
         int currentVertIdx = 0;
         for (int geodeNum = 0; geodeNum < _numGroups; ++geodeNum)
         {
-
+            // create arrays as ref pointers. Unused arrays are automatically destroyed in the next iteration
             osg::ref_ptr<osg::Vec3Array>   currentVertices = new osg::Vec3Array;
             osg::ref_ptr<osg::Vec3Array>   currentNormals = new osg::Vec3Array;
 
@@ -537,34 +554,50 @@ osg::Node* VertexData::readPlyFile( const char* filename, const bool ignoreColor
             int vertRangeStart = _group_base_offset[geodeNum];
             int vertRangeEnd = (geodeNum < _numGroups - 1) ? _group_base_offset[geodeNum+1] : _vertices->size();
 
-
-            for (int i = vertRangeStart; i < vertRangeEnd; i++)
+            osg::BoundingBox geodeBound;
+            for (int i = vertRangeStart; i < vertRangeEnd; ++i){
                 currentVertices->push_back((*_vertices)[i]);
 
+                geodeBound.expandBy((*_vertices)[i]);
+            }
+
+            osg::Vec3d geodeCenter;
+            if (_shiftVerts){
+                if (fields & PIVOT && _useSuppliedPivotPoint){
+                    geodeCenter = (*_pivotPerGeode)[geodeNum];
+                    std::cout << geodeCenter.x() << " " << geodeCenter.y() << std::endl;
+                }
+                else
+                    geodeCenter = geodeBound.center();
+
+                for (int i = 0; i < currentVertices->size(); ++i)
+                    (*currentVertices)[i] -= geodeCenter;
+            }
+
             if (_colors.valid()){
-                for (int i = vertRangeStart; i < vertRangeEnd; i++)
+                for (int i = vertRangeStart; i < vertRangeEnd; ++i)
                     currentColors->push_back((*_colors)[i]);
             }
 
             if (_ambient.valid()){
-                for (int i = vertRangeStart; i < vertRangeEnd; i++)
+                for (int i = vertRangeStart; i < vertRangeEnd; ++i)
                     currentAmbient->push_back((*_ambient)[i]);
             }
 
             if (_diffuse.valid()){
-                for (int i = vertRangeStart; i < vertRangeEnd; i++)
+                for (int i = vertRangeStart; i < vertRangeEnd; ++i)
                     currentDiffuse->push_back((*_diffuse)[i]);
             }
 
 
             if (_specular.valid()){
-                for (int i = vertRangeStart; i < vertRangeEnd; i++)
+                for (int i = vertRangeStart; i < vertRangeEnd; ++i)
                     currentSpecular->push_back((*_specular)[i]);
             }
 
 
             if (_normals.valid()){
-                for (int i = vertRangeStart; i < vertRangeEnd; i++)
+                for (int i = vertRangeStart; i < vertRangeEnd; ++i)
                     currentNormals->push_back((*_normals)[i]);
             }
 
@@ -574,7 +607,6 @@ osg::Node* VertexData::readPlyFile( const char* filename, const bool ignoreColor
             osg::Geometry* geom  =  new osg::Geometry;
 
             // set the vertex array
-            // geom->setVertexArray(_vertices.get());
             geom->setVertexArray(currentVertices);
 
 
@@ -597,9 +629,9 @@ osg::Node* VertexData::readPlyFile( const char* filename, const bool ignoreColor
                 geom->addPrimitiveSet(new osg::DrawArrays(GL_POINTS, 0, currentVertices->size()));
 
 
-    	// Apply the colours to the model; at the moment this is a
-    	// kludge because we only use one kind and apply them all the
-    	// same way. Also, the priority order is completely arbitrary
+        	// Apply the colours to the model; at the moment this is a
+        	// kludge because we only use one kind and apply them all the
+        	// same way. Also, the priority order is completely arbitrary
 
             if(_colors.valid())
             {
@@ -629,13 +661,30 @@ osg::Node* VertexData::readPlyFile( const char* filename, const bool ignoreColor
                 osgUtil::SmoothingVisitor::smooth((*geom), osg::PI/2);
             }
 
-            // set flage true to activate the vertex buffer object of drawable
+            // set flag to true to activate the vertex buffer object of drawable
             geom->setUseVertexBufferObjects(true);
 
 
-            osg::Geode* geode = new osg::Geode;
+            osg::ref_ptr<osg::Geode> geode = new osg::Geode;
             geode->addDrawable(geom);
-            nodeGroup->addChild(geode);
+
+            geode->setName(std::to_string(geodeNum));
+
+            osg::ref_ptr<osg::Transform> trans;
+
+            if (_faceScreen){
+                trans = new osg::AutoTransform;
+                osg::AutoTransform* at = static_cast<osg::AutoTransform*>(trans.get());
+                at->setPosition(geodeCenter);
+                at->setAutoRotateMode(osg::AutoTransform::ROTATE_TO_SCREEN);
+            }
+            else {
+                trans = new osg::PositionAttitudeTransform;
+                static_cast<osg::PositionAttitudeTransform*>(trans.get())->setPosition(geodeCenter);
+            }
+            
+            trans->addChild(geode);
+            nodeGroup->addChild(trans);
         }
 
         return nodeGroup;
@@ -646,10 +695,11 @@ osg::Node* VertexData::readPlyFile( const char* filename, const bool ignoreColor
 
 int VertexData::getNumGroups()
 {
-    std::vector<int> v(_object_ids);
     //http://stackoverflow.com/questions/7136279/count-the-number-of-distinct-absolute-values-among-the-elements-of-the-array
-    sort(v.begin(), v.end()); // Average case O(n log n), worst case O(n^2) (usually implemented as quicksort.
-    // To guarantee worst case O(n log n) replace with make_heap, then sort_heap.
+    std::vector<int> v(_object_ids);
+    // Although the object ids should really be in a sorted order already, coming out of houdini, we will
+    // sort here again to ensure the correct number of groups
+    sort(v.begin(), v.end()); // Average case O(n log n)
 
     // Unique will take a sorted range, and move things around to get duplicated
     // items to the back and returns an iterator to the end of the unique section of the range

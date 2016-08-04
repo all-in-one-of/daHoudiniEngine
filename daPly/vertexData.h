@@ -35,7 +35,7 @@ namespace ply
     {
     public:
         // Default constructor
-        VertexData();
+        VertexData(bool shiftVerts = false, bool usePivot = false, bool faceScreen = false);
 
 
         // Reads ply file and convert in to osg::Node and returns the same
@@ -56,7 +56,8 @@ namespace ply
           DIFFUSE = 16,
           SPECULAR = 32,
           RGBA = 64,
-          OBJECTID = 128 //daHoudiniEngine specific
+          OBJECTID = 128, //daHoudiniEngine specific
+          PIVOT = 256
         };
 
         // Function which reads all the vertices and colors if color info is
@@ -71,7 +72,6 @@ namespace ply
 
         bool        _invertFaces;
 
-        int         _numGroups;
 
         // Vertex array in osg format
         osg::ref_ptr<osg::Vec3Array>   _vertices;
@@ -81,15 +81,30 @@ namespace ply
         osg::ref_ptr<osg::Vec4Array>   _diffuse;
         osg::ref_ptr<osg::Vec4Array>   _specular;
 
+
         // Normals in osg format
         osg::ref_ptr<osg::Vec3Array> _normals;
         // The indices of the faces in premitive set
         std::vector< osg::ref_ptr<osg::DrawElementsUInt> > _triangles;
         std::vector< osg::ref_ptr<osg::DrawElementsUInt> > _quads;
 
+
+        ///// DA custom grouping types ///
+        //id of the group a vertex is belonging to
         std::vector<int>                _object_ids;
         //offset of group in global vertex list
         std::vector<int>                _group_base_offset;
+        // pivot point of a group
+        osg::ref_ptr<osg::Vec3Array>   _pivotPerGeode;
+
+        int  _numGroups;
+        // indicates, if vertices should be centered around there origin point
+        bool _shiftVerts;
+        // inidicates if a pivot point, if supplied, should be used
+        bool _useSuppliedPivotPoint;
+
+        // make all groups face the screen (follow the camera)
+        bool _faceScreen;
     };
 }
 
