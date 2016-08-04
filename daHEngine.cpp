@@ -32,6 +32,7 @@
 #include <daHoudiniEngine/houdiniGeometry.h>
 #include <daHoudiniEngine/loaderTools.h>
 
+
 using namespace houdiniEngine;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -56,9 +57,13 @@ BOOST_PYTHON_MODULE(daHEngine)
 
 	// tools for generic models exported from houdini
 	PYAPI_REF_BASE_CLASS(LoaderTools)
-		PYAPI_STATIC_METHOD(LoaderTools, createBillboardNodes); 
+		PYAPI_STATIC_METHOD(LoaderTools, createBillboardNodes)
+		PYAPI_STATIC_METHOD(LoaderTools, registerDAPlyLoader);
 }
 #endif
+
+
+
 
 
 
@@ -1297,6 +1302,9 @@ void HoudiniEngine::initialize()
 
 	// Create and initialize the cyclops scene manager.
 	mySceneManager = SceneManager::createAndInitialize();
+
+
+
 
 
 
