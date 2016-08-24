@@ -6,6 +6,8 @@
 
 #include <osg/AutoTransform>
 
+#include <daPly/ReaderWriterPly.h>
+
 
 
 namespace houdiniEngine {
@@ -18,6 +20,7 @@ namespace houdiniEngine {
     {
     public:
         static void createBillboardNodes(Entity* node, std::string nameSubstr);
+        static void registerDAPlyLoader();
 
     protected:
         // static void addCameraFacingTransform(osg::Geode& geode);

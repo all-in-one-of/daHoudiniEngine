@@ -13,12 +13,16 @@ include_directories(${OSG_INCLUDES})
 add_subdirectory(examples/daOsgHEngine)
 add_subdirectory(examples/daHoudiniEngine)
 
+
 set(MODULE_NAME daHEngine)
 
 add_library(${MODULE_NAME} MODULE
 	houdiniGeometry.cpp
 	daHEngine.cpp
 	loaderTools.cpp
+	daPly/ReaderWriterPLY.cpp
+    daPly/vertexData.cpp
+    daPly/plyfile.cpp
 )
 
 target_link_libraries(${MODULE_NAME}

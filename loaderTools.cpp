@@ -8,6 +8,16 @@
 using namespace houdiniEngine;
 
 
+void LoaderTools::registerDAPlyLoader()
+{
+	// register our custom ply plugin
+	osgDB::Registry* reg = osgDB::Registry::instance();
+
+	osg::ref_ptr<ReaderWriterPLY> plyRW = new ReaderWriterPLY();
+    reg->addReaderWriter(plyRW);
+}
+
+
 void LoaderTools::createBillboardNodes(Entity* node, std::string nameSubstr)
 {
 	BillboardMaker bMaker(nameSubstr);
