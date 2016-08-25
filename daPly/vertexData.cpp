@@ -25,7 +25,7 @@
 #include <vector>
 #include <algorithm>
 #include <iterator>
-
+#include <sstream>
 
 using namespace std;
 using namespace ply;
@@ -668,7 +668,9 @@ osg::Node* VertexData::readPlyFile( const char* filename, const bool ignoreColor
             osg::ref_ptr<osg::Geode> geode = new osg::Geode;
             geode->addDrawable(geom);
 
-            geode->setName(std::to_string(geodeNum));
+			ostringstream os;
+			os << geodeNum;
+            geode->setName(os.str());
 
             osg::ref_ptr<osg::Transform> trans;
 
@@ -703,6 +705,6 @@ int VertexData::getNumGroups()
 
     // Unique will take a sorted range, and move things around to get duplicated
     // items to the back and returns an iterator to the end of the unique section of the range
-    auto unique_end = unique(v.begin(), v.end()); // Again n comparisons
+    std::vector<int>::iterator unique_end = unique(v.begin(), v.end()); // Again n comparisons
     return distance(v.begin(), unique_end); // Constant time for random access iterators (like vector's)
 }
