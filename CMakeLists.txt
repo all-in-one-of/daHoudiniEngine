@@ -1,20 +1,35 @@
 request_dependency(cyclops)
 
-#directory for HAPI
-set(HOUDINI_BASE ${HFS} CACHE PATH "Set to Houdini base directory (/opt/hfs.x.y.z)")
+#directory for HAPI, reads the $HFS variable
+set(HOUDINI_BASE $ENV{HFS} CACHE PATH "Set to Houdini base directory (/opt/hfs.x.y.z)")
 
-include_directories(${HOUDINI_BASE}/toolkit/include)
-include_directories(.)
-link_directories(${HOUDINI_BASE}/dsolib)
-link_directories(./)
-
-include_directories(${OSG_INCLUDES})
-
-add_subdirectory(examples/daOsgHEngine)
-add_subdirectory(examples/daHoudiniEngine)
-
+# if the base exists, compile against HEngine
+if (HOUDINI_BASE)
+	set(DA_ENABLE_HENGINE true CACHE BOOL "Enables compiling against Houdini Engine")
+else()
+	message(WARNING "Could not find Houdini base directory. Set this manually and enable 'DA_ENABLE_HENGINE'")
+	set(DA_ENABLE_HENGINE false CACHE BOOL "Enables compiling against Houdini Engine")
+endif()
 
 set(MODULE_NAME daHEngine)
+
+if (DA_ENABLE_HENGINE)
+	include_directories(${HOUDINI_BASE}/toolkit/include)
+	include_directories(.)
+	include_directories(${OSG_INCLUDES})
+	link_directories(${HOUDINI_BASE}/dsolib)
+
+else()
+	include_directories(.)
+	include_directories(${OSG_INCLUDES})
+endif()
+
+link_directories(./)
+
+if (DA_ENABLE_HENGINE)
+	add_subdirectory(examples/daOsgHEngine)
+	add_subdirectory(examples/daHoudiniEngine)
+endif()
 
 add_library(${MODULE_NAME} MODULE
 	houdiniGeometry.cpp
@@ -25,12 +40,20 @@ add_library(${MODULE_NAME} MODULE
     daPly/plyfile.cpp
 )
 
-target_link_libraries(${MODULE_NAME}
-	omega
-	omegaToolkit
-	omegaOsg
-	HAPIL
-)
+if (DA_ENABLE_HENGINE)
+	target_link_libraries(${MODULE_NAME}
+		omega
+		omegaToolkit
+		omegaOsg
+		HAPIL
+	)
+else()
+	target_link_libraries(${MODULE_NAME}
+		omega
+		omegaToolkit
+		omegaOsg
+	)
+endif()
 
 # # need to add some compiler flags
 IF( CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" )

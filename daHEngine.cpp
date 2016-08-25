@@ -41,6 +41,7 @@ using namespace houdiniEngine;
 #include "omega/PythonInterpreterWrapper.h"
 BOOST_PYTHON_MODULE(daHEngine)
 {
+#ifdef DA_ENABLE_HENGINE
 	// HoudiniEngine
 	PYAPI_REF_BASE_CLASS(HoudiniEngine)
 		PYAPI_STATIC_REF_GETTER(HoudiniEngine, createAndInitialize)
@@ -54,7 +55,7 @@ BOOST_PYTHON_MODULE(daHEngine)
  		PYAPI_METHOD(HoudiniEngine, cook)
  		PYAPI_METHOD(HoudiniEngine, setLoggingEnabled)
 		;
-
+#endif
 	// tools for generic models exported from houdini
 	PYAPI_REF_BASE_CLASS(LoaderTools)
 		PYAPI_STATIC_METHOD(LoaderTools, createBillboardNodes)
@@ -70,6 +71,7 @@ BOOST_PYTHON_MODULE(daHEngine)
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 HoudiniEngine* HoudiniEngine::createAndInitialize()
 {
+#ifdef DA_ENABLE_HENGINE
 	int minHoudiniVersion = 15;
 	int minHEngineVersion = 2;
 	int houdiniVersionMajor = 0;
@@ -90,18 +92,26 @@ HoudiniEngine* HoudiniEngine::createAndInitialize()
 	ModuleServices::addModule(instance);
 	instance->doInitialize(Engine::instance());
 	return instance;
+#else
+	return NULL;
+#endif
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 HoudiniEngine::HoudiniEngine():
+#ifdef DA_ENABLE_HENGINE
 	EngineModule("HoudiniEngine"),
 	mySceneManager(NULL),
 	myLogEnabled(false)
+#else
+	EngineModule("HoudiniEngine")
+#endif
 {
 }
 
 HoudiniEngine::~HoudiniEngine()
 {
+#ifdef DA_ENABLE_HENGINE
 	if (SystemManager::instance()->isMaster())
 	{
 	    try
@@ -115,9 +125,10 @@ HoudiniEngine::~HoudiniEngine()
 			throw;
 	    }
 	}
+#endif
 }
 
-
+#ifdef DA_ENABLE_HENGINE
 
 int HoudiniEngine::loadAssetLibraryFromFile(const String& otlFile)
 {
@@ -1259,9 +1270,11 @@ void HoudiniEngine::process_float_attrib(
     delete [] attrib_data;
 }
 
+#endif
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 void HoudiniEngine::initialize()
 {
+#ifdef DA_ENABLE_HENGINE
 	enableSharedData();
 
 	if (SystemManager::instance()->isMaster()) {
@@ -1336,9 +1349,11 @@ void HoudiniEngine::initialize()
 	myQuitMenuItem = menu->addItem(MenuItem::Button);
 	myQuitMenuItem->setText("Quit");
 	myQuitMenuItem->setCommand("oexit()");
+#else
+#endif
 }
 
-
+#ifdef DA_ENABLE_HENGINE
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 void HoudiniEngine::update(const UpdateContext& context)
 {
@@ -2032,6 +2047,6 @@ void HoudiniEngine::cook()
 	}
 }
 
-
+#endif
 
 
