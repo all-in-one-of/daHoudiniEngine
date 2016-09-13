@@ -51,6 +51,7 @@ BOOST_PYTHON_MODULE(daHEngine)
  		PYAPI_METHOD(HoudiniEngine, setTime)
  		PYAPI_METHOD(HoudiniEngine, cook)
  		PYAPI_METHOD(HoudiniEngine, setLoggingEnabled)
+ 		PYAPI_METHOD(HoudiniEngine, showMappings)
 		;
 }
 #endif
@@ -76,6 +77,7 @@ HoudiniEngine* HoudiniEngine::createAndInitialize()
 
 	// Initialize and register the HoudiniEngine module.
 	HoudiniEngine* instance = new HoudiniEngine();
+	instance->setPriority(HoudiniEngine::PriorityHigh);
 	ModuleServices::addModule(instance);
 	instance->doInitialize(Engine::instance());
 	return instance;
@@ -85,7 +87,9 @@ HoudiniEngine* HoudiniEngine::createAndInitialize()
 HoudiniEngine::HoudiniEngine():
 	EngineModule("HoudiniEngine"),
 	mySceneManager(NULL),
-	myLogEnabled(false)
+	myLogEnabled(false),
+	myAssetCount(0),
+	currentAsset(-1)
 {
 }
 
@@ -139,6 +143,9 @@ int HoudiniEngine::loadAssetLibraryFromFile(const String& otlFile)
 	}
 
 	delete[] asset_name_sh;
+
+	// total asset count
+	myAssetCount += assetCount;
 
     return assetCount;
 
@@ -278,7 +285,7 @@ void HoudiniEngine::createMenuItem(const String& asset_name, ui::Menu* menu, hap
 			mi->setUserData(miLabel); // reference to the label, for updating values
 		}
 		mi->setUserTag(parm->name());
-		mi->setListener(this);
+// 		mi->setListener(this); // moving away from this..
 		assetParams[asset_name].push_back(*mi);
 	} else {
 		mi = menu->addItem(MenuItem::Label);
@@ -300,11 +307,109 @@ void HoudiniEngine::createMenuItem(const String& asset_name, ui::Menu* menu, hap
 				// when updating
 				mi->setUserData(miLabel);
 				mi->setUserTag(parm->name() + ostr(" %1%", %j));
-				mi->setListener(this);
+// 				mi->setListener(this); // moving away from this
 				miLabel->setText(ostr("%1% %2%", %miLabel->getText() %val));
 				assetParams[asset_name].push_back(*mi);
 			}
 		}
+	}
+
+}
+
+// creates a container for the particluar parm to edit
+void HoudiniEngine::createParm(const String& asset_name, Container* cont, hapi::Parm* parm) {
+
+	ofmsg("PARM %1%: %2% s-%3% id-%4% name: %5%", %parm->label() %parm->info().type %parm->info().size
+		%parm->info().parentId
+		%parm->name()
+	);
+
+	Label* label = Label::create(cont);
+	label->setText(parm->label());
+	label->setHorizontalAlign(Label::AlignRight);
+
+	assetParamConts[asset_name].push_back(cont);
+
+	for (int i = 0; i < parm->info().size; ++i) {
+		if (parm->info().type == HAPI_PARMTYPE_INT) {
+			int val = parm->getIntValue(i);
+			label->setText(parm->label() + " " + ostr("%1%", %val));
+// 			label->setUserTag(asset_name); // reference to the asset this param belongs to
+			assetParamConts[asset_name].push_back(cont);
+			Slider* slider = Slider::create(cont);
+			if (parm->info().hasUIMin && parm->info().hasUIMax) {
+				slider->setTicks(parm->info().UIMax - parm->info().UIMin + 1);
+				slider->setValue(val - parm->info().UIMin);
+			} else {
+				slider->setTicks(parm->info().max + 1);
+				slider->setValue(val);
+			}
+			slider->setDeferUpdate(true);
+			slider->setUIEventHandler(this);
+
+			widgetIdToParmId[slider->getId()] = parm->info().id;
+		} else if (parm->info().type == HAPI_PARMTYPE_TOGGLE) {
+			int val = parm->getIntValue(i);
+// 			label->setUserTag(asset_name); // reference to the asset this param belongs to
+			assetParamConts[asset_name].push_back(cont);
+			Button* button = Button::create(cont);
+			button->setText("X");
+			button->setCheckable(true);
+			button->setChecked(val);
+// 			label->setUserData(miLabel); // reference to the label, for updating values
+			button->setUIEventHandler(this);
+
+			widgetIdToParmId[button->getId()] = parm->info().id;
+		} else if (parm->info().type == HAPI_PARMTYPE_BUTTON) {
+			int val = parm->getIntValue(i);
+// 			label->setUserTag(asset_name); // reference to the asset this param belongs to
+			assetParamConts[asset_name].push_back(cont);
+			Button* button = Button::create(cont);
+			button->setText("X");
+// 			button->setCheckable(true);
+			button->setChecked(val);
+// 			label->setUserData(miLabel); // reference to the label, for updating values
+			button->setUIEventHandler(this);
+
+			widgetIdToParmId[button->getId()] = parm->info().id;
+		} else if (parm->info().type == HAPI_PARMTYPE_FLOAT ||
+				   parm->info().type == HAPI_PARMTYPE_COLOR) {
+			float val = parm->getFloatValue(i);
+			label->setText(parm->label() + " " + ostr("%1%", %val));
+// 			label->setUserTag(asset_name); // reference to the asset this param belongs to
+			assetParamConts[asset_name].push_back(cont);
+			Slider* slider = Slider::create(cont);
+			if (parm->info().hasUIMin && parm->info().hasUIMax) {
+				float sliderVal = (val - parm->info().UIMin) / (float) (parm->info().UIMax - parm->info().UIMin);
+				slider->setValue(slider->getTicks() * sliderVal);
+			} else {
+				slider->setTicks(parm->info().max + 1);
+				slider->setValue(val);
+			}
+			slider->setDeferUpdate(true);
+			slider->setUIEventHandler(this);
+
+			widgetIdToParmId[slider->getId()] = parm->info().id;
+		} else if (parm->info().type == HAPI_PARMTYPE_STRING ||
+				   parm->info().type == HAPI_PARMTYPE_PATH_FILE ||
+				   parm->info().type == HAPI_PARMTYPE_PATH_FILE_GEO	||
+				   parm->info().type == HAPI_PARMTYPE_PATH_FILE_IMAGE) { // TODO: update with TextBox
+			std::string val = parm->getStringValue(i);
+// 			label->setUserTag(asset_name); // reference to the asset this param belongs to
+			assetParamConts[asset_name].push_back(cont);
+			TextBox* box = TextBox::create(cont);
+			box->setText("X");
+// 			label->setUserData(miLabel); // reference to the label, for updating values
+			box->setUIEventHandler(this);
+
+			widgetIdToParmId[box->getId()] = parm->info().id;
+		} else if (parm->info().type == HAPI_PARMTYPE_SEPARATOR) { // TODO: don't double up
+			label->setText("----------");
+		}
+
+// 		slider->setUserTag(parm->name());
+// 		slider->setListener(this);
+		assetParamConts[asset_name].push_back(cont);
 	}
 
 }
@@ -319,11 +424,18 @@ void HoudiniEngine::createMenu(const String& asset_name)
 	// from there onwards
 	const char* daFolderName = "daFolder_0";
 
-	hapi::Asset* myAsset = instancedHEAssets[asset_name];
+	hapi::Asset* myAsset = instancedHEAssetsByName[asset_name];
 
 	if (myAsset == NULL) {
 		ofwarn("No asset of name %1%", %asset_name);
 	}
+
+	Button* assetButton = Button::create(assetCont);
+	assetButton->setRadio(true);
+	assetButton->setChecked(true);
+	assetButton->setText(asset_name);
+	assetButton->setName(ostr("Asset %1%", %asset_name));
+	assetButton->setUIEventHandler(this);
 
 	std::map<std::string, hapi::Parm> parmMap = myAsset->parmMap();
 	std::vector<hapi::Parm> parms = myAsset->parms();
@@ -347,6 +459,84 @@ void HoudiniEngine::createMenu(const String& asset_name)
 
 	Dictionary<int, Menu* > subMenus; // keep refs to submenus
 
+	// help to parse params:
+	// 1 - Parameters such as HAPI_PARMTYPE_FOLDERLIST's and HAPI_PARMTYPE_FOLDER's
+	// 	have a child count associated with them. The child count is stored as the
+	// 	int value of these parameters.
+	// 2 - HAPI_PARMTYPE_FOLDERLIST's can only contain folders. HAPI_PARMTYPE_FOLDER's
+	// 	cannot contain other HAPI_PARMTYPE_FOLDER's, only HAPI_PARMTYPE_FOLDERLIST's
+	// 	and regular parameters.
+	// 3 - When a HAPI_PARMTYPE_FOLDERLIST is encountered, we should dive into its
+	// 	contents immediately, while everything else is traversed in a breadth first manner.
+
+// 	houdiniCont->setUIEventHandler(this);
+
+	while (i < parms.size()) {
+		hapi::Parm* parm = &parms[i];
+		ofmsg("PARM %1%: %2% %3% %4% %5%", %parm->label()
+		                                   %parm->info().id
+		                                   %parm->info().type
+		                                   %parm->info().size
+		                                   %parm->info().parentId
+		);
+		if (parm->info().parentId >= 0) {
+			ofmsg("  Parent PARM %1%: %2% ", %(&parms[parm->info().parentId])->label()
+			                                 %(&parms[parm->info().parentId])->info().id
+			);
+		}
+
+		if (parm->info().type == HAPI_PARMTYPE_FOLDERLIST) { // only contains folders
+// 			cout << "doing folderList " << parm->info().id << ", " << parm->info().size << endl;
+// 			Container* myCont = Container::create(Container::LayoutVertical, houdiniCont);
+			Container* myCont = Container::create(Container::LayoutHorizontal, houdiniCont); // for testing
+			myCont->setVerticalAlign(Container::AlignTop);
+			if (parm->info().parentId >= 0) {
+				houdiniCont->removeChild(myCont);
+				baseConts[parm->info().parentId]->addChild(myCont);
+			}
+			Label* label = Label::create(myCont);
+			label->setName(ostr("%1%_label", %parm->name()));
+			label->setText(parm->label());
+			baseConts[parm->info().id] = myCont;
+			myCont->setFillColor(Color("#404040"));
+			myCont->setFillEnabled(true);
+
+			i++;
+
+			for (int j = 0; j < parm->info().size; ++j) {
+				hapi::Parm* parm = &parms[i + j];
+				// this is redundant, should always be folder type
+				if (parm->info().type == HAPI_PARMTYPE_FOLDER) { // can contain folderLists and parms
+// 					cout << "doing folder " << parm->info().id << ", " << parm->info().size << endl;
+					Container* folderCont = Container::create(Container::LayoutVertical, myCont);
+					baseConts[parm->info().id] = folderCont;
+
+					Label* label = Label::create(folderCont);
+					label->setName(ostr("%1%_label", %parm->name()));
+					label->setText(parm->label());
+					folderCont->setFillColor(Color("#808080"));
+					folderCont->setFillEnabled(true);
+				}
+			}
+
+			i += parm->info().size;
+
+		} else { // its a parm
+// 			cout << "doing param " << parm->info().id << endl;
+			Container* myCont = Container::create(Container::LayoutHorizontal, houdiniCont);
+			if (parm->info().parentId >= 0) {
+				houdiniCont->removeChild(myCont);
+				baseConts[parm->info().parentId]->addChild(myCont);
+			}
+			myCont->setFillColor(Color("#B0B040"));
+			myCont->setFillEnabled(true);
+//
+			createParm(asset_name, myCont, parm);
+		}
+
+		i++;
+	}
+	/*
 	while (i < parms.size()) {
 		hapi::Parm* parm = &parms[i];
 		ofmsg("PARM %1%: %2% %3% %4% %5%", %parm->label()
@@ -392,7 +582,7 @@ void HoudiniEngine::createMenu(const String& asset_name)
 
 		i++;
 	}
-
+	*/
 }
 
 
@@ -429,7 +619,7 @@ int HoudiniEngine::instantiateAsset(const String& asset_name)
 //     ENSURE_SUCCESS(session,  HAPI_GetAssetInfo( asset_id, &asset_info ) );
 
 	Ref <RefAsset> myAsset = new RefAsset(asset_id, session);
-	instancedHEAssets[asset_name] = myAsset;
+	instancedHEAssetsByName[asset_name] = myAsset;
     process_assets(*myAsset.get());
 
 	createMenu(asset_name);
@@ -490,7 +680,7 @@ int HoudiniEngine::instantiateAssetById(int asset_id)
 //     ENSURE_SUCCESS(session,  HAPI_GetAssetInfo( asset_id, &asset_info ) );
 
 	Ref <RefAsset> myAsset = new RefAsset(asset_id, session);
-	instancedHEAssets[asset_name] = myAsset;
+	instancedHEAssetsByName[asset_name] = myAsset;
     process_assets(*myAsset.get());
 
 	createMenu(asset_name);
@@ -1149,6 +1339,13 @@ void HoudiniEngine::initialize()
 	houdiniMenu = menu->addSubMenu("Houdini Engine");
 	MenuItem* myLabel = houdiniMenu->addItem(MenuItem::Label);
 	myLabel->setText("Houdini Engine Parameters");
+	MenuItem* hMenu = houdiniMenu->addContainer();
+	hMenu->getContainer()->setLayout(Container::LayoutVertical);
+	// create asset selection container and parameter container
+	assetCont = Container::create(Container::LayoutHorizontal, hMenu->getContainer());
+	assetCont->setName("AssetCont");
+
+	houdiniCont = Container::create(Container::LayoutFree, hMenu->getContainer());
 
 // 	sn = SceneNode::create("myOtl");
 // 	myEditor->addNode(sn);
@@ -1189,7 +1386,7 @@ void HoudiniEngine::onMenuItemEvent(MenuItem* mi)
 
 	// TODO: do a null check here.. may break
 	String asset_name = ((MenuItem*)mi->getUserData())->getUserTag();
-	hapi::Asset* myAsset = instancedHEAssets[asset_name];
+	hapi::Asset* myAsset = instancedHEAssetsByName[asset_name];
 
 	std::map<std::string, hapi::Parm> parmMap = myAsset->parmMap();
 
@@ -1329,34 +1526,199 @@ static std::string houdiniEngine::get_string(HAPI_Session* session, int string_h
 ///////////////////////////////////////////////////////////////////////////////
 void HoudiniEngine::handleEvent(const Event& evt)
 {
+
+	bool doUpdate = false;
+	// only handle these events on the master
+	if (!SystemManager::instance()->isMaster()) return;
+
+	// a few UI Events to consider:
+	// Service::UI types:
+	// Down, Up, ChangeValue for Sliders, I only want ChangeValue events
+	// Toggle for Checkable
+	// Click for Button
+	// stop if it's not a Ui Service event
+	if(evt.getServiceType() != Service::Ui || evt.isProcessed()) {
+		return;
+	}
+
+	Widget* myWidget = NULL;
+
+	int parmId = -1;
+
+	// do it if source is button and event is toggle or click
+	if (Widget::getSource<Button>(evt) != NULL) {
+
+		// choice of asset?
+		if (ostr("%1%", %Widget::getSource<Button>(evt)->getName().substr(5)) == "Asset") {
+			omsg("It's an asset, setting currentAsset");
+			if (Widget::getSource<Button>(evt)->isChecked()) {
+				currentAsset = 0;
+			}
+			evt.setProcessed();
+			return;
+		}
+
+		myWidget = Widget::getSource<Button>(evt);
+
+		doUpdate = evt.getType() == Event::Toggle || evt.getType() == Event::Click;
+		parmId = evt.getSourceId();
+	}
+
+	// problem was bug in Slider.cpp, myValueChanged was never set back to false. Fixed
+	// stop if widget source is not a slider or event type is not changeValue
+	if (Widget::getSource<Slider>(evt) != NULL && evt.getType() == Event::ChangeValue) {
+		myWidget = Widget::getSource<Slider>(evt);
+		doUpdate = true;
+		parmId = evt.getSourceId();
+	}
+
+	if (!doUpdate) {
+		return;
+	}
+
+	// otherwise, do something!
+// 	ofmsg("Widget source: %1%, id: %2%. Do a cook call here..",
+// 		  %Widget::getSource<Widget>(evt)->getName()
+// 		  %parmId
+// 	);
+	// TODO: do incremental checks for what i need to update:
+	// HAPI_ObjectInfo::hasTransformChanged
+	// HAPI_ObjectInfo::haveGeosChanged
+	// HAPI_GeoInfo::hasGeoChanged
+	// HAPI_GeoInfo::hasMaterialChanged
+
+	// TODO: make this per-asset
+	String asset_name = "SideFX::Object/spaceship";
+	hapi::Asset* myAsset = instancedHEAssetsByName[asset_name];
+
+	if (myAsset == NULL) {
+		ofwarn("No instanced asset %1%", %asset_name);
+		return;
+	}
+
+	// the link between widget and parmId
+	hapi::Parm* parm = &(myAsset->parms()[widgetIdToParmId[myWidget->getId()]]);
+
+	ofmsg("PARM %1%: %2% s-%3% id-%4%",
+		  %parm->label()
+		  %parm->info().type
+		  %parm->info().size
+		  %parm->name() );
+
+	if (parm->info().type == HAPI_PARMTYPE_INT) {
+		Slider* slider = dynamic_cast<Slider*>(myWidget);
+		if (slider != NULL) {
+			int val = slider->getValue();
+			if (parm->info().hasUIMin && parm->info().hasUIMax) {
+				val = parm->info().UIMin + (val * (float) (parm->info().UIMax - parm->info().UIMin));
+			}
+			ofmsg("Value set to %1%", %val);
+			parm->setIntValue(0, val);
+		}
+
+	} else if (parm->info().type == HAPI_PARMTYPE_FLOAT ||
+			   parm->info().type == HAPI_PARMTYPE_COLOR) {
+		Slider* slider = dynamic_cast<Slider*>(myWidget);
+		if (slider != NULL) {
+			float val = slider->getValue();
+			if (parm->info().hasUIMin && parm->info().hasUIMax) {
+				val = ((float) parm->info().UIMin) + (val * (float) (parm->info().UIMax - parm->info().UIMin));
+			}
+			ofmsg("Value set to %1%", %val);
+			parm->setFloatValue(0, val / ((float)slider->getTicks()));
+		}
+
+	} else if (parm->info().type == HAPI_PARMTYPE_TOGGLE ||
+			   parm->info().type == HAPI_PARMTYPE_BUTTON) {
+		Button* button = dynamic_cast<Button*>(myWidget);
+		if (button != NULL) {
+			ofmsg("Value set to %1%", %button->isChecked());
+			parm->setIntValue(0, button->isChecked());
+		}
+
+	}
+
+	evt.setProcessed();
+
+	myAsset->cook();
+	wait_for_cook();
+
+	process_assets(*myAsset);
+
+	updateGeos = true;
+
+
+// this is stuff to apply changes to parms
 /*
-// 	bool update = false;
-//
-// 	// switch between different objects
-// 	if (evt.isKeyDown('0')) {
-// 		mySwitch = (mySwitch + 1) % myAsset->parmMap()["switchCount"].getIntValue(0); // number of switches.. how get a var
-// // 		cout << ">>> old switch value: " << myAsset->parmMap()["switch1_input"].getIntValue(0) <<
-// // 		"/" << myAsset->parmMap()["switchCount"].getIntValue(0) << endl;
-// 		myAsset->parmMap()["switch1_input"].setIntValue(0, mySwitch);
-// 		update = true;
-// 	}
-//
-// 	if (evt.isKeyDown('t')) {
-// 		myAsset->parmMap()["switch_subdivide"].setIntValue(
-// 			0,
-// 			(myAsset->parmMap()["switch_subdivide"].getIntValue(0) + 1) % 2
-// 		);
-// 		update = true;
-// 	}
-//
-// 	// cook only if a change
-// 	if ((myAsset != NULL) && update) {
-// 		myAsset->cook();
-// 		wait_for_cook();
-// 		process_assets(*myAsset);
-// // 		cout << ">>> new switch value: " << myAsset->parmMap()["switch1_input"].getIntValue(0) << endl;
-// 	}
-//
+	if (!SystemManager::instance()->isMaster())
+	{
+		return;
+	}
+
+	// TODO: change this to suit running on the master only, but callable from slave..
+	bool update = false;
+
+
+	// user tag is of form '<parmName> <parmIndex>'
+	// eg: 'size 2.1' for a size vector
+	int z = mi->getUserTag().find_last_of(" "); // index of space
+
+	// TODO: do a null check here.. may break
+	String asset_name = ((MenuItem*)mi->getUserData())->getUserTag();
+	hapi::Asset* myAsset = instancedHEAssetsByName[asset_name];
+
+	std::map<std::string, hapi::Parm> parmMap = myAsset->parmMap();
+
+	hapi::Parm* parm = &(parmMap[mi->getUserTag().substr(0, z)]);
+	int index = atoi(mi->getUserTag().substr(z + 1).c_str());
+
+	if (myAsset == NULL) {
+		ofwarn("No instanced asset %1%", %asset_name);
+		return;
+	}
+
+	if (parm->info().type == HAPI_PARMTYPE_INT) {
+		parm->setIntValue(index, mi->getSlider()->getValue());
+
+		((MenuItem*)mi->getUserData())->setText(parm->label() + ": " +
+		ostr("%1%", %mi->getSlider()->getValue()));
+
+		update = true;
+
+	} else if (parm->info().type == HAPI_PARMTYPE_TOGGLE) {
+		parm->setIntValue(index, mi->getButton()->isChecked());
+
+		((MenuItem*)mi->getUserData())->setText(parm->label());
+
+		update = true;
+
+	} else if (parm->info().type == HAPI_PARMTYPE_FLOAT) {
+		parm->setFloatValue(index, 0.01 * mi->getSlider()->getValue());
+
+		((MenuItem*)mi->getUserData())->setText(parm->label() + ": " +
+		ostr("%1%", %(mi->getSlider()->getValue() * 0.01)));
+
+		update = true;
+
+	}
+
+	if (update) {
+
+		// TODO: do incremental checks for what i need to update:
+		// HAPI_ObjectInfo::hasTransformChanged
+		// HAPI_ObjectInfo::haveGeosChanged
+		// HAPI_GeoInfo::hasGeoChanged
+		// HAPI_GeoInfo::hasMaterialChanged
+
+
+		myAsset->cook();
+		wait_for_cook();
+
+		process_assets(*myAsset);
+
+		updateGeos = true;
+	}
+
 */
 }
 
@@ -1374,7 +1736,7 @@ void HoudiniEngine::commitSharedData(SharedOStream& out)
 		return;
 	}
 
-	updateGeos = false;
+// 	updateGeos = false;
 
 //  	ofmsg("MASTER: sending %1% assets", %myHoudiniGeometrys.size());
 
@@ -1478,6 +1840,32 @@ void HoudiniEngine::commitSharedData(SharedOStream& out)
 	int parmCount = 0;
 	out << parmCount;
 
+//     foreach(ParmConts::Item pcs, assetParamConts) {
+// 		out << pcs.first;
+// 		out << int(pcs.second.size());
+// 		for (int i = 0; i < pcs.second.size(); ++i) {
+// 			MenuItem* mi = &pcs.second[i];
+// 			out << mi->getType();
+// 			// MenuItem.Type: { Button, Checkbox, Slider, Label, SubMenu, Image, Container }
+// 			if (mi->getType() == MenuItem::Label) {
+// 				out << mi->getText();
+// 			} else if (mi->getType() == MenuItem::Slider) {
+// 				out << mi->getSlider()->getTicks();
+// 				out << mi->getSlider()->getValue();
+// 			} else if (mi->getType() == MenuItem::Button) { // checkbox is actually a button
+// 				out << mi->isChecked();
+// 			}
+// 		}
+// 	}
+
+	// old way:
+	/*
+	// distribute the parameter list
+	// int parmCount = assetParams.size();
+	// disable parm distribution until menu is improved (WIP)
+	int parmCount = 0;
+	out << parmCount;
+
     foreach(Menus::Item mis, assetParams) {
 		out << mis.first;
 		out << int(mis.second.size());
@@ -1494,7 +1882,7 @@ void HoudiniEngine::commitSharedData(SharedOStream& out)
 				out << mi->isChecked();
 			}
 		}
-	}
+	} */
 
 }
 
@@ -1683,18 +2071,81 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 	in >> parmCount;
 
 //  parameter list
-// 	ofmsg("SLAVE: currently have %1% asset parameter lists", %assetParams.size());
-//     foreach(Menus::Item mis, assetParams)
-// 	{
-// 		ofmsg("SLAVE: name %1%", %mis.first);
-// 		ofmsg("SLAVE: number %1%", %mis.second.size());
-// 		for (int i = 0; i < mis.second.size(); ++i) {
-// 			ofmsg("SLAVE: menu item %1%", %mis.second[i].getType());
+	ofmsg("SLAVE: currently have %1% asset parameter lists", %assetParamConts.size());
+    foreach(ParmConts::Item mis, assetParamConts)
+	{
+		ofmsg("SLAVE: name %1%", %mis.first);
+		ofmsg("SLAVE: number %1%", %mis.second.size());
+		for (int i = 0; i < mis.second.size(); ++i) {
+			ofmsg("SLAVE: menu item %1%", %mis.second[i]);
+		}
+	}
+	ofmsg("SLAVE: received %1% asset parameter lists", %parmCount);
+
+// 	// using assetparams map
+// 	for (int j = 0; j < parmCount; ++j) {
+// 		String name;
+// 		in >> name;
+// // 		ofmsg("SLAVE: %1%", %name);
+// 		int items = 0;
+// 		in >> items;
+// // 		ofmsg("SLAVE: menu items to do: %1%", %items);
+// 		MenuItem* prevMenuItem = NULL;
+// 		for (int k = 0; k < items; ++k) {
+// 			MenuItem::Type t;
+// 			in >> t;
+// // 			ofmsg("SLAVE: menuItem : %1%", %t);
+//
+// 			MenuItem* mi = NULL;
+//
+// 			if (t == MenuItem::Label) {
+// 				String s;
+// 				in >> s;
+// // 				ofmsg("SLAVE: label : %1%", %s);
+//
+// 				if (assetParamConts[name].size() > k) {
+// 					mi = &(assetParamConts[name][k]);
+// 				} else {
+// 					mi = houdiniMenu->addItem(MenuItem::Label);
+// 					mi->setText(s);
+// 					assetParamConts[name].push_back(*mi);
+// 				}
+// 				prevMenuItem = mi;
+// 			} else if (t == MenuItem::Slider) {
+// 				int ticks;
+// 				in >> ticks;
+// 				int value;
+// 				in >> value;
+// // 				ofmsg("SLAVE: slider : %1% out of %2%", %value %ticks);
+// 				MenuItem* slider = NULL;
+//
+// 				if (assetParamConts[name].size() > k) {
+// 					slider = &(assetParamConts[name][k]);
+// 				} else {
+// 					slider = houdiniMenu->addSlider(ticks, "");
+// 					assetParamConts[name].push_back(*slider);
+// 				}
+// 				slider->getSlider()->setValue(value);
+// 			} else if (t == MenuItem::Button) {
+// 				int value;
+// 				in >> value;
+// // 				ofmsg("SLAVE: slider : %1% out of %2%", %value %ticks);
+// 				MenuItem* button = NULL;
+//
+// 				if (assetParamConts[name].size() > k) {
+// 					button = &(assetParamConts[name][k]);
+// 				} else {
+// 					button = houdiniMenu->addButton("", "");
+// 					assetParamConts[name].push_back(*button);
+// 				}
+// 				button->getButton()->setCheckable(true);
+// 				button->getButton()->setChecked(value);
+// 			}
 // 		}
 // 	}
-// 	ofmsg("SLAVE: received %1% asset parameter lists", %parmCount);
 
-	// using assetparams map
+	// old loop
+	/*
 	for (int j = 0; j < parmCount; ++j) {
 		String name;
 		in >> name;
@@ -1754,7 +2205,7 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 				button->getButton()->setChecked(value);
 			}
 		}
-	}
+	} */
 }
 
 float HoudiniEngine::getFps()
@@ -1795,11 +2246,30 @@ void HoudiniEngine::cook()
 		return;
 	}
 
-	foreach(Mapping::Item asset, instancedHEAssets) {
+	foreach(Mapping::Item asset, instancedHEAssetsByName) {
 		hapi::Asset* myAsset = asset.second;
 		myAsset->cook();
 		wait_for_cook();
 		process_assets(*myAsset);
 		updateGeos = true;
+	}
+}
+
+void HoudiniEngine::showMappings() {
+	String asset_name = "SideFX::Object/spaceship";
+	hapi::Asset* myAsset = instancedHEAssetsByName[asset_name];
+
+	if (myAsset == NULL) {
+		ofwarn("No asset of name %1%", %asset_name);
+		return;
+	}
+
+	typedef Dictionary < int, int >::iterator myIt;
+
+	for (myIt item = widgetIdToParmId.begin(); item != widgetIdToParmId.end(); ++item) {
+// 		ofmsg("%1%: %2%", %item->first %item->second);
+// 		Widget* myWidget = Widget::mysWidgets[item->first];
+		hapi::Parm* parm = &(myAsset->parms()[widgetIdToParmId[item->first]]);
+		ofmsg("%1%: %2%", %item->first %parm->name());
 	}
 }
