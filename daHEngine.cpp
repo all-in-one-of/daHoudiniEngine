@@ -333,21 +333,40 @@ void HoudiniEngine::createParm(const String& asset_name, Container* cont, hapi::
 	for (int i = 0; i < parm->info().size; ++i) {
 		if (parm->info().type == HAPI_PARMTYPE_INT) {
 			int val = parm->getIntValue(i);
-			label->setText(parm->label() + " " + ostr("%1%", %val));
-// 			label->setUserTag(asset_name); // reference to the asset this param belongs to
-			assetParamConts[asset_name].push_back(cont);
-			Slider* slider = Slider::create(cont);
-			if (parm->info().hasUIMin && parm->info().hasUIMax) {
-				slider->setTicks(parm->info().UIMax - parm->info().UIMin + 1);
-				slider->setValue(val - parm->info().UIMin);
+			if (parm->info().choiceCount > 0) {
+				ofmsg("  choiceindex: %1%", %parm->info().choiceIndex);
+				ofmsg("  choiceCount: %1%", %parm->info().choiceCount);
+				Container* choiceCont = Container::create(Container::LayoutVertical, cont);
+				for (int j = 0; j < parm->choices.size(); ++j) {
+					Button* button = Button::create(choiceCont);
+					button->setRadio(true);
+					button->setCheckable(true);
+					button->setChecked(j == val);
+					button->setText(parm->choices[j].label());
+					ofmsg("  choice %1%: %2% %3%", %j %parm->choices[j].label() %parm->choices[j].value());
+					button->setUIEventHandler(this);
+					button->setUserData(label);
+					widgetIdToParmId[button->getId()] = parm->info().id;
+				}
 			} else {
-				slider->setTicks(parm->info().max + 1);
-				slider->setValue(val);
-			}
-			slider->setDeferUpdate(true);
-			slider->setUIEventHandler(this);
+				label->setText(parm->label() + " " + ostr("%1%", %val));
+	// 			label->setUserTag(asset_name); // reference to the asset this param belongs to
+				assetParamConts[asset_name].push_back(cont);
+				Slider* slider = Slider::create(cont);
+				if (parm->info().hasUIMin && parm->info().hasUIMax) {
+					slider->setTicks(parm->info().UIMax - parm->info().UIMin + 1);
+					slider->setValue(val - parm->info().UIMin);
+				} else {
+					slider->setTicks(parm->info().max + 1);
+					slider->setValue(val);
+				}
+				slider->setDeferUpdate(true);
+				slider->setUIEventHandler(this);
+				// TODO refactor setUserData to refer to parms and label?
+				slider->setUserData(label); // reference to the label for this widget item
 
-			widgetIdToParmId[slider->getId()] = parm->info().id;
+				widgetIdToParmId[slider->getId()] = parm->info().id;
+			}
 		} else if (parm->info().type == HAPI_PARMTYPE_TOGGLE) {
 			int val = parm->getIntValue(i);
 // 			label->setUserTag(asset_name); // reference to the asset this param belongs to
@@ -358,6 +377,7 @@ void HoudiniEngine::createParm(const String& asset_name, Container* cont, hapi::
 			button->setChecked(val);
 // 			label->setUserData(miLabel); // reference to the label, for updating values
 			button->setUIEventHandler(this);
+			button->setUserData(label);
 
 			widgetIdToParmId[button->getId()] = parm->info().id;
 		} else if (parm->info().type == HAPI_PARMTYPE_BUTTON) {
@@ -370,6 +390,7 @@ void HoudiniEngine::createParm(const String& asset_name, Container* cont, hapi::
 			button->setChecked(val);
 // 			label->setUserData(miLabel); // reference to the label, for updating values
 			button->setUIEventHandler(this);
+			button->setUserData(label);
 
 			widgetIdToParmId[button->getId()] = parm->info().id;
 		} else if (parm->info().type == HAPI_PARMTYPE_FLOAT ||
@@ -388,6 +409,7 @@ void HoudiniEngine::createParm(const String& asset_name, Container* cont, hapi::
 			}
 			slider->setDeferUpdate(true);
 			slider->setUIEventHandler(this);
+			slider->setUserData(label);
 
 			widgetIdToParmId[slider->getId()] = parm->info().id;
 		} else if (parm->info().type == HAPI_PARMTYPE_STRING ||
@@ -395,14 +417,34 @@ void HoudiniEngine::createParm(const String& asset_name, Container* cont, hapi::
 				   parm->info().type == HAPI_PARMTYPE_PATH_FILE_GEO	||
 				   parm->info().type == HAPI_PARMTYPE_PATH_FILE_IMAGE) { // TODO: update with TextBox
 			std::string val = parm->getStringValue(i);
-// 			label->setUserTag(asset_name); // reference to the asset this param belongs to
-			assetParamConts[asset_name].push_back(cont);
-			TextBox* box = TextBox::create(cont);
-			box->setText("X");
-// 			label->setUserData(miLabel); // reference to the label, for updating values
-			box->setUIEventHandler(this);
+			if (parm->info().choiceCount > 0) {
+				ofmsg("  choiceindex: %1%", %parm->info().choiceIndex);
+				ofmsg("  choiceCount: %1%", %parm->info().choiceCount);
+	// 			label->setUserTag(asset_name); // reference to the asset this param belongs to
+				assetParamConts[asset_name].push_back(cont);
+				Container* choiceCont = Container::create(Container::LayoutVertical, cont);
+				for (int j = 0; j < parm->choices.size(); ++j) {
+					Button* button = Button::create(choiceCont);
+					button->setRadio(true);
+					button->setCheckable(true);
+					button->setChecked(parm->choices[j].value() == val);
+					button->setText(parm->choices[j].label());
+					ofmsg("  choice %1%: %2% %3%", %j %parm->choices[j].label() %parm->choices[j].value());
+					button->setUIEventHandler(this);
+					button->setUserData(label);
+					widgetIdToParmId[button->getId()] = parm->info().id;
+				}
+			} else {
+	// 			label->setUserTag(asset_name); // reference to the asset this param belongs to
+				assetParamConts[asset_name].push_back(cont);
+				TextBox* box = TextBox::create(cont);
+				box->setText("X");
+	// 			label->setUserData(miLabel); // reference to the label, for updating values
+				box->setUIEventHandler(this);
+				box->setUserData(label);
 
-			widgetIdToParmId[box->getId()] = parm->info().id;
+				widgetIdToParmId[box->getId()] = parm->info().id;
+			}
 		} else if (parm->info().type == HAPI_PARMTYPE_SEPARATOR) { // TODO: don't double up
 			label->setText("----------");
 		}
@@ -1605,6 +1647,50 @@ void HoudiniEngine::handleEvent(const Event& evt)
 		  %parm->info().size
 		  %parm->name() );
 
+	if (parm->info().choiceCount > 0) {
+		ofmsg("I'm a choice %1%: %2%", %parm->info().choiceCount %parm->name());
+		Button* button = dynamic_cast<Button*>(myWidget);
+		if (parm->info().type == HAPI_PARMTYPE_INT) {
+			int val = 0;
+			Container* parentCont = button->getContainer();
+			for (int i = 0; i < parentCont->getNumChildren(); ++i) {
+				if (parentCont->getChildByIndex(i)->getName() == button->getName()) {
+					val = i;
+					break;
+				}
+			}
+			ofmsg("Value set to %1%", %val);
+			parm->setIntValue(0, val);
+		} else if (parm->info().type == HAPI_PARMTYPE_STRING) {
+			// BUG There seems to be a bug here, all string choice lists are missing the first choice
+			// is this a houdini engine problem or something i'm doing?
+			// code for this should be almost the same as above
+			std::string val = "";
+			Container* parentCont = button->getContainer();
+			ofmsg("container: %1% %2% %3%", %parentCont->getName() %parentCont %parentCont->getNumChildren());
+			int myIndex = 0;
+			for (int i = 0; i < parentCont->getNumChildren(); ++i) {
+				ofmsg("%1% == %2%", %parentCont->getChildByIndex(i)->getName()
+				                               %button->getName()
+					 );
+				if (parentCont->getChildByIndex(i)->getName() == button->getName()) {
+					myIndex = i;
+					break;
+				}
+			}
+
+			ofmsg("parmchoices are %1%, tuple size is %2%", %parm->choices.size()
+				                                            %parm->info().size
+			);
+			ofmsg("value was %1%", %parm->getStringValue(0));
+			// BUG: Code is breaking on the parm->choices[i].label() call
+			for (int i = 0; i < parm->choices.size(); ++i) {
+				ofmsg("choice #%1%: %2%", %i %parm->choices[i].label());
+			}
+			parm->setStringValue(0, val.c_str());
+		}
+
+	} else
 	if (parm->info().type == HAPI_PARMTYPE_INT) {
 		Slider* slider = dynamic_cast<Slider*>(myWidget);
 		if (slider != NULL) {
@@ -1613,6 +1699,7 @@ void HoudiniEngine::handleEvent(const Event& evt)
 				val = parm->info().UIMin + (val * (float) (parm->info().UIMax - parm->info().UIMin));
 			}
 			ofmsg("Value set to %1%", %val);
+			static_cast<Label*>(slider->getUserData())->setText(ostr("%1% %2%", %parm->label() %val));
 			parm->setIntValue(0, val);
 		}
 
@@ -1625,6 +1712,7 @@ void HoudiniEngine::handleEvent(const Event& evt)
 				val = ((float) parm->info().UIMin) + (val * (float) (parm->info().UIMax - parm->info().UIMin));
 			}
 			ofmsg("Value set to %1%", %val);
+			static_cast<Label*>(slider->getUserData())->setText(ostr("%1% %2%", %parm->label() %(val / ((float)slider->getTicks()))));
 			parm->setFloatValue(0, val / ((float)slider->getTicks()));
 		}
 
@@ -1633,6 +1721,7 @@ void HoudiniEngine::handleEvent(const Event& evt)
 		Button* button = dynamic_cast<Button*>(myWidget);
 		if (button != NULL) {
 			ofmsg("Value set to %1%", %button->isChecked());
+			// don't add value to label, already visible with button checked-ness
 			parm->setIntValue(0, button->isChecked());
 		}
 
