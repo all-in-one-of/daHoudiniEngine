@@ -10,7 +10,8 @@ he.setLoggingEnabled(False)
 # otl examples
 # (Otl filename, otl object name, geometry name)
 
-baseDir = "/local/omegalib/modules/daHoudiniEngine/otl/"
+#baseDir = "/local/omegalib/modules/daHoudiniEngine/otl/"
+baseDir = "/da/dev/darren/omegalib/modules/daHoudiniEngine/otl/"
 
 examples = [
         ("switch_asset.otl", "Object/switch_asset", "switch_asset1"),
@@ -20,8 +21,10 @@ examples = [
         ("pos_test.otl", "Object/pos_test", "pos_test1"),
         ("Core/SideFX__spaceship.otl", "SideFX::Object/spaceship", "spaceship1"),
         ("pos_test.otl", 0, "pos_test1"),
-        #("Core/SideFX__spaceship.otl", 0, "spaceship1"),
         ("texture.otl", "Object/texture", "texture1"),
+        ("Additional/WheelAsset.otl", "Object/WheelAsset", "WheelAsset1"),
+        ("curve_object.otl", "Object/curve_object", "curve_object1"),
+        ("fbxTest.otl", "Object/fbxTest", "fbxTest1"),
 ]
 
 def createHG(otl, assetName, geoName):
@@ -39,16 +42,35 @@ def createHGId(otl, assetIndex, geoName):
         he.instantiateAssetById(assetIndex)
         return he.instantiateGeometry(geoName)
 
-#asset = createHG(*examples[3])
+#asset = createHG(*examples[3]) # multi-geo parts
 #asset = createHGId(*examples[-2])
 
 #asset = createHG(*examples[-1])
-asset = createHG(*examples[3])
+asset = createHG(*examples[5]) # spaceship
+#asset = createHG(*examples[3]) # simple
+
+#asset = createHG(*examples[8]) # wheel (not totally working)
+#asset = createHG(*examples[-1]) # curve
+
+#asset = createHG(*examples[-1]) # fbx file
+
 
 sp = SphereShape.create(.1, 1)
 
 asset.setPosition(0, 2, -5)
 
+# testing for spaceship
+#asset.setEffect('textured -d /da/dev/darren/omegalib/modules/daHoudiniEngine/prp_spaceship_color_1.jpg -e white')
+
 light = Light.create()
+light.setPosition(0, 4, -5)
 
+e = None
 
+def onEvent():
+	global e
+	if getEvent().getType() == EventType.Down:
+		e = getEvent()
+		print e
+
+setEventFunction(onEvent)
