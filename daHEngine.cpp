@@ -2128,68 +2128,6 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 	}
 	ofmsg("SLAVE: received %1% asset parameter lists", %parmCount);
 
-// 	// using assetparams map
-// 	for (int j = 0; j < parmCount; ++j) {
-// 		String name;
-// 		in >> name;
-// // 		ofmsg("SLAVE: %1%", %name);
-// 		int items = 0;
-// 		in >> items;
-// // 		ofmsg("SLAVE: menu items to do: %1%", %items);
-// 		MenuItem* prevMenuItem = NULL;
-// 		for (int k = 0; k < items; ++k) {
-// 			MenuItem::Type t;
-// 			in >> t;
-// // 			ofmsg("SLAVE: menuItem : %1%", %t);
-//
-// 			MenuItem* mi = NULL;
-//
-// 			if (t == MenuItem::Label) {
-// 				String s;
-// 				in >> s;
-// // 				ofmsg("SLAVE: label : %1%", %s);
-//
-// 				if (assetParamConts[name].size() > k) {
-// 					mi = &(assetParamConts[name][k]);
-// 				} else {
-// 					mi = houdiniMenu->addItem(MenuItem::Label);
-// 					mi->setText(s);
-// 					assetParamConts[name].push_back(*mi);
-// 				}
-// 				prevMenuItem = mi;
-// 			} else if (t == MenuItem::Slider) {
-// 				int ticks;
-// 				in >> ticks;
-// 				int value;
-// 				in >> value;
-// // 				ofmsg("SLAVE: slider : %1% out of %2%", %value %ticks);
-// 				MenuItem* slider = NULL;
-//
-// 				if (assetParamConts[name].size() > k) {
-// 					slider = &(assetParamConts[name][k]);
-// 				} else {
-// 					slider = houdiniMenu->addSlider(ticks, "");
-// 					assetParamConts[name].push_back(*slider);
-// 				}
-// 				slider->getSlider()->setValue(value);
-// 			} else if (t == MenuItem::Button) {
-// 				int value;
-// 				in >> value;
-// // 				ofmsg("SLAVE: slider : %1% out of %2%", %value %ticks);
-// 				MenuItem* button = NULL;
-//
-// 				if (assetParamConts[name].size() > k) {
-// 					button = &(assetParamConts[name][k]);
-// 				} else {
-// 					button = houdiniMenu->addButton("", "");
-// 					assetParamConts[name].push_back(*button);
-// 				}
-// 				button->getButton()->setCheckable(true);
-// 				button->getButton()->setChecked(value);
-// 			}
-// 		}
-// 	}
-
 }
 
 float HoudiniEngine::getFps()
