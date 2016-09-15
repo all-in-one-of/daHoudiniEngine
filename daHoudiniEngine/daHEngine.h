@@ -143,6 +143,7 @@ namespace houdiniEngine {
 		virtual void updateSharedData(SharedIStream& in);
 
 		int loadAssetLibraryFromFile(const String& otlFile);
+		int getAvailableAssetCount() { return myAssetCount; };
 		int instantiateAsset(const String& asset);
 		int instantiateAssetById(int asset_id);
 		StaticObject* instantiateGeometry(const String& asset);
