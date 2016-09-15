@@ -90,8 +90,6 @@ namespace houdiniEngine {
 
 	static std::string get_string(HAPI_Session* session, int string_handle);
 
-	String sOtl_file;
-
 	class HE_API RefAsset: public hapi::Asset, public ReferenceType
 	{
 	public:
