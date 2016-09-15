@@ -58,6 +58,11 @@ set(MODULE_NAME daHEngine)
 add_library(${MODULE_NAME} MODULE
 	houdiniGeometry.cpp
 	daHEngine.cpp
+	daHEngine.event.cpp
+	daHEngine.parm.cpp
+	daHEngine.processAsset.cpp
+	daHEngine.sharedData.cpp
+	daHEngine.util.cpp
 )
 
 target_link_libraries(${MODULE_NAME}
