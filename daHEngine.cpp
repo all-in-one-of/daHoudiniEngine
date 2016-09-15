@@ -770,7 +770,16 @@ StaticObject* HoudiniEngine::instantiateGeometry(const String& asset)
 		}
 	}
 
-	return new StaticObject(mySceneManager, s);
+	StaticObject* so = new StaticObject(mySceneManager, s);
+
+	// TODO: make this general
+	if (mySceneManager->getTexture("testing", false) != NULL) {
+		so->setEffect("textured -d white -e white");
+		so->getMaterial()->setDiffuseTexture("testing");
+
+	}
+
+	return so;
 }
 
 // put houdini engine asset data into a houdiniGeometry
@@ -880,6 +889,15 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 	}
 }
 
+// TODO: expand on this..
+Vector3f bez(float t, Vector3f a, Vector3f b) {
+	return Vector3f(
+		a[0] + t *(b[0] - a[0]),
+		a[1] + t *(b[1] - a[1]),
+		a[2] + t *(b[2] - a[2])
+	);
+}
+
 // TODO: incrementally update the geometry?
 // send a new version, and still have the old version?
 void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex, const int geoIndex, const int partIndex, HoudiniGeometry* hg)
@@ -922,10 +940,13 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 	// TODO: improve this..
     vector<std::string> point_attrib_names = part.attribNames(
 	HAPI_ATTROWNER_POINT);
+
+	omsg("Point Attributes:");
+
     for (int attrib_index=0; attrib_index < int(point_attrib_names.size());
 	    ++attrib_index) {
 
-// 		ofmsg("has %1%", %point_attrib_names[attrib_index]);
+		ofmsg("has %1%", %point_attrib_names[attrib_index]);
 
 		if (point_attrib_names[attrib_index] == "P") {
 		    process_float_attrib(part, HAPI_ATTROWNER_POINT, "P", points);
@@ -946,10 +967,13 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 
     vector<std::string> vertex_attrib_names = part.attribNames(
 	HAPI_ATTROWNER_VERTEX);
-    for (int attrib_index=0; attrib_index < int(vertex_attrib_names.size());
+
+	omsg("Vertex Attributes");
+
+	for (int attrib_index=0; attrib_index < int(vertex_attrib_names.size());
 	    ++attrib_index) {
 
-// 		ofmsg("has %1%", %vertex_attrib_names[attrib_index]);
+		ofmsg("has %1%", %vertex_attrib_names[attrib_index]);
 
 		if (vertex_attrib_names[attrib_index] == "N") {
 			has_vertex_normals = true;
@@ -963,10 +987,13 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 
     vector<std::string> primitive_attrib_names = part.attribNames(
 	HAPI_ATTROWNER_PRIM);
-    for (int attrib_index=0; attrib_index < int(primitive_attrib_names.size());
+
+	omsg("Primitive Attributes");
+
+	for (int attrib_index=0; attrib_index < int(primitive_attrib_names.size());
 	    ++attrib_index) {
 
-// 		ofmsg("has %1%", %primitive_attrib_names[attrib_index]);
+		ofmsg("has %1%", %primitive_attrib_names[attrib_index]);
 
 		if (primitive_attrib_names[attrib_index] == "Cd") {
 			has_primitive_colors = true;
@@ -982,10 +1009,152 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 	}
 
 	// TODO: render curves
-// 	if (part.info().isCurve) {
-//  		ofmsg ("This part is a curve: %1%", %part.name());
-// 		return;
-// 	}
+	// CONTINUE FROM HERE, rendering these curves!
+	if (part.info().type == HAPI_PARTTYPE_CURVE) {
+ 		ofmsg ("This part is a curve: %1% %2%", %part.name() %part.id);
+
+		HAPI_CurveInfo curve_info;
+		ENSURE_SUCCESS(session, HAPI_GetCurveInfo(
+			session,
+			part.geo.object.asset.id,
+			part.geo.object.id,
+			part.geo.id,
+	        part.id,
+			&curve_info
+		) );
+
+		if ( curve_info.curveType == HAPI_CURVETYPE_LINEAR )
+			std::cout << "curve mesh type = Linear" << std::endl;
+		else if ( curve_info.curveType == HAPI_CURVETYPE_BEZIER )
+			std::cout << "curve mesh type = Bezier" << std::endl;
+		else if ( curve_info.curveType == HAPI_CURVETYPE_NURBS )
+			std::cout << "curve mesh type = Nurbs" << std::endl;
+		else
+			std::cout << "curve mesh type = Unknown" << std::endl;
+
+		std::cout << "curve count: " << curve_info.curveCount << std::endl;
+		int vertex_offset = 0;
+		int knot_offset = 0;
+		int segments = 20;
+
+		for ( int i = 0; i < curve_info.curveCount; i++ ) {
+			std::cout
+				<< "curve " << i + 1 << " of "
+				<< curve_info.curveCount << ":" << std::endl;
+			// Number of CVs
+			int num_vertices;
+			HAPI_GetCurveCounts(
+				session,
+				part.geo.object.asset.id,
+				part.geo.object.id,
+				part.geo.id,
+		        part.id,
+				&num_vertices,
+				i,
+				1
+			);
+			std::cout << "num vertices: " << num_vertices << std::endl;
+			// Order of this particular curve
+			int order;
+			if ( curve_info.order != HAPI_CURVE_ORDER_VARYING
+				&& curve_info.order != HAPI_CURVE_ORDER_INVALID )
+				order = curve_info.order;
+			else
+				HAPI_GetCurveOrders(
+					session,
+					part.geo.object.asset.id,
+					part.geo.object.id,
+					part.geo.id,
+			        part.id,
+					&order,
+					i,
+					1
+				);
+			std::cout << "curve order: " << order << std::endl;
+			// If there's not enough vertices, then don't try to
+			// create the curve.
+			if ( num_vertices < order )
+			{
+				std::cout << "not enought vertices on curve " << i << " of "
+					<< curve_info.curveCount << ": skipping" << std::endl;
+				// The curve at i will have numVertices vertices, and may have
+				// some knots. The knot count will be numVertices + order for
+				// nurbs curves.
+				vertex_offset += num_vertices * 4;
+				knot_offset += num_vertices + order;
+				continue;
+			}
+
+			cout << "points size: " << points.size() << endl;
+			cout << "vert size: " << num_vertices << endl;
+
+			// draw the curve
+			// TODO: add bezier function, segmentalise curves
+			hg->addPrimitiveOsg(
+				osg::PrimitiveSet::LINE_STRIP,
+				vertex_offset * segments,
+				(vertex_offset + num_vertices) * segments - 1,
+				partIndex,
+				geoIndex,
+				objIndex
+			);
+
+			for (int j = 0; j < num_vertices - 1; ++j) {
+				for (int seg = 0; seg < segments; ++seg) {
+
+					Vector3f p = bez(
+						(float) seg / segments,
+						points[vertex_offset + j],
+					    points[vertex_offset + j + 1]
+					);
+
+					hg->addVertex(p, partIndex, geoIndex, objIndex);
+					cout << p << endl;
+					if(has_point_colors) {
+						hg->addColor(Color(
+							colors[vertex_offset + j][0],
+							colors[vertex_offset + j][1],
+							colors[vertex_offset + j][2],
+							1.0
+						), partIndex, geoIndex, objIndex);
+					} else if (has_primitive_colors) {
+						hg->addColor(Color(
+							colors[i][0],
+							colors[i][1],
+							colors[i][2],
+							1.0
+						), partIndex, geoIndex, objIndex);
+					}
+				}
+			}
+
+			vertex_offset += num_vertices;
+
+			omsg("done this curve");
+
+// 			if (curve_info.hasKnots) {
+// 				std::vector< float > knots;
+// 				knots.resize( num_vertices + order );
+// 				HAPI_GetCurveKnots(
+// 					session,
+// 					part.geo.object.asset.id,
+// 					part.geo.object.id,
+// 					part.geo.id,
+// 			        part.id,
+// 					&knots.front(),
+// 					knot_offset,
+// 					num_vertices + order
+//
+// 				);
+// 				for( int j = 0; j < num_vertices + order; j++ ) {
+// 					cout << "knot " << j << ": " << knots[ j ] << endl;
+// 				}
+// 			}
+
+		}
+		hg->dirty();
+		return;
+	}
 
     int *face_counts = new int[ part.info().faceCount ];
     ENSURE_SUCCESS(session,  HAPI_GetFaceCounts(
@@ -1155,23 +1324,23 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 
 		// load into a pixelData bufferObject
 		// this works!
-		Ref<PixelData> refPd = ImageUtils::decode((void *) myBuffer, image_info.xRes * image_info.xRes * 4, "");
+// 		Ref<PixelData> refPd = ImageUtils::decode((void *) myBuffer, image_info.xRes * image_info.yRes * 4);
+		pds.push_back(ImageUtils::decode((void *) myBuffer, image_info.xRes * image_info.yRes * 4));
 
-		// TODO: set this in the object's material(s)!
-		osg::Image* myImg = OsgModule::pixelDataToOsg(refPd, true); //transferBufferOwnership = true
+		// TODO: general case for texture names (diffuse, spec, env, etc)
+		osg::Texture2D* texture = mySceneManager->createTexture("testing", pds[0]);
 
-		// TODO: image is correct, and UVs also seem correct (bind per vertex regardless?)
-		// so apply iamge to texture to the object, probably do through houdiniGeometry? refer to
-		osg::Texture2D* tex = new osg::Texture2D;
-		tex->setImage(myImg);
+		// need to set wrap modes too
+		osg::Texture::WrapMode textureWrapMode;
+		textureWrapMode = osg::Texture::REPEAT;
+
+		texture->setWrap(osg::Texture2D::WRAP_R, textureWrapMode);
+		texture->setWrap(osg::Texture2D::WRAP_S, textureWrapMode);
+		texture->setWrap(osg::Texture2D::WRAP_T, textureWrapMode);
 
 		// should have something else here.. this doesn't seem to be working..
 		// TODO: put textures in HoudiniGeometry, use default shader to show everything properly
 // 		hg->getOsgNode(geoIndex, objIndex)->getOrCreateStateSet()->setTextureAttributeAndModes(0, tex, osg::StateAttribute::ON);
-
-		// just trying this out.. it works??
-// 		MenuItem* myNewImage = myMenuManager->getMainMenu()->addItem(MenuItem::Image);
-// 		myNewImage->setImage(refPd);
 
 // 		ofmsg("my image width %1% height: %2%, size %3%, bufSize %4%",
 // 			%refPd->getWidth() %refPd->getHeight() %refPd->getSize() %imgBufSize
@@ -1357,7 +1526,10 @@ void HoudiniEngine::initialize()
 				HAPI_CreateThriftSocketSession(session, "localhost", 7788);
 			}
 
+			// TODO: expose these in python to allow changeable options
 		    HAPI_CookOptions cook_options = HAPI_CookOptions_Create();
+			cook_options.cookTemplatedGeos = true; // default false
+
 
 			ENSURE_SUCCESS(session, HAPI_Initialize(
 // 				/* session */ NULL,
