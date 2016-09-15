@@ -25,6 +25,7 @@ examples = [
         ("Additional/WheelAsset.otl", "Object/WheelAsset", "WheelAsset1"),
         ("curve_object.otl", "Object/curve_object", "curve_object1"),
         ("fbxTest.otl", "Object/fbxTest", "fbxTest1"),
+        ("multiAsset.otl", "Object/SoftToy", "SoftToy1"),
 ]
 
 def createHG(otl, assetName, geoName):
@@ -45,8 +46,11 @@ def createHGId(otl, assetIndex, geoName):
 #asset = createHG(*examples[3]) # multi-geo parts
 #asset = createHGId(*examples[-2])
 
+asset = createHGId("multiAsset.otl", 0, "softToy1")
+he.instantiateAssetById(1)
+asset2 = he.instantiateGeometry("boxy1")
 #asset = createHG(*examples[-1])
-asset = createHG(*examples[5]) # spaceship
+##asset = createHG(*examples[5]) # spaceship
 #asset = createHG(*examples[3]) # simple
 
 #asset = createHG(*examples[8]) # wheel (not totally working)
@@ -57,7 +61,8 @@ asset = createHG(*examples[5]) # spaceship
 
 sp = SphereShape.create(.1, 1)
 
-asset.setPosition(0, 2, -5)
+asset.setPosition(-1, 2, -5)
+asset2.setPosition(1, 2, -5)
 
 # testing for spaceship
 #asset.setEffect('textured -d /da/dev/darren/omegalib/modules/daHoudiniEngine/prp_spaceship_color_1.jpg -e white')

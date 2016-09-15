@@ -89,7 +89,8 @@ HoudiniEngine::HoudiniEngine():
 	mySceneManager(NULL),
 	myLogEnabled(false),
 	myAssetCount(0),
-	currentAsset(-1)
+	currentAsset(-1),
+	currentAssetName("")
 {
 }
 
@@ -476,7 +477,7 @@ void HoudiniEngine::createMenu(const String& asset_name)
 	assetButton->setRadio(true);
 	assetButton->setChecked(true);
 	assetButton->setText(asset_name);
-	assetButton->setName(ostr("Asset %1%", %asset_name));
+	assetButton->setName(ostr("Asset %1%", %asset_name)); // TODO: use number here instead..
 	assetButton->setUIEventHandler(this);
 
 	std::map<std::string, hapi::Parm> parmMap = myAsset->parmMap();
@@ -497,7 +498,8 @@ void HoudiniEngine::createMenu(const String& asset_name)
 
 	ui::Menu* menu = houdiniMenu;
 
-	int i = daFolderIndex;
+// 	int i = daFolderIndex;
+	int i = 0;
 
 	Dictionary<int, Menu* > subMenus; // keep refs to submenus
 
@@ -657,6 +659,8 @@ int HoudiniEngine::instantiateAsset(const String& asset_name)
 
 	wait_for_cook();
 
+	omsg("after instantiate cook");
+
 //     HAPI_AssetInfo asset_info;
 //     ENSURE_SUCCESS(session,  HAPI_GetAssetInfo( asset_id, &asset_info ) );
 
@@ -723,6 +727,9 @@ int HoudiniEngine::instantiateAssetById(int asset_id)
 
 	Ref <RefAsset> myAsset = new RefAsset(asset_id, session);
 	instancedHEAssetsByName[asset_name] = myAsset;
+
+	ofmsg("instance asset name: %1%", %(*myAsset.get()).name());
+
     process_assets(*myAsset.get());
 
 	createMenu(asset_name);
@@ -742,6 +749,15 @@ int HoudiniEngine::instantiateAssetById(int asset_id)
 //             o- part node+ (drawables as part of geo, no transforms)
 StaticObject* HoudiniEngine::instantiateGeometry(const String& asset)
 {
+	ofmsg("%1% assets available", %myAssetCount);
+    HAPI_StringHandle* asset_name_sh = new HAPI_StringHandle[myAssetCount];
+    ENSURE_SUCCESS(session,  HAPI_GetAvailableAssets( session, library_id, asset_name_sh, myAssetCount ) );
+
+	for (int i =0; i < myAssetCount; ++i) {
+	    std::string asset_name = get_string( session, asset_name_sh[i] );
+		ofmsg("asset %1%: %2%", %(i + 1) %asset_name);
+	}
+
 	String s = ostr("%1%", %asset);
 
 	if (myHoudiniGeometrys[s] == NULL) {
@@ -1565,6 +1581,7 @@ static std::string houdiniEngine::get_string(HAPI_Session* session, int string_h
 }
 
 // TODO: expose to python to write my own event handler
+// TODO: widgetIdToParmId needs to account for multiple assets, especially the current one
 ///////////////////////////////////////////////////////////////////////////////
 void HoudiniEngine::handleEvent(const Event& evt)
 {
@@ -1588,13 +1605,12 @@ void HoudiniEngine::handleEvent(const Event& evt)
 	int parmId = -1;
 
 	// do it if source is button and event is toggle or click
-	if (Widget::getSource<Button>(evt) != NULL) {
+	if (Widget::getSource<Button>(evt) != NULL && strlen(Widget::getSource<Button>(evt)->getName().c_str()) > 5) {
 
 		// choice of asset?
-		if (ostr("%1%", %Widget::getSource<Button>(evt)->getName().substr(5)) == "Asset") {
-			omsg("It's an asset, setting currentAsset");
+		if (ostr("%1%", %Widget::getSource<Button>(evt)->getName().substr(0, 5)) == "Asset") {
 			if (Widget::getSource<Button>(evt)->isChecked()) {
-				currentAsset = 0;
+				currentAssetName = ostr("%1%", %Widget::getSource<Button>(evt)->getName().substr(6));
 			}
 			evt.setProcessed();
 			return;
@@ -1629,8 +1645,7 @@ void HoudiniEngine::handleEvent(const Event& evt)
 	// HAPI_GeoInfo::hasGeoChanged
 	// HAPI_GeoInfo::hasMaterialChanged
 
-	// TODO: make this per-asset
-	String asset_name = "SideFX::Object/spaceship";
+	String asset_name = currentAssetName;
 	hapi::Asset* myAsset = instancedHEAssetsByName[asset_name];
 
 	if (myAsset == NULL) {
@@ -2362,3 +2377,4 @@ void HoudiniEngine::showMappings() {
 		ofmsg("%1%: %2%", %item->first %parm->name());
 	}
 }
+

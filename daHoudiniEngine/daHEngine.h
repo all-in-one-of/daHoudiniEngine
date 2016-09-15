@@ -247,6 +247,7 @@ namespace houdiniEngine {
 
 		int myAssetCount;
 		int currentAsset;
+		String currentAssetName;
 
 	};
 };
