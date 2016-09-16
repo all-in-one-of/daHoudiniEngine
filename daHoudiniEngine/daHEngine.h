@@ -224,7 +224,10 @@ namespace houdiniEngine {
 		typedef Dictionary<String, vector<Container*> > ParmConts;
 		ui::Menu* houdiniMenu;
 		ui::Container* houdiniCont; // the container to put all menu items in
-		ui::Container* assetCont; // the container to indicate which asset to show
+		ui::Container* assetChoiceCont; // the container to indicate which asset to show
+		ui::Container* folderChoiceCont; // the container to indicate which folder menu to show
+		ui::Container* folderCont; // the container to show the contents of the selected folder
+		ui::Container* stagingCont; // the container to show the contents of the selected folder
 
 		// TODO generalise to per-asset
 		Dictionary<int, Container* > baseConts; // keep refs to submenus

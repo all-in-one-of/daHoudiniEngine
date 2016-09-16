@@ -230,7 +230,7 @@ void HoudiniEngine::createMenu(const String& asset_name)
 		ofwarn("No asset of name %1%", %asset_name);
 	}
 
-	Button* assetButton = Button::create(assetCont);
+	Button* assetButton = Button::create(assetChoiceCont);
 	assetButton->setRadio(true);
 	assetButton->setChecked(true);
 	assetButton->setText(asset_name);
@@ -258,8 +258,6 @@ void HoudiniEngine::createMenu(const String& asset_name)
 // 	int i = daFolderIndex;
 	int i = 0;
 
-	Dictionary<int, Menu* > subMenus; // keep refs to submenus
-
 	// help to parse params:
 	// 1 - Parameters such as HAPI_PARMTYPE_FOLDERLIST's and HAPI_PARMTYPE_FOLDER's
 	// 	have a child count associated with them. The child count is stored as the
@@ -269,8 +267,6 @@ void HoudiniEngine::createMenu(const String& asset_name)
 	// 	and regular parameters.
 	// 3 - When a HAPI_PARMTYPE_FOLDERLIST is encountered, we should dive into its
 	// 	contents immediately, while everything else is traversed in a breadth first manner.
-
-// 	houdiniCont->setUIEventHandler(this);
 
 	while (i < parms.size()) {
 		hapi::Parm* parm = &parms[i];
@@ -287,12 +283,11 @@ void HoudiniEngine::createMenu(const String& asset_name)
 		}
 
 		if (parm->info().type == HAPI_PARMTYPE_FOLDERLIST) { // only contains folders
-// 			cout << "doing folderList " << parm->info().id << ", " << parm->info().size << endl;
-// 			Container* myCont = Container::create(Container::LayoutVertical, houdiniCont);
-			Container* myCont = Container::create(Container::LayoutHorizontal, houdiniCont); // for testing
+ 			cout << "doing folderList " << parm->info().id << ", " << parm->info().size << endl;
+			Container* myCont = Container::create(Container::LayoutHorizontal, stagingCont); // for testing
 			myCont->setVerticalAlign(Container::AlignTop);
 			if (parm->info().parentId >= 0) {
-				houdiniCont->removeChild(myCont);
+				stagingCont->removeChild(myCont);
 				baseConts[parm->info().parentId]->addChild(myCont);
 			}
 			Label* label = Label::create(myCont);
@@ -301,6 +296,7 @@ void HoudiniEngine::createMenu(const String& asset_name)
 			baseConts[parm->info().id] = myCont;
 			myCont->setFillColor(Color("#404040"));
 			myCont->setFillEnabled(true);
+			myCont->setVisible(false);
 
 			i++;
 
@@ -309,14 +305,20 @@ void HoudiniEngine::createMenu(const String& asset_name)
 				// this is redundant, should always be folder type
 				if (parm->info().type == HAPI_PARMTYPE_FOLDER) { // can contain folderLists and parms
 // 					cout << "doing folder " << parm->info().id << ", " << parm->info().size << endl;
-					Container* folderCont = Container::create(Container::LayoutVertical, myCont);
-					baseConts[parm->info().id] = folderCont;
+					Container* myFolderCont = Container::create(Container::LayoutVertical, myCont);
+					myFolderCont->setName(ostr("C_%2%", %parm->name()));
+					baseConts[parm->info().id] = myFolderCont;
 
-					Label* label = Label::create(folderCont);
-					label->setName(ostr("%1%_label", %parm->name()));
-					label->setText(parm->label());
-					folderCont->setFillColor(Color("#808080"));
-					folderCont->setFillEnabled(true);
+					Button* button = Button::create(folderChoiceCont);
+					button->setName(ostr("FolderButton %1%", %parm->name()));
+					button->setText(parm->label());
+					button->setRadio(true);
+					button->setCheckable(true);
+					button->setUIEventHandler(this);
+					button->setUserData(myFolderCont);
+
+					myFolderCont->setFillColor(Color("#808080"));
+					myFolderCont->setFillEnabled(true);
 				}
 			}
 
@@ -324,9 +326,9 @@ void HoudiniEngine::createMenu(const String& asset_name)
 
 		} else { // its a parm
 // 			cout << "doing param " << parm->info().id << endl;
-			Container* myCont = Container::create(Container::LayoutHorizontal, houdiniCont);
+			Container* myCont = Container::create(Container::LayoutHorizontal, stagingCont);
 			if (parm->info().parentId >= 0) {
-				houdiniCont->removeChild(myCont);
+				stagingCont->removeChild(myCont);
 				baseConts[parm->info().parentId]->addChild(myCont);
 			}
 			myCont->setFillColor(Color("#B0B040"));

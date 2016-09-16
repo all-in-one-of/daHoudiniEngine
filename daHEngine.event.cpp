@@ -151,32 +151,63 @@ void HoudiniEngine::handleEvent(const Event& evt)
 		return;
 	}
 
-	Widget* myWidget = NULL;
+	Widget* myWidget = Widget::getSource<Button>(evt);
+
+	ofmsg("widget name: '%1%'", %myWidget->getName());
+	ofmsg("current asset is %1%", %currentAssetName);
 
 	int parmId = -1;
 
 	// do it if source is button and event is toggle or click
-	if (Widget::getSource<Button>(evt) != NULL && strlen(Widget::getSource<Button>(evt)->getName().c_str()) > 5) {
+	if (myWidget != NULL) {
 
 		// choice of asset?
-		if (ostr("%1%", %Widget::getSource<Button>(evt)->getName().substr(0, 5)) == "Asset") {
-			if (Widget::getSource<Button>(evt)->isChecked()) {
-				currentAssetName = ostr("%1%", %Widget::getSource<Button>(evt)->getName().substr(6));
+		if (strlen(myWidget->getName().c_str()) > 5 &&
+			ostr("%1%", %myWidget->getName().substr(0, 5)) == "Asset") {
+			currentAssetName = ostr("%1%", %myWidget->getName().substr(6));
+			evt.setProcessed();
+			return;
+		} else
+
+		// folder toggling?
+		if (strlen(myWidget->getName().c_str()) > 12 &&
+			ostr("%1%", %myWidget->getName().substr(0, 12)) == "FolderButton") {
+			// NOTE: myFolderCont may not have a container parent
+			Container* myFolderCont = static_cast<Container*>(myWidget->getUserData());
+			if (myFolderCont != NULL) {
+				ofmsg("Target Folder of widget %1%: %2%", %myWidget->getName() %myFolderCont->getName());
+				if (myFolderCont->getContainer() != NULL) {
+					ofmsg("num children in folderCont: %1%", %myFolderCont->getContainer()->getNumChildren());
+				}
+
+				for (int i = 0; i < folderCont->getNumChildren(); ++i) {
+					ofmsg("conts in folderCont: %1%: %2%", %folderCont->getNumChildren() %folderCont->getChildByIndex(0)->getName());
+					folderCont->getChildByIndex(folderCont->getNumChildren() - 1)->setVisible(false);
+					stagingCont->addChild(folderCont->getChildByIndex(folderCont->getNumChildren() - 1));
+					folderCont->removeChild(folderCont->getChildByIndex(folderCont->getNumChildren() - 1));
+				}
+
+				myFolderCont->setVisible(true);
+				stagingCont->removeChild(myFolderCont);
+				folderCont->addChild(myFolderCont);
+			} else {
+				ofmsg("no parent container for %1%", %myWidget->getName());
 			}
 			evt.setProcessed();
 			return;
 		}
 
-		myWidget = Widget::getSource<Button>(evt);
 
 		doUpdate = evt.getType() == Event::Toggle || evt.getType() == Event::Click;
 		parmId = evt.getSourceId();
 	}
 
+	myWidget = Widget::getSource<Slider>(evt);
+
 	// problem was bug in Slider.cpp, myValueChanged was never set back to false. Fixed
 	// stop if widget source is not a slider or event type is not changeValue
-	if (Widget::getSource<Slider>(evt) != NULL && evt.getType() == Event::ChangeValue) {
-		myWidget = Widget::getSource<Slider>(evt);
+	if (myWidget != NULL && evt.getType() == Event::ChangeValue) {
+		myWidget = myWidget;
 		doUpdate = true;
 		parmId = evt.getSourceId();
 	}

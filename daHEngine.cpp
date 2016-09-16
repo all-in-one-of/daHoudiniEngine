@@ -381,10 +381,14 @@ void HoudiniEngine::initialize()
 	MenuItem* hMenu = houdiniMenu->addContainer();
 	hMenu->getContainer()->setLayout(Container::LayoutVertical);
 	// create asset selection container and parameter container
-	assetCont = Container::create(Container::LayoutHorizontal, hMenu->getContainer());
-	assetCont->setName("AssetCont");
+	assetChoiceCont = Container::create(Container::LayoutHorizontal, hMenu->getContainer());
+	assetChoiceCont->setName("AssetCont");
 
-	houdiniCont = Container::create(Container::LayoutFree, hMenu->getContainer());
+	houdiniCont = Container::create(Container::LayoutVertical, hMenu->getContainer());
+	folderChoiceCont = Container::create(Container::LayoutHorizontal, houdiniCont);
+	folderCont = Container::create(Container::LayoutFree, houdiniCont);
+	folderCont->setName("this is the folderCont");
+	stagingCont = Container::create(Container::LayoutFree, UiModule::instance()->getUi());
 
 // 	sn = SceneNode::create("myOtl");
 // 	myEditor->addNode(sn);
