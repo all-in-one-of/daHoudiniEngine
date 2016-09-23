@@ -114,3 +114,9 @@ void HoudiniEngine::showMappings() {
 	}
 }
 
+Container* HoudiniEngine::getContainerForAsset(int n){
+	if (n < assetConts.size()) {
+		return assetConts[n];
+	}
+	return NULL;
+}

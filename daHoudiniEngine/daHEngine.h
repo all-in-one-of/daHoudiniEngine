@@ -162,6 +162,9 @@ namespace houdiniEngine {
 
 		void showMappings();
 
+		Container* getContainerForAsset(int n);
+		Container* getHoudiniCont() { return houdiniCont; };
+
 	private:
 		void createMenuItem(const String& asset_name, ui::Menu* menu, hapi::Parm* parm);
 		void createParm(const String& asset_name, Container* cont, hapi::Parm* parm);
