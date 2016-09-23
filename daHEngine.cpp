@@ -64,6 +64,8 @@ BOOST_PYTHON_MODULE(daHEngine)
  		PYAPI_METHOD(HoudiniEngine, cook)
  		PYAPI_METHOD(HoudiniEngine, setLoggingEnabled)
  		PYAPI_METHOD(HoudiniEngine, showMappings)
+ 		PYAPI_REF_GETTER(HoudiniEngine, getContainerForAsset)
+ 		PYAPI_REF_GETTER(HoudiniEngine, getHoudiniCont)
 		;
 }
 #endif
@@ -382,13 +384,17 @@ void HoudiniEngine::initialize()
 	hMenu->getContainer()->setLayout(Container::LayoutVertical);
 	// create asset selection container and parameter container
 	assetChoiceCont = Container::create(Container::LayoutHorizontal, hMenu->getContainer());
+	Label* label = Label::create(assetChoiceCont);
+	label->setText("assetChoiceCont");
 	assetChoiceCont->setName("AssetCont");
 
-	houdiniCont = Container::create(Container::LayoutVertical, hMenu->getContainer());
-	folderChoiceCont = Container::create(Container::LayoutHorizontal, houdiniCont);
-	folderCont = Container::create(Container::LayoutFree, houdiniCont);
-	folderCont->setName("this is the folderCont");
+	houdiniCont = hMenu->getContainer();
+
+	// outside of the HEngine Menu
 	stagingCont = Container::create(Container::LayoutFree, UiModule::instance()->getUi());
+	stagingCont->setVisible(false);
+	label = Label::create(stagingCont);
+	label->setText("stagingCont");
 
 // 	sn = SceneNode::create("myOtl");
 // 	myEditor->addNode(sn);

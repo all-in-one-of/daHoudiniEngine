@@ -223,15 +223,18 @@ namespace houdiniEngine {
 		typedef Dictionary<String, vector<MenuItem> > Menus;
 		typedef Dictionary<String, vector<Container*> > ParmConts;
 		ui::Menu* houdiniMenu;
-		ui::Container* houdiniCont; // the container to put all menu items in
+		ui::Container* houdiniCont; // the menu container
 		ui::Container* assetChoiceCont; // the container to indicate which asset to show
-		ui::Container* folderChoiceCont; // the container to indicate which folder menu to show
-		ui::Container* folderCont; // the container to show the contents of the selected folder
+		// these are contained in an asset cont
+// 		ui::Container* folderChoiceCont; // the container to indicate which folder menu to show
+// 		ui::Container* folderCont; // the container to show the contents of the selected folder
 		ui::Container* stagingCont; // the container to show the contents of the selected folder
 
 		// TODO generalise to per-asset
+		Vector<Container*> assetConts; // keep refs to parameters for this asset
 		Dictionary<int, Container* > baseConts; // keep refs to submenus
-		Dictionary<int, Container* > folderListItems; // keep ref to container for Folder selection
+		Dictionary<int, Container* > folderLists; // keep ref to container for Folder selection
+		Dictionary<int, Container* > folderListChoices; // buttons to refer to folder lists above
 		Dictionary<int, Container* > folderListContents; // keep refs to folderList container to display child parms
 
 		// the link between widget and parmId

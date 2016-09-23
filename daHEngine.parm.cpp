@@ -114,9 +114,12 @@ void HoudiniEngine::createParm(const String& asset_name, Container* cont, hapi::
 				assetParamConts[asset_name].push_back(cont);
 				Slider* slider = Slider::create(cont);
 				if (parm->info().hasUIMin && parm->info().hasUIMax) {
+					ofmsg("min %1% max %2%", %parm->info().UIMin %parm->info().UIMax);
 					slider->setTicks(parm->info().UIMax - parm->info().UIMin + 1);
 					slider->setValue(val - parm->info().UIMin);
 				} else {
+					if (parm->info().hasMin) ofmsg("min %1%", %parm->info().min);
+					if (parm->info().hasMax) ofmsg("max %1%", %parm->info().max);
 					slider->setTicks(parm->info().max + 1);
 					slider->setValue(val);
 				}
@@ -161,9 +164,12 @@ void HoudiniEngine::createParm(const String& asset_name, Container* cont, hapi::
 			assetParamConts[asset_name].push_back(cont);
 			Slider* slider = Slider::create(cont);
 			if (parm->info().hasUIMin && parm->info().hasUIMax) {
+				ofmsg("min %1% max %2%", %parm->info().UIMin %parm->info().UIMax);
 				float sliderVal = (val - parm->info().UIMin) / (float) (parm->info().UIMax - parm->info().UIMin);
 				slider->setValue(slider->getTicks() * sliderVal);
 			} else {
+				if (parm->info().hasMin) ofmsg("min %1%", %parm->info().min);
+				if (parm->info().hasMax) ofmsg("max %1%", %parm->info().max);
 				slider->setTicks(parm->info().max + 1);
 				slider->setValue(val);
 			}
@@ -237,9 +243,23 @@ void HoudiniEngine::createMenu(const String& asset_name)
 	assetButton->setName(ostr("Asset %1%", %asset_name)); // TODO: use number here instead..
 	assetButton->setUIEventHandler(this);
 
+	// all params go on an assetCont container
+	Container* assetCont = Container::create(Container::LayoutVertical, stagingCont);
+	assetCont->setFillColor(Color("#806040"));
+	assetCont->setPosition(Vector2f(50, 50));
+	Label* assetLabel = Label::create(assetCont);
+	assetLabel->setText(ostr("AssetCont %1%", %asset_name));
+	assetConts.push_back(assetCont);
+// 	// dont' show it on screen..
+// 	stagingCont->removeChild(assetCont);
+	int assetContSize = assetConts.size() - 1;
+	// BUG: do this conversion safer.. void* pointer not the same size as int
+	assetButton->setUserData((void *)assetContSize); // point to the container to use in assetConts
+
 	std::map<std::string, hapi::Parm> parmMap = myAsset->parmMap();
 	std::vector<hapi::Parm> parms = myAsset->parms();
 
+	// find the DA_Param section
 	int daFolderIndex = 0;
 	if (parmMap.count(daFolderName) > 0) {
 		HAPI_ParmId daFolderId = parmMap[daFolderName].info().id;
@@ -255,7 +275,8 @@ void HoudiniEngine::createMenu(const String& asset_name)
 
 	ui::Menu* menu = houdiniMenu;
 
-// 	int i = daFolderIndex;
+
+// 	int i = daFolderIndex; // skipping this for now
 	int i = 0;
 
 	// help to parse params:
@@ -284,19 +305,25 @@ void HoudiniEngine::createMenu(const String& asset_name)
 
 		if (parm->info().type == HAPI_PARMTYPE_FOLDERLIST) { // only contains folders
  			cout << "doing folderList " << parm->info().id << ", " << parm->info().size << endl;
-			Container* myCont = Container::create(Container::LayoutHorizontal, stagingCont); // for testing
-			myCont->setVerticalAlign(Container::AlignTop);
+			// add at asset container level
+			Container* myFolderListCont = Container::create(Container::LayoutVertical, assetCont);
+			Container* myChoiceCont = Container::create(Container::LayoutHorizontal, myFolderListCont);
+			Container* myFolderListContents = Container::create(Container::LayoutVertical, myFolderListCont);
+			myFolderListCont->setVerticalAlign(Container::AlignTop);
 			if (parm->info().parentId >= 0) {
-				stagingCont->removeChild(myCont);
-				baseConts[parm->info().parentId]->addChild(myCont);
+				assetCont->removeChild(myFolderListCont);
+				baseConts[parm->info().parentId]->addChild(myFolderListCont);
 			}
-			Label* label = Label::create(myCont);
+			Label* label = Label::create(myFolderListCont);
 			label->setName(ostr("%1%_label", %parm->name()));
 			label->setText(parm->label());
-			baseConts[parm->info().id] = myCont;
-			myCont->setFillColor(Color("#404040"));
-			myCont->setFillEnabled(true);
-			myCont->setVisible(false);
+			baseConts[parm->info().id] = myFolderListCont;
+			folderLists[parm->info().id] = myFolderListCont;
+			folderListChoices[parm->info().id] = myChoiceCont;
+// 			folderListContents[parm->info().id] = myFolderListContents;
+			myFolderListCont->setFillColor(Color("#404040"));
+			myFolderListCont->setFillEnabled(true);
+// 			myFolderListCont->setVisible(false);
 
 			i++;
 
@@ -305,11 +332,12 @@ void HoudiniEngine::createMenu(const String& asset_name)
 				// this is redundant, should always be folder type
 				if (parm->info().type == HAPI_PARMTYPE_FOLDER) { // can contain folderLists and parms
 // 					cout << "doing folder " << parm->info().id << ", " << parm->info().size << endl;
-					Container* myFolderCont = Container::create(Container::LayoutVertical, myCont);
-					myFolderCont->setName(ostr("C_%2%", %parm->name()));
+					// this will get swapped in/out based on linked folderButton
+					Container* myFolderCont = Container::create(Container::LayoutVertical, stagingCont);
+					myFolderCont->setName(ostr("C_%1%", %parm->name()));
 					baseConts[parm->info().id] = myFolderCont;
 
-					Button* button = Button::create(folderChoiceCont);
+					Button* button = Button::create(myChoiceCont);
 					button->setName(ostr("FolderButton %1%", %parm->name()));
 					button->setText(parm->label());
 					button->setRadio(true);
@@ -319,6 +347,9 @@ void HoudiniEngine::createMenu(const String& asset_name)
 
 					myFolderCont->setFillColor(Color("#808080"));
 					myFolderCont->setFillEnabled(true);
+
+					// use widget id??
+					folderListContents[button->getId()] = myFolderListContents;
 				}
 			}
 
@@ -326,9 +357,9 @@ void HoudiniEngine::createMenu(const String& asset_name)
 
 		} else { // its a parm
 // 			cout << "doing param " << parm->info().id << endl;
-			Container* myCont = Container::create(Container::LayoutHorizontal, stagingCont);
+			Container* myCont = Container::create(Container::LayoutHorizontal, assetCont);
 			if (parm->info().parentId >= 0) {
-				stagingCont->removeChild(myCont);
+				assetCont->removeChild(myCont);
 				baseConts[parm->info().parentId]->addChild(myCont);
 			}
 			myCont->setFillColor(Color("#B0B040"));

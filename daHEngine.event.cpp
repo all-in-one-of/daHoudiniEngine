@@ -151,7 +151,8 @@ void HoudiniEngine::handleEvent(const Event& evt)
 		return;
 	}
 
-	Widget* myWidget = Widget::getSource<Button>(evt);
+
+	Widget* myWidget = Widget::getSource<Widget>(evt);
 
 	ofmsg("widget name: '%1%'", %myWidget->getName());
 	ofmsg("current asset is %1%", %currentAssetName);
@@ -165,6 +166,16 @@ void HoudiniEngine::handleEvent(const Event& evt)
 		if (strlen(myWidget->getName().c_str()) > 5 &&
 			ostr("%1%", %myWidget->getName().substr(0, 5)) == "Asset") {
 			currentAssetName = ostr("%1%", %myWidget->getName().substr(6));
+			void * data = myWidget->getUserData();
+			int assetIndex = *((int *)&data);
+			// children actually removed on update.. so do this to mark for removal
+			for (int i = 1; i < houdiniCont->getNumChildren(); ++i) {
+				Widget* endRef = houdiniCont->getChildByIndex(i);
+				if (endRef != NULL) {
+					houdiniCont->removeChild(endRef);
+				}
+			}
+			houdiniCont->addChild(assetConts[assetIndex]);
 			evt.setProcessed();
 			return;
 		} else
@@ -179,6 +190,10 @@ void HoudiniEngine::handleEvent(const Event& evt)
 				if (myFolderCont->getContainer() != NULL) {
 					ofmsg("num children in folderCont: %1%", %myFolderCont->getContainer()->getNumChildren());
 				}
+
+				// stored by button id!
+				Container* folderCont = folderListContents[myWidget->getId()];
+				// Container* folderCont = myFolderCont->getContainer()->getContainer();
 
 				for (int i = 0; i < folderCont->getNumChildren(); ++i) {
 					ofmsg("conts in folderCont: %1%: %2%", %folderCont->getNumChildren() %folderCont->getChildByIndex(0)->getName());
@@ -202,7 +217,9 @@ void HoudiniEngine::handleEvent(const Event& evt)
 		parmId = evt.getSourceId();
 	}
 
-	myWidget = Widget::getSource<Slider>(evt);
+	omsg("about to get source");
+	myWidget = Widget::getSource<Widget>(evt);
+	ofmsg("got source %1%", %myWidget->getName());
 
 	// problem was bug in Slider.cpp, myValueChanged was never set back to false. Fixed
 	// stop if widget source is not a slider or event type is not changeValue
@@ -227,12 +244,16 @@ void HoudiniEngine::handleEvent(const Event& evt)
 	// HAPI_GeoInfo::hasGeoChanged
 	// HAPI_GeoInfo::hasMaterialChanged
 
+	omsg("got here");
+
 	String asset_name = currentAssetName;
 	hapi::Asset* myAsset = instancedHEAssetsByName[asset_name];
 
 	if (myAsset == NULL) {
 		ofwarn("No instanced asset %1%", %asset_name);
 		return;
+	} else {
+		ofmsg("Asset is %1%", %asset_name);
 	}
 
 	// the link between widget and parmId
@@ -268,7 +289,7 @@ void HoudiniEngine::handleEvent(const Event& evt)
 			int myIndex = 0;
 			for (int i = 0; i < parentCont->getNumChildren(); ++i) {
 				ofmsg("%1% == %2%", %parentCont->getChildByIndex(i)->getName()
-				                               %button->getName()
+				                    %button->getName()
 					 );
 				if (parentCont->getChildByIndex(i)->getName() == button->getName()) {
 					myIndex = i;
