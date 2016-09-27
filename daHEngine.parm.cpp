@@ -94,8 +94,7 @@ void HoudiniEngine::createParm(const String& asset_name, Container* cont, hapi::
 		if (parm->info().type == HAPI_PARMTYPE_INT) {
 			int val = parm->getIntValue(i);
 			if (parm->info().choiceCount > 0) {
-				ofmsg("  choiceindex: %1%", %parm->info().choiceIndex);
-				ofmsg("  choiceCount: %1%", %parm->info().choiceCount);
+				ofmsg("  choiceindex: %1% count: %2%", %parm->info().choiceIndex  %parm->info().choiceCount);
 				Container* choiceCont = Container::create(Container::LayoutVertical, cont);
 				for (int j = 0; j < parm->choices.size(); ++j) {
 					Button* button = Button::create(choiceCont);
@@ -110,7 +109,6 @@ void HoudiniEngine::createParm(const String& asset_name, Container* cont, hapi::
 				}
 			} else {
 				label->setText(parm->label() + " " + ostr("%1%", %val));
-	// 			label->setUserTag(asset_name); // reference to the asset this param belongs to
 				assetParamConts[asset_name].push_back(cont);
 				Slider* slider = Slider::create(cont);
 				if (parm->info().hasUIMin && parm->info().hasUIMax) {
@@ -132,26 +130,22 @@ void HoudiniEngine::createParm(const String& asset_name, Container* cont, hapi::
 			}
 		} else if (parm->info().type == HAPI_PARMTYPE_TOGGLE) {
 			int val = parm->getIntValue(i);
-// 			label->setUserTag(asset_name); // reference to the asset this param belongs to
 			assetParamConts[asset_name].push_back(cont);
 			Button* button = Button::create(cont);
 			button->setText("X");
 			button->setCheckable(true);
 			button->setChecked(val);
-// 			label->setUserData(miLabel); // reference to the label, for updating values
 			button->setUIEventHandler(this);
 			button->setUserData(label);
 
 			widgetIdToParmId[button->getId()] = parm->info().id;
 		} else if (parm->info().type == HAPI_PARMTYPE_BUTTON) {
 			int val = parm->getIntValue(i);
-// 			label->setUserTag(asset_name); // reference to the asset this param belongs to
 			assetParamConts[asset_name].push_back(cont);
 			Button* button = Button::create(cont);
 			button->setText("X");
 // 			button->setCheckable(true);
 			button->setChecked(val);
-// 			label->setUserData(miLabel); // reference to the label, for updating values
 			button->setUIEventHandler(this);
 			button->setUserData(label);
 
@@ -160,7 +154,6 @@ void HoudiniEngine::createParm(const String& asset_name, Container* cont, hapi::
 				   parm->info().type == HAPI_PARMTYPE_COLOR) {
 			float val = parm->getFloatValue(i);
 			label->setText(parm->label() + " " + ostr("%1%", %val));
-// 			label->setUserTag(asset_name); // reference to the asset this param belongs to
 			assetParamConts[asset_name].push_back(cont);
 			Slider* slider = Slider::create(cont);
 			if (parm->info().hasUIMin && parm->info().hasUIMax) {
@@ -184,9 +177,7 @@ void HoudiniEngine::createParm(const String& asset_name, Container* cont, hapi::
 				   parm->info().type == HAPI_PARMTYPE_PATH_FILE_IMAGE) { // TODO: update with TextBox
 			std::string val = parm->getStringValue(i);
 			if (parm->info().choiceCount > 0) {
-				ofmsg("  choiceindex: %1%", %parm->info().choiceIndex);
-				ofmsg("  choiceCount: %1%", %parm->info().choiceCount);
-	// 			label->setUserTag(asset_name); // reference to the asset this param belongs to
+				ofmsg("  choiceindex: %1% count: %2%", %parm->info().choiceIndex  %parm->info().choiceCount);
 				assetParamConts[asset_name].push_back(cont);
 				Container* choiceCont = Container::create(Container::LayoutVertical, cont);
 				for (int j = 0; j < parm->choices.size(); ++j) {
@@ -201,11 +192,9 @@ void HoudiniEngine::createParm(const String& asset_name, Container* cont, hapi::
 					widgetIdToParmId[button->getId()] = parm->info().id;
 				}
 			} else {
-	// 			label->setUserTag(asset_name); // reference to the asset this param belongs to
 				assetParamConts[asset_name].push_back(cont);
 				TextBox* box = TextBox::create(cont);
 				box->setText("X");
-	// 			label->setUserData(miLabel); // reference to the label, for updating values
 				box->setUIEventHandler(this);
 				box->setUserData(label);
 
@@ -250,8 +239,7 @@ void HoudiniEngine::createMenu(const String& asset_name)
 	Label* assetLabel = Label::create(assetCont);
 	assetLabel->setText(ostr("AssetCont %1%", %asset_name));
 	assetConts.push_back(assetCont);
-// 	// dont' show it on screen..
-// 	stagingCont->removeChild(assetCont);
+
 	int assetContSize = assetConts.size() - 1;
 	// BUG: do this conversion safer.. void* pointer not the same size as int
 	assetButton->setUserData((void *)assetContSize); // point to the container to use in assetConts
@@ -274,7 +262,6 @@ void HoudiniEngine::createMenu(const String& asset_name)
 	}
 
 	ui::Menu* menu = houdiniMenu;
-
 
 // 	int i = daFolderIndex; // skipping this for now
 	int i = 0;
@@ -304,7 +291,6 @@ void HoudiniEngine::createMenu(const String& asset_name)
 		}
 
 		if (parm->info().type == HAPI_PARMTYPE_FOLDERLIST) { // only contains folders
- 			cout << "doing folderList " << parm->info().id << ", " << parm->info().size << endl;
 			// add at asset container level
 			Container* myFolderListCont = Container::create(Container::LayoutVertical, assetCont);
 			Container* myChoiceCont = Container::create(Container::LayoutHorizontal, myFolderListCont);
@@ -320,10 +306,8 @@ void HoudiniEngine::createMenu(const String& asset_name)
 			baseConts[parm->info().id] = myFolderListCont;
 			folderLists[parm->info().id] = myFolderListCont;
 			folderListChoices[parm->info().id] = myChoiceCont;
-// 			folderListContents[parm->info().id] = myFolderListContents;
 			myFolderListCont->setFillColor(Color("#404040"));
 			myFolderListCont->setFillEnabled(true);
-// 			myFolderListCont->setVisible(false);
 
 			i++;
 
@@ -331,7 +315,6 @@ void HoudiniEngine::createMenu(const String& asset_name)
 				hapi::Parm* parm = &parms[i + j];
 				// this is redundant, should always be folder type
 				if (parm->info().type == HAPI_PARMTYPE_FOLDER) { // can contain folderLists and parms
-// 					cout << "doing folder " << parm->info().id << ", " << parm->info().size << endl;
 					// this will get swapped in/out based on linked folderButton
 					Container* myFolderCont = Container::create(Container::LayoutVertical, stagingCont);
 					myFolderCont->setName(ostr("C_%1%", %parm->name()));
@@ -356,7 +339,6 @@ void HoudiniEngine::createMenu(const String& asset_name)
 			i += parm->info().size;
 
 		} else { // its a parm
-// 			cout << "doing param " << parm->info().id << endl;
 			Container* myCont = Container::create(Container::LayoutHorizontal, assetCont);
 			if (parm->info().parentId >= 0) {
 				assetCont->removeChild(myCont);
