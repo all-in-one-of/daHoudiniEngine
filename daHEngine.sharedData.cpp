@@ -50,7 +50,6 @@ using namespace houdiniEngine;
 // send all the verts, faces, normals, colours, etc
 void HoudiniEngine::commitSharedData(SharedOStream& out)
 {
-
 	out << updateGeos; // may not be necessary to send this..
 
 	// continue only if there is something to send
@@ -58,31 +57,33 @@ void HoudiniEngine::commitSharedData(SharedOStream& out)
 		return;
 	}
 
-// 	updateGeos = false;
+ 	updateGeos = false;
 
-//  	ofmsg("MASTER: sending %1% assets", %myHoudiniGeometrys.size());
+ 	ofmsg("MASTER: sending %1% assets", %myHoudiniGeometrys.size());
 
 	// TODO change this to count the number of changed objs, geos, parts
 	out << int(myHoudiniGeometrys.size());
 
+	int i = 0;
+
     foreach(HGDictionary::Item hg, myHoudiniGeometrys)
     {
 		bool haveObjectsChanged = hg->objectsChanged;
-// 		ofmsg("MASTER: Objects changed:  %1%", %haveObjectsChanged);
+		ofmsg("MASTER: Objects have changed:  %1%", %haveObjectsChanged);
 		out << haveObjectsChanged;
 
 		if (!haveObjectsChanged) {
 			continue;
 		}
 
-// 		ofmsg("MASTER: Name %1%", %hg->getName());
+		ofmsg("MASTER: Name %1%", %hg->getName());
 		out << hg->getName();
 		out << hg->getObjectCount();
 
 		// objects
 		for (int obj = 0; obj < hg->getObjectCount(); ++obj) {
 			bool hasTransformChanged = hg->getTransformChanged(obj);
-// 			ofmsg("MASTER: Transforms changed:  %1%", %hasTransformChanged);
+			ofmsg("MASTER: Transforms have changed:  %1%", %hasTransformChanged);
 
 			out << hasTransformChanged;
 
@@ -100,42 +101,42 @@ void HoudiniEngine::commitSharedData(SharedOStream& out)
 			}
 
 			bool haveGeosChanged = hg->getGeosChanged(obj);
-// 			ofmsg("MASTER: Geos changed:  %1%", %haveGeosChanged);
+			ofmsg("MASTER: Geos have changed:  %1%", %haveGeosChanged);
 			out << haveGeosChanged;
 
 			if (!haveGeosChanged) {
 				continue;
 			}
 
-// 			ofmsg("Geodes: %1%", %hg->getGeodeCount(obj));
+			ofmsg("Geodes: %1%", %hg->getGeodeCount(obj));
 			out << hg->getGeodeCount(obj);
 
 			// geoms
 			for (int g = 0; g < hg->getGeodeCount(obj); ++g) {
 				bool hasGeoChanged = hg->getGeoChanged(g, obj);
-// 				ofmsg("MASTER: Geo changed:  %1%", %hasGeoChanged);
+				ofmsg("MASTER: Geo has changed:  %1%", %hasGeoChanged);
 				out << hasGeoChanged;
 
 				if (!hasGeoChanged) {
 					continue;
 				}
 
-// 				ofmsg("Drawables: %1%", %hg->getDrawableCount(g, obj));
+				ofmsg("Drawables: %1%", %hg->getDrawableCount(g, obj));
 				out << hg->getDrawableCount(g, obj);
 
 				// parts
 				for (int d = 0; d < hg->getDrawableCount(g, obj); ++d) {
-// 					ofmsg("Vertex count: %1%", %hg->getVertexCount(d, g, obj));
+					ofmsg("Vertex count: %1%", %hg->getVertexCount(d, g, obj));
 					out << hg->getVertexCount(d, g, obj);
 					for (int i = 0; i < hg->getVertexCount(d, g, obj); ++i) {
 						out << hg->getVertex(i, d, g, obj);
 					}
-// 					ofmsg("Normal count: %1%", %hg->getNormalCount(d, g, obj));
+					ofmsg("Normal count: %1%", %hg->getNormalCount(d, g, obj));
 					out << hg->getNormalCount(d, g, obj);
 					for (int i = 0; i < hg->getNormalCount(d, g, obj); ++i) {
 						out << hg->getNormal(i, d, g, obj);
 					}
-// 					ofmsg("Color count: %1%", %hg->getColorCount(d, g, obj));
+					ofmsg("Color count: %1%", %hg->getColorCount(d, g, obj));
 					out << hg->getColorCount(d, g, obj);
 					for (int i = 0; i < hg->getColorCount(d, g, obj); ++i) {
 						out << hg->getColor(i, d, g, obj);
@@ -162,6 +163,7 @@ void HoudiniEngine::commitSharedData(SharedOStream& out)
 	int parmCount = 0;
 	out << parmCount;
 
+	// TODO: reimplement sending of ui
 //     foreach(ParmConts::Item pcs, assetParamConts) {
 // 		out << pcs.first;
 // 		out << int(pcs.second.size());
@@ -197,34 +199,34 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 
 	in >> numItems;
 
-// 	if (!SystemManager::instance()->isMaster()) {
-// 		ofmsg("SLAVE %1%: getting data: %2%", %SystemManager::instance()->getHostname() %numItems);
-// 	}
+	if (!SystemManager::instance()->isMaster()) {
+		ofmsg("SLAVE %1%: getting data: %2%", %SystemManager::instance()->getHostname() %numItems);
+	}
 
     for(int i = 0; i < numItems; i++) {
 
 		bool haveObjectsChanged;
 		in >> haveObjectsChanged;
 
-// 		ofmsg("SLAVE: objs changed: %1%", %haveObjectsChanged);
+		ofmsg("SLAVE: objs have changed: %1%", %haveObjectsChanged);
 
 		if (!haveObjectsChanged) {
-// 			continue;
+			continue;
 		}
 
         String name;
         in >> name;
 
-// 		ofmsg("SLAVE: name: '%1%'", %name);
+		ofmsg("SLAVE: name: '%1%'", %name);
 
  		int objectCount = 0;
         in >> objectCount;
 
-//  		ofmsg("SLAVE: obj count: '%1%'", %objectCount);
+ 		ofmsg("SLAVE: obj count: '%1%'", %objectCount);
 
        HoudiniGeometry* hg = myHoudiniGeometrys[name];
         if(hg == NULL) {
-//  			ofmsg("SLAVE: no hg: '%1%'", %name);
+ 			ofmsg("SLAVE: no hg: '%1%'", %name);
 			hg = HoudiniGeometry::create(name);
 			hg->addObject(objectCount);
 			myHoudiniGeometrys[name] = hg;
@@ -238,19 +240,19 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 
 // 		hg->clear();
 
-// 		ofmsg("SLAVE: current obj count: '%1%'", %hg->getObjectCount());
+		ofmsg("SLAVE: current obj count: '%1%'", %hg->getObjectCount());
 
 		if (hg->getObjectCount() < objectCount) {
 			hg->addObject(objectCount - hg->getObjectCount());
 		}
 
-// 		ofmsg("SLAVE: new obj count: '%1%'", %hg->getObjectCount());
+		ofmsg("SLAVE: new obj count: '%1%'", %hg->getObjectCount());
 
  		for (int obj = 0; obj < objectCount; ++obj) {
 			bool hasTransformChanged;
 			in >> hasTransformChanged;
 
-// 			ofmsg("SLAVE: transforms changed: '%1%'", %hasTransformChanged);
+			ofmsg("SLAVE: transforms have changed: '%1%'", %hasTransformChanged);
 
 			if (hasTransformChanged) {
 				osg::Vec3d pos;
@@ -275,7 +277,7 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 			bool haveGeosChanged;
 			in >> haveGeosChanged;
 
-// 			ofmsg("SLAVE: geos changed: '%1%'", %haveGeosChanged);
+			ofmsg("SLAVE: geos have changed: '%1%'", %haveGeosChanged);
 
 			if (!haveGeosChanged) {
 				continue;
@@ -284,7 +286,7 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 			int geodeCount = 0;
 	        in >> geodeCount;
 
-//  			ofmsg("SLAVE: geode count: '%1%'", %geodeCount);
+ 			ofmsg("SLAVE: geode count: '%1%'", %geodeCount);
 
 			if (hg->getGeodeCount(obj) < geodeCount) {
 				hg->addGeode(geodeCount - hg->getGeodeCount(obj), obj);
@@ -302,7 +304,7 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 				int drawableCount = 0;
 		        in >> drawableCount;
 
-//  				ofmsg("SLAVE: drawable count: '%1%'", %drawableCount);
+ 				ofmsg("SLAVE: drawable count: '%1%'", %drawableCount);
 
 				// add drawables if needed
 				if (hg->getDrawableCount(g, obj) < drawableCount) {
@@ -316,7 +318,7 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 					int vertCount = 0;
 					in >> vertCount;
 
-// 					ofmsg("SLAVE: vertex count: '%1%'", %vertCount);
+					ofmsg("SLAVE: vertex count: '%1%'", %vertCount);
 					for (int j = 0; j < vertCount; ++j) {
 						Vector3f v;
 						in >> v;
@@ -326,7 +328,7 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 					int normalCount = 0;
 					in >> normalCount;
 
-// 					ofmsg("SLAVE: normal count: '%1%'", %normalCount);
+					ofmsg("SLAVE: normal count: '%1%'", %normalCount);
 					for (int j = 0; j < normalCount; ++j) {
 						Vector3f n;
 						in >> n;
@@ -336,7 +338,7 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 					int colorCount = 0;
 					in >> colorCount;
 
-// 					ofmsg("SLAVE: color count: '%1%'", %colorCount);
+					ofmsg("SLAVE: color count: '%1%'", %colorCount);
 					for (int j = 0; j < colorCount; ++j) {
 						Color c;
 						in >> c;
@@ -347,7 +349,7 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 					int psCount = 0;
 					in >> psCount;
 
-// 					ofmsg("SLAVE: primitive set count: '%1%'", %psCount);
+					ofmsg("SLAVE: primitive set count: '%1%'", %psCount);
 
 					for (int j = 0; j < psCount; ++j) {
 						osg::PrimitiveSet::Mode mode;
@@ -366,7 +368,9 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 	int parmCount = 0;
 	in >> parmCount;
 
-//  parameter list
+	//  parameter list
+	// TODO: reimplement reading of new ui layout
+
 	ofmsg("SLAVE: currently have %1% asset parameter lists", %assetParamConts.size());
     foreach(ParmConts::Item mis, assetParamConts)
 	{

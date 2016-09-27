@@ -132,6 +132,7 @@ int HoudiniEngine::loadAssetLibraryFromFile(const String& otlFile)
 
 	// do this on master only
 	if (!SystemManager::instance()->isMaster()) {
+        omsg("loadAssetLibraryFromFile: Im a slave, not doing this");
 		return -1;
 	}
 
@@ -149,7 +150,7 @@ int HoudiniEngine::loadAssetLibraryFromFile(const String& otlFile)
 
     ENSURE_SUCCESS(session,  HAPI_GetAvailableAssetCount( session, library_id, &assetCount ) );
 
-	ofmsg("%1% assets available", %assetCount);
+	ofmsg("loadAssetLibraryFromFile: %1% assets available", %assetCount);
     HAPI_StringHandle* asset_name_sh = new HAPI_StringHandle[assetCount];
     ENSURE_SUCCESS(session,  HAPI_GetAvailableAssets( session, library_id, asset_name_sh, assetCount ) );
 
@@ -173,6 +174,7 @@ int HoudiniEngine::loadAssetLibraryFromFile(const String& otlFile)
 int HoudiniEngine::instantiateAsset(const String& asset_name)
 {
 	if (!SystemManager::instance()->isMaster()) {
+        omsg("instantiateAsset: Im a slave, not doing this");
 		return -1;
 	}
 
@@ -221,16 +223,15 @@ int HoudiniEngine::instantiateAsset(const String& asset_name)
 int HoudiniEngine::instantiateAssetById(int asset_id)
 {
 	if (!SystemManager::instance()->isMaster()) {
+		omsg("instantiateAssetById: not loading, not slave");
 		return -1;
 	}
-
-// 	ofmsg("about to instantiate %1%", %asset_name);
 
 	int assetCount;
 
     ENSURE_SUCCESS(session,  HAPI_GetAvailableAssetCount( session, library_id, &assetCount ) );
 
-	ofmsg("%1% assets available", %assetCount);
+	ofmsg("instantiateAssetById: %1% assets available", %assetCount);
     HAPI_StringHandle* asset_name_sh = new HAPI_StringHandle[assetCount];
     ENSURE_SUCCESS(session,  HAPI_GetAvailableAssets( session, library_id, asset_name_sh, assetCount ) );
 
@@ -287,28 +288,19 @@ int HoudiniEngine::instantiateAssetById(int asset_id)
 //             o- part node+ (drawables as part of geo, no transforms)
 StaticObject* HoudiniEngine::instantiateGeometry(const String& asset)
 {
-	ofmsg("%1% assets available", %myAssetCount);
-    HAPI_StringHandle* asset_name_sh = new HAPI_StringHandle[myAssetCount];
-    ENSURE_SUCCESS(session,  HAPI_GetAvailableAssets( session, library_id, asset_name_sh, myAssetCount ) );
+	ofmsg("instantiateGeometry: %1% assets available", %myAssetCount);
 
-	for (int i =0; i < myAssetCount; ++i) {
-	    std::string asset_name = get_string( session, asset_name_sh[i] );
-		ofmsg("asset %1%: %2%", %(i + 1) %asset_name);
-	}
-
-	String s = ostr("%1%", %asset);
-
-	if (myHoudiniGeometrys[s] == NULL) {
+	if (myHoudiniGeometrys[asset] == NULL) {
 		ofwarn("No model of %1%.. creating", %asset);
 
-		HoudiniGeometry* hg = HoudiniGeometry::create(s);
-		myHoudiniGeometrys[s] = hg;
-		if (mySceneManager->getModel(s) == NULL) {
+		HoudiniGeometry* hg = HoudiniGeometry::create(asset);
+		myHoudiniGeometrys[asset] = hg;
+		if (mySceneManager->getModel(asset) == NULL) {
 			mySceneManager->addModel(hg);
 		}
 	}
 
-	StaticObject* so = new StaticObject(mySceneManager, s);
+	StaticObject* so = new StaticObject(mySceneManager, asset);
 
 	// TODO: make this general
 	if (mySceneManager->getTexture("testing", false) != NULL) {
@@ -408,5 +400,6 @@ void HoudiniEngine::initialize()
 	myQuitMenuItem = menu->addItem(MenuItem::Button);
 	myQuitMenuItem->setText("Quit");
 	myQuitMenuItem->setCommand("oexit()");
+
 }
 
