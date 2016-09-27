@@ -95,9 +95,9 @@ void HoudiniEngine::commitSharedData(SharedOStream& out)
 				osg::Vec3d scale = hg->getOsgNode()->asGroup()->getChild(obj)->asTransform()->
 					asPositionAttitudeTransform()->getScale();
 
-				out << pos[0] << pos[1] << pos[2];
-				out << rot.x() << rot.y() << rot.z() << rot.w();
-				out << scale[0] << scale[1] << scale[2];
+				out << pos;
+				out << rot;
+				out << scale;
 			}
 
 			bool haveGeosChanged = hg->getGeosChanged(obj);
@@ -256,20 +256,18 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 
 			if (hasTransformChanged) {
 				osg::Vec3d pos;
-				in >> pos[0] >> pos[1] >> pos[2];
+				in >> pos;
 
-				osg::Vec4d rot;
-				osg::Quat qRot;
-				in >> rot[0] >> rot[1] >> rot[2] >> rot[3];
-				qRot.set(rot);
+				osg::Quat rot;
+				in >> rot;
 
 				osg::Vec3d scale;
-				in >> scale[0] >> scale[1] >> scale[2];
+				in >> scale;
 
 				hg->getOsgNode()->asGroup()->getChild(obj)->asTransform()->
 					asPositionAttitudeTransform()->setPosition(pos);
 				hg->getOsgNode()->asGroup()->getChild(obj)->asTransform()->
-					asPositionAttitudeTransform()->setAttitude(qRot);
+					asPositionAttitudeTransform()->setAttitude(rot);
 				hg->getOsgNode()->asGroup()->getChild(obj)->asTransform()->
 					asPositionAttitudeTransform()->setScale(scale);
 			}

@@ -49,7 +49,7 @@ using namespace houdiniEngine;
 void HoudiniEngine::process_assets(const hapi::Asset &asset)
 {
     vector<hapi::Object> objects = asset.objects();
-	ofmsg("%1%: %2% objects", %asset.name() %objects.size());
+	ofmsg("process_assets: %1%: %2% objects", %asset.name() %objects.size());
 
 	String s = ostr("%1%", %asset.name());
 
@@ -478,11 +478,12 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 		int mapIndex = -1;
 
 		for (int i =0; i < node_info.parmCount; ++i) {
-			ofmsg("%1% %2% (%3%) id = %4%",
-				  %i
-				  %get_string( session, parm_infos[i].labelSH)
-				  %get_string( session, parm_infos[i].nameSH)
-				  %parm_infos[i].id);
+			// node parm output
+// 			ofmsg("%1% %2% (%3%) id = %4%",
+// 				  %i
+// 				  %get_string( session, parm_infos[i].labelSH)
+// 				  %get_string( session, parm_infos[i].nameSH)
+// 				  %parm_infos[i].id);
 			if (parm_infos[i].stringValuesIndex >= 0) {
 				int sh = -1;
 				ENSURE_SUCCESS(session,  HAPI_GetParmStringValues(
@@ -491,8 +492,9 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 					&sh,
 					parm_infos[i].stringValuesIndex, 1)
 				);
-				ofmsg("%1%  %2%: %3%", %i %parm_infos[i].id
-					%get_string(session, sh));
+				// more node parm output
+// 				ofmsg("%1%  %2%: %3%", %i %parm_infos[i].id
+// 				                       %get_string(session, sh));
 
 				if (sh != -1 && (get_string(session, parm_infos[i].nameSH) == "baseColorMap")) {
 // 				if (sh != -1 && (get_string(session, parm_infos[i].nameSH) == "map")) {
@@ -501,13 +503,14 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 			}
 		}
 
-		for (int i = 0; i < node_info.parmCount; ++i) {
-			ofmsg("index %1%: %2% '%3%'",
-				  %i
-				  %parm_infos[i].id
-				  %get_string(session, parm_infos[i].nameSH)
-			);
-		}
+		// debug output
+// 		for (int i = 0; i < node_info.parmCount; ++i) {
+// 			ofmsg("index %1%: %2% '%3%'",
+// 				  %i
+// 				  %parm_infos[i].id
+// 				  %get_string(session, parm_infos[i].nameSH)
+// 			);
+// 		}
 
 // 		ofmsg("the texture path: assetId=%1% matInfo.id=%2% mapIndex=%3% parm_id=%4% string=%5%",
 // 			  %mat_info.assetId
