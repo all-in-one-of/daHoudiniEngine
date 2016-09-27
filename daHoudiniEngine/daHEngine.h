@@ -76,15 +76,15 @@ namespace houdiniEngine {
 	    if ((result) != HAPI_RESULT_SUCCESS) \
 	    { \
 		ofmsg("failure at %1%:%2%", %__FILE__ %__LINE__); \
-		ofmsg("%1% %2%", %hapi::Failure::lastErrorMessage(session) %result);\
+		ofmsg("%1% '%2%'", %hapi::Failure::lastErrorMessage(session) %result);\
 		exit(1); \
 	    }
 
 	#define ENSURE_COOK_SUCCESS(session, result) \
 	    if ((result) != HAPI_STATE_READY) \
 	    { \
-		ofmsg("failure at %1%:%2%", %__FILE__ %__LINE__); \
-		ofmsg("%1% %2%", %hapi::Failure::lastErrorMessage(session) %result);\
+		ofmsg("cook failure at %1%:%2%", %__FILE__ %__LINE__); \
+		ofmsg("%1% '%2%'", %hapi::Failure::lastErrorMessage(session) %result);\
 		exit(1); \
 	    }
 
