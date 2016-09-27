@@ -164,6 +164,7 @@ namespace houdiniEngine {
 
 		Container* getContainerForAsset(int n);
 		Container* getHoudiniCont() { return houdiniCont; };
+		Container* getStagingCont() { return stagingCont; };
 
 	private:
 		void createMenuItem(const String& asset_name, ui::Menu* menu, hapi::Parm* parm);

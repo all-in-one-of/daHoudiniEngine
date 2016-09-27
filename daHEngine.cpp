@@ -66,6 +66,7 @@ BOOST_PYTHON_MODULE(daHEngine)
  		PYAPI_METHOD(HoudiniEngine, showMappings)
  		PYAPI_REF_GETTER(HoudiniEngine, getContainerForAsset)
  		PYAPI_REF_GETTER(HoudiniEngine, getHoudiniCont)
+ 		PYAPI_REF_GETTER(HoudiniEngine, getStagingCont)
 		;
 }
 #endif
