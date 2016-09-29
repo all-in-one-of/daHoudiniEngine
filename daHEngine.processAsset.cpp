@@ -122,7 +122,7 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 
 		HAPI_Transform* objTransforms = new HAPI_Transform[objects.size()];
 		// NB: this resets all ObjectInfo::hasTransformChanged flags to false
-		ENSURE_SUCCESS(session, HAPI_GetObjectTransforms( session, asset.id, HAPI_TRS, objTransforms, 0, objects.size()));
+		ENSURE_SUCCESS(session, HAPI_GetObjectTransforms( session, asset.id, HAPI_RSTORDER_DEFAULT, objTransforms, 0, objects.size()));
 
 		for (int object_index=0; object_index < int(objects.size()); ++object_index)
 	    {
