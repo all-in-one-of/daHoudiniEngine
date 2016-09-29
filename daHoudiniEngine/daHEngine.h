@@ -146,6 +146,8 @@ namespace houdiniEngine {
 		int instantiateAssetById(int asset_id);
 		StaticObject* instantiateGeometry(const String& asset);
 
+		HoudiniGeometry* getHG(const String& asset) { return myHoudiniGeometrys[asset]; };
+
 		Menu* getMenu(const String& asset) { return NULL; } // return this asset's parameter menu
 
 		void createMenu(const String& asset_name);

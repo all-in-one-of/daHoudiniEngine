@@ -67,6 +67,14 @@ BOOST_PYTHON_MODULE(daHEngine)
  		PYAPI_REF_GETTER(HoudiniEngine, getContainerForAsset)
  		PYAPI_REF_GETTER(HoudiniEngine, getHoudiniCont)
  		PYAPI_REF_GETTER(HoudiniEngine, getStagingCont)
+ 		PYAPI_REF_GETTER(HoudiniEngine, getHG)
+		;
+
+	// HoudiniGeometry
+	PYAPI_REF_BASE_CLASS(HoudiniGeometry)
+		PYAPI_METHOD(HoudiniGeometry, getObjectCount)
+		PYAPI_METHOD(HoudiniGeometry, getGeodeCount)
+		PYAPI_METHOD(HoudiniGeometry, getDrawableCount)
 		;
 }
 #endif
