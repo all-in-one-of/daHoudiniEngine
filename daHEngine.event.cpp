@@ -313,8 +313,8 @@ void HoudiniEngine::handleEvent(const Event& evt)
 		Slider* slider = dynamic_cast<Slider*>(myWidget);
 		if (slider != NULL) {
 			int val = slider->getValue();
-			if (parm->info().hasUIMin && parm->info().hasUIMax) {
-				val = parm->info().UIMin + (val * (float) (parm->info().UIMax - parm->info().UIMin));
+			if (parm->info().hasUIMin && parm->info().hasUIMax) { // offset value based on the UI range
+				val = parm->info().UIMin + val;
 			}
 			ofmsg("Value set to %1%", %val);
 			static_cast<Label*>(slider->getUserData())->setText(ostr("%1% %2%", %parm->label() %val));
