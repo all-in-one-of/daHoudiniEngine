@@ -64,13 +64,14 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 	}
 
 	hg->objectsChanged = asset.info().haveObjectsChanged;
-	ofmsg("process_assets: Objects changed:  %1%", %hg->objectsChanged);
+	ofmsg("process_assets: Objects have changed:  %1%", %hg->objectsChanged);
 
 	if (hg->getObjectCount() < objects.size()) {
 		hg->addObject(objects.size() - hg->getObjectCount());
 	}
 
 	if (hg->objectsChanged) {
+// 	if (true) {
 		for (int object_index=0; object_index < int(objects.size()); ++object_index)
 	    {
 			HAPI_ObjectInfo objInfo = objects[object_index].info();
@@ -89,9 +90,10 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 			}
 
 			hg->setGeosChanged(objInfo.haveGeosChanged, object_index);
-			ofmsg("process_assets: Object Geos %1% changed: %2%", %object_index %hg->getGeosChanged(object_index));
+			ofmsg("process_assets: Object Geos %1% have changed: %2%", %object_index %hg->getGeosChanged(object_index));
 
 			if (hg->getGeosChanged(object_index)) {
+// 			if (true) {
 
 				for (int geo_index=0; geo_index < int(geos.size()); ++geo_index)
 				{
@@ -103,10 +105,11 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 					}
 
 					hg->setGeoChanged(geos[geo_index].info().hasGeoChanged, geo_index, object_index);
-					ofmsg("process_assets: Geo %1%:%2% changed:  %3%", %object_index %geo_index %hg->getGeosChanged(object_index));
+					ofmsg("process_assets: Geo %1%:%2% has changed:  %3%", %object_index %geo_index %hg->getGeosChanged(object_index));
 
 					hg->clear(geo_index, object_index);
 					if (hg->getGeoChanged(geo_index, object_index)) {
+// 					if (true) {
 					    for (int part_index=0; part_index < int(parts.size()); ++part_index)
 						{
 							ofmsg("processing %1% %2%", %s %parts[part_index].name());
@@ -117,7 +120,7 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 			}
 
  			hg->setTransformChanged(objInfo.hasTransformChanged, object_index);
-			ofmsg("process_assets: Object Transform %1% changed:  %2%", %object_index %hg->getTransformChanged(object_index));
+			ofmsg("process_assets: Object %1% Transform has changed: %2%", %object_index %hg->getTransformChanged(object_index));
 		}
 
 		HAPI_Transform* objTransforms = new HAPI_Transform[objects.size()];
@@ -127,6 +130,7 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 		for (int object_index=0; object_index < int(objects.size()); ++object_index)
 	    {
 			if (hg->getTransformChanged(object_index)) {
+// 			if (true) {
 				hg->getOsgNode()->asGroup()->getChild(object_index)->asTransform()->
 					asPositionAttitudeTransform()->setPosition(osg::Vec3d(
 						objTransforms[object_index].position[0],
@@ -767,19 +771,20 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 
     }
 
+	cout << "face count is " << prev_faceCount << endl;
+
 	if (prev_faceCount == 3) {
 		myType = osg::PrimitiveSet::TRIANGLES;
 	} else if (prev_faceCount == 4) {
 		myType = osg::PrimitiveSet::QUADS;
 	}
 	if (prev_faceCount > 4) {
-// 		cout << "face count is " << prev_faceCount << endl;
 		myType = osg::PrimitiveSet::TRIANGLE_FAN;
 	}
 
-// 	cout << "making final primitive set for " << prev_faceCount << ", from " <<
-// 		prev_faceCountIndex << " plus " <<
-// 		curr_index - prev_faceCountIndex << endl;
+	cout << "making final primitive set for " << prev_faceCount << ", from " <<
+		prev_faceCountIndex << " plus " <<
+		curr_index - prev_faceCountIndex << endl;
 
 	hg->addPrimitiveOsg(myType, prev_faceCountIndex, curr_index - prev_faceCountIndex, partIndex, geoIndex, objIndex);
 
@@ -852,8 +857,9 @@ void HoudiniEngine::wait_for_cook()
 	            delete[] statusBuf;
 	        }
 		}
-        HAPI_GetStatus(session, HAPI_STATUS_COOK_STATE, &status);
-    }
-    while ( status > HAPI_STATE_MAX_READY_STATE );
-    ENSURE_COOK_SUCCESS( session, status );
+		HAPI_GetStatus(session, HAPI_STATUS_COOK_STATE, &status);
+	}
+	while ( status > HAPI_STATE_MAX_READY_STATE );
+	ENSURE_COOK_SUCCESS( session, status );
+	ofmsg("cooked :%1%", %status);
 }

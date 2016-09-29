@@ -209,9 +209,6 @@ int HoudiniEngine::instantiateAsset(const String& asset_name)
 
 	omsg("after instantiate cook");
 
-//     HAPI_AssetInfo asset_info;
-//     ENSURE_SUCCESS(session,  HAPI_GetAssetInfo( asset_id, &asset_info ) );
-
 	Ref <RefAsset> myAsset = new RefAsset(asset_id, session);
 	instancedHEAssetsByName[asset_name] = myAsset;
     process_assets(*myAsset.get());
@@ -247,7 +244,7 @@ int HoudiniEngine::instantiateAssetById(int asset_id)
 
 	for (int i =0; i < assetCount; ++i) {
 	    asset_name = get_string( session, asset_name_sh[i] );
-		ofmsg("asset %1%: %2%", %(i + 1) %asset_name);
+		ofmsg("%3%asset %1%: %2%", %(i + 1) %asset_name %(i == asset_id ? "*" : ""));
 	}
 
 	asset_name = get_string( session, asset_name_sh[asset_id]);
@@ -265,17 +262,14 @@ int HoudiniEngine::instantiateAssetById(int asset_id)
 		return -1;
 	}
 
-// 	ofmsg("instantiated %1%, id: %2%", %asset_name %asset_id);
-
 	wait_for_cook();
-
-//     HAPI_AssetInfo asset_info;
-//     ENSURE_SUCCESS(session,  HAPI_GetAssetInfo( asset_id, &asset_info ) );
 
 	Ref <RefAsset> myAsset = new RefAsset(asset_id, session);
 	instancedHEAssetsByName[asset_name] = myAsset;
 
-	ofmsg("instance asset name: %1%", %(*myAsset.get()).name());
+	// asset_id is now NOT the same as the id defined in the library
+	// is this important?
+ 	ofmsg("Instantiated %1%, id: %2%", %myAsset.get()->name() %asset_id);
 
     process_assets(*myAsset.get());
 

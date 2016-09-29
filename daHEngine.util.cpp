@@ -88,6 +88,7 @@ void HoudiniEngine::cook()
 
 	foreach(Mapping::Item asset, instancedHEAssetsByName) {
 		hapi::Asset* myAsset = asset.second;
+		ofmsg("cooking %1%..", %myAsset->name());
 		myAsset->cook();
 		wait_for_cook();
 		process_assets(*myAsset);
