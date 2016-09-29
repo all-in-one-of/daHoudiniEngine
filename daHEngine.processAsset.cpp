@@ -273,6 +273,18 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 		}
 	}
 
+    vector<std::string> detail_attrib_names = part.attribNames(
+	HAPI_ATTROWNER_DETAIL);
+
+	omsg("Detail Attributes");
+
+	for (int attrib_index=0; attrib_index < int(detail_attrib_names.size());
+	    ++attrib_index) {
+
+		ofmsg("has %1%", %detail_attrib_names[attrib_index]);
+
+	}
+
 	if (part.info().faceCount == 0) {
 		// this is to do with instancing
  		ofmsg ("No faces, points count? %1%", %points.size());
