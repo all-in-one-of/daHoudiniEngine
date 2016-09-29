@@ -42,6 +42,8 @@ daHEngine
 #include <daHoudiniEngine/daHEngine.h>
 #include <daHoudiniEngine/houdiniGeometry.h>
 #include <daHEngine.static.cpp>
+#include <daHoudiniEngine/loaderTools.h>
+
 
 using namespace houdiniEngine;
 
@@ -51,6 +53,7 @@ using namespace houdiniEngine;
 #include "omega/PythonInterpreterWrapper.h"
 BOOST_PYTHON_MODULE(daHEngine)
 {
+#ifdef DA_ENABLE_HENGINE
 	// HoudiniEngine
 	PYAPI_REF_BASE_CLASS(HoudiniEngine)
 		PYAPI_STATIC_REF_GETTER(HoudiniEngine, createAndInitialize)
@@ -76,13 +79,23 @@ BOOST_PYTHON_MODULE(daHEngine)
 		PYAPI_METHOD(HoudiniGeometry, getGeodeCount)
 		PYAPI_METHOD(HoudiniGeometry, getDrawableCount)
 		;
+#endif
+	// tools for generic models exported from houdini
+	PYAPI_REF_BASE_CLASS(LoaderTools)
+		PYAPI_STATIC_METHOD(LoaderTools, createBillboardNodes)
+		PYAPI_STATIC_METHOD(LoaderTools, registerDAPlyLoader);
 }
 #endif
+
+
+
+
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 HoudiniEngine* HoudiniEngine::createAndInitialize()
 {
+#ifdef DA_ENABLE_HENGINE
 	int minHoudiniVersion = 15;
 	int minHEngineVersion = 2;
 	int houdiniVersionMajor = 0;
@@ -104,21 +117,29 @@ HoudiniEngine* HoudiniEngine::createAndInitialize()
 	ModuleServices::addModule(instance);
 	instance->doInitialize(Engine::instance());
 	return instance;
+#else
+	return NULL;
+#endif
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 HoudiniEngine::HoudiniEngine():
+#ifdef DA_ENABLE_HENGINE
 	EngineModule("HoudiniEngine"),
 	mySceneManager(NULL),
 	myLogEnabled(false),
 	myAssetCount(0),
 	currentAsset(-1),
 	currentAssetName("")
+#else
+	EngineModule("HoudiniEngine")
+#endif
 {
 }
 
 HoudiniEngine::~HoudiniEngine()
 {
+#ifdef DA_ENABLE_HENGINE
 	if (SystemManager::instance()->isMaster())
 	{
 	    try
@@ -132,7 +153,10 @@ HoudiniEngine::~HoudiniEngine()
 			throw;
 	    }
 	}
+#endif
 }
+
+#ifdef DA_ENABLE_HENGINE
 
 int HoudiniEngine::loadAssetLibraryFromFile(const String& otlFile)
 {
@@ -172,6 +196,8 @@ int HoudiniEngine::loadAssetLibraryFromFile(const String& otlFile)
 	// total asset count
 	myAssetCount += assetCount;
 
+
+
     return assetCount;
 
 }
@@ -208,6 +234,8 @@ int HoudiniEngine::instantiateAsset(const String& asset_name)
 	wait_for_cook();
 
 	omsg("after instantiate cook");
+
+
 
 	Ref <RefAsset> myAsset = new RefAsset(asset_id, session);
 	instancedHEAssetsByName[asset_name] = myAsset;
@@ -318,6 +346,7 @@ StaticObject* HoudiniEngine::instantiateGeometry(const String& asset)
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 void HoudiniEngine::initialize()
 {
+#ifdef DA_ENABLE_HENGINE
 	enableSharedData();
 
 	if (SystemManager::instance()->isMaster()) {
@@ -402,6 +431,12 @@ void HoudiniEngine::initialize()
 	myQuitMenuItem = menu->addItem(MenuItem::Button);
 	myQuitMenuItem->setText("Quit");
 	myQuitMenuItem->setCommand("oexit()");
+#else
+#endif
 
 }
+
+
+#endif
+
 

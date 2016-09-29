@@ -118,6 +118,25 @@ int HoudiniGeometry::addGeode(const int count, const int objIndex)
 	return hobjs[objIndex].pat->getNumChildren();
 }
 
+	int HoudiniGeometry::addBillboard(const int count, const int objIndex)
+{
+	for (int i = 0; i < count; ++i) {
+		hobjs[objIndex].hgeoms.push_back(HGeom());
+		osg::Billboard* billboard = new osg::Billboard();
+		hobjs[objIndex].hgeoms.back().geode = billboard;
+
+		billboard->setMode(osg::Billboard::POINT_ROT_EYE);
+		// billboard->setAxis(osg::Vec3(0.0f,0.0f,1.0f));
+		billboard->setNormal(osg::Vec3(0.0f,0.0f,-1.0f));
+
+		hobjs[objIndex].pat->addChild(hobjs[objIndex].hgeoms.back().geode);
+	}
+	return hobjs[objIndex].pat->getNumChildren();
+}
+
+
+
+
 ///////////////////////////////////////////////////////////////////////////////
 int HoudiniGeometry::addObject(const int count)
 {

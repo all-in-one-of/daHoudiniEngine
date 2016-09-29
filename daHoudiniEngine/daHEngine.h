@@ -53,7 +53,9 @@ either expressed or implied, of the Data Arena Project.
 
 
 #include <cyclops/cyclops.h>
+#ifdef DA_ENABLE_HENGINE
 #include "HAPI_CPP.h"
+#endif
 
 #define OMEGA_NO_GL_HEADERS
 #include <omega.h>
@@ -72,6 +74,7 @@ namespace houdiniEngine {
 	using namespace omegaToolkit;
 	using namespace omegaToolkit::ui;
 
+#ifdef DA_ENABLE_HENGINE
 	#define ENSURE_SUCCESS(session, result) \
 	    if ((result) != HAPI_RESULT_SUCCESS) \
 	    { \
@@ -103,8 +106,11 @@ namespace houdiniEngine {
 
 	};
 
+#endif
 	//forward references
 	class HE_API HoudiniGeometry;
+
+	class BillboardCallback;
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 	class HE_API HoudiniEngine: public EngineModule
@@ -117,6 +123,9 @@ namespace houdiniEngine {
 		static HoudiniEngine* createAndInitialize();
 
 		virtual void initialize();
+
+#ifdef DA_ENABLE_HENGINE
+
 		virtual void update(const UpdateContext& context);
 		virtual void onMenuItemEvent(MenuItem* mi);
 		virtual void onSelectedChanged(SceneNode* source, bool value);
@@ -263,6 +272,7 @@ namespace houdiniEngine {
 		int currentAsset;
 		String currentAssetName;
 
+#endif
 	};
 };
 
