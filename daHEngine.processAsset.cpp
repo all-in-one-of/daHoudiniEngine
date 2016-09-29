@@ -136,6 +136,15 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 				);
 
 				hg->getOsgNode()->asGroup()->getChild(object_index)->asTransform()->
+					asPositionAttitudeTransform()->setAttitude(osg::Quat(
+						objTransforms[object_index].rotationQuaternion[0],
+						objTransforms[object_index].rotationQuaternion[1],
+						objTransforms[object_index].rotationQuaternion[2],
+						objTransforms[object_index].rotationQuaternion[3]
+					)
+				);
+
+				hg->getOsgNode()->asGroup()->getChild(object_index)->asTransform()->
 					asPositionAttitudeTransform()->setScale(osg::Vec3d(
 						objTransforms[object_index].scale[0],
 						objTransforms[object_index].scale[1],
