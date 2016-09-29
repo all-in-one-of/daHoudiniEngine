@@ -156,6 +156,31 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 	    delete[] objTransforms;
 	}
 
+	// do asset matrix transforms
+	HAPI_TransformEuler assetTransformEuler;
+	ENSURE_SUCCESS(session,
+		HAPI_GetAssetTransform(
+			session,
+			asset.id,
+			HAPI_RSTORDER_DEFAULT,
+			HAPI_XYZORDER_DEFAULT,
+			&assetTransformEuler
+		)
+	);
+
+	// should have the matrix here.. check it out.
+	ofmsg("matrix pos   %1% %2% %3%", %assetTransformEuler.position[0]
+		                              %assetTransformEuler.position[1]
+		                              %assetTransformEuler.position[2]);
+
+	ofmsg("matrix rot   %1% %2% %3%", %assetTransformEuler.rotationEuler[0]
+		                              %assetTransformEuler.rotationEuler[1]
+		                              %assetTransformEuler.rotationEuler[2]);
+
+	ofmsg("matrix scale %1% %2% %3%", %assetTransformEuler.scale[0]
+		                              %assetTransformEuler.scale[1]
+		                              %assetTransformEuler.scale[2]);
+
 	if (mySceneManager->getModel(s) == NULL) {
 		mySceneManager->addModel(hg);
 	}
