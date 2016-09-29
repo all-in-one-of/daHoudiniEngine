@@ -41,7 +41,9 @@ daHEngine
 
 #include <daHoudiniEngine/daHEngine.h>
 #include <daHoudiniEngine/houdiniGeometry.h>
-#include <daHEngine.static.cpp>
+#ifdef DA_ENABLE_HENGINE
+	#include <daHEngine.static.cpp>
+#endif
 #include <daHoudiniEngine/loaderTools.h>
 
 

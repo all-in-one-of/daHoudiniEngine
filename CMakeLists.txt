@@ -46,9 +46,10 @@ set(HOUDINI_BASE $ENV{HFS} CACHE PATH "Set to Houdini base directory (/opt/hfs.x
 # if the base exists, compile against HEngine
 if (HOUDINI_BASE)
 	set(DA_ENABLE_HENGINE true CACHE BOOL "Enables compiling against Houdini Engine")
+	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDA_ENABLE_HENGINE")
 else()
 	message(WARNING "Could not find Houdini base directory. Set this manually and enable 'DA_ENABLE_HENGINE'")
-	set(DA_ENABLE_HENGINE false CACHE BOOL "Enables compiling against Houdini Engine")
+# 	set(DA_ENABLE_HENGINE false CACHE BOOL "Enables compiling against Houdini Engine")
 endif()
 
 set(MODULE_NAME daHEngine)
@@ -71,20 +72,31 @@ if (DA_ENABLE_HENGINE)
 	add_subdirectory(examples/daHoudiniEngine)
 endif()
 
-add_library(${MODULE_NAME} MODULE
-	houdiniGeometry.cpp
-	daHEngine.cpp
-	daHEngine.event.cpp
-	daHEngine.parm.cpp
-	daHEngine.processAsset.cpp
-	daHEngine.sharedData.cpp
-	daHEngine.util.cpp
-	loaderTools.cpp
-	daPly/ReaderWriterPLY.cpp
-	daPly/vertexData.cpp
-	daPly/plyfile.cpp
-	
-)
+if (DA_ENABLE_HENGINE)
+	add_library(${MODULE_NAME} MODULE
+		houdiniGeometry.cpp
+		daHEngine.cpp
+		daHEngine.event.cpp
+		daHEngine.parm.cpp
+		daHEngine.processAsset.cpp
+		daHEngine.sharedData.cpp
+		daHEngine.util.cpp
+		loaderTools.cpp
+		daPly/ReaderWriterPLY.cpp
+		daPly/vertexData.cpp
+		daPly/plyfile.cpp
+	)
+else()
+	add_library(${MODULE_NAME} MODULE
+		houdiniGeometry.cpp
+		daHEngine.cpp
+		loaderTools.cpp
+		daPly/ReaderWriterPLY.cpp
+		daPly/vertexData.cpp
+		daPly/plyfile.cpp
+	)
+endif()
+
 
 if (DA_ENABLE_HENGINE)
 	target_link_libraries(${MODULE_NAME}
