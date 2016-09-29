@@ -10,8 +10,10 @@ he.setLoggingEnabled(False)
 # otl examples
 # (Otl filename, otl object name, geometry name)
 
-#baseDir = "/local/omegalib/modules/daHoudiniEngine/otl/"
-baseDir = "/da/dev/darren/omegalib/modules/daHoudiniEngine/otl/"
+import os
+# otl path relative to script location
+baseDir = os.path.realpath('../../otl') + "/"
+
 
 examples = [
         ("switch_asset.otl", "Object/switch_asset", "switch_asset1"),
