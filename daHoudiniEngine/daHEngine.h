@@ -240,12 +240,8 @@ namespace houdiniEngine {
 		ui::Menu* houdiniMenu;
 		ui::Container* houdiniCont; // the menu container
 		ui::Container* assetChoiceCont; // the container to indicate which asset to show
-		// these are contained in an asset cont
-// 		ui::Container* folderChoiceCont; // the container to indicate which folder menu to show
-// 		ui::Container* folderCont; // the container to show the contents of the selected folder
 		ui::Container* stagingCont; // the container to show the contents of the selected folder
 
-		// TODO generalise to per-asset
 		Vector<Container*> assetConts; // keep refs to parameters for this asset
 		Dictionary<int, Container* > baseConts; // keep refs to submenus
 		Dictionary<int, Container* > folderLists; // keep ref to container for Folder selection
@@ -255,7 +251,6 @@ namespace houdiniEngine {
 		// the link between widget and parmId
 		Dictionary < int, int > widgetIdToParmId; // UI Widget -> HAPI_Parm id
 
-
 		Menus assetParams;
 		ParmConts assetParamConts;
 		Dictionary<String, pair < Menu*, vector<MenuObject> > > assetParamsMenus;
@@ -264,9 +259,7 @@ namespace houdiniEngine {
 		bool myLogEnabled;
 
 		// session
-
 		HAPI_Session* session;
-		HAPI_Session mySession;
 
 		int myAssetCount;
 		int currentAsset;

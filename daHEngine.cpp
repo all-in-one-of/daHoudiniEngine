@@ -148,6 +148,9 @@ HoudiniEngine::~HoudiniEngine()
 	    {
 		    ENSURE_SUCCESS(session, HAPI_Cleanup(session));
 			olog(Verbose, "done HAPI");
+			if (session != NULL) {
+				delete session;
+			}
 	    }
 	    catch (hapi::Failure &failure)
 	    {
@@ -355,8 +358,7 @@ void HoudiniEngine::initialize()
 	    try
 	    {
 			// create sessions
-			session = &mySession;
-// 			session = NULL; // NULL means use in-process session
+			session = new HAPI_Session();
 
 			if (session != NULL) {
 				HAPI_StartThriftSocketServer( true, 7788, 5000, NULL);
@@ -421,9 +423,6 @@ void HoudiniEngine::initialize()
 	stagingCont->setVisible(false);
 	label = Label::create(stagingCont);
 	label->setText("stagingCont");
-
-// 	sn = SceneNode::create("myOtl");
-// 	myEditor->addNode(sn);
 
 	// Add the 'quit' menu item. Menu items can either run callbacks when activated, or they can
 	// run script commands. In this case, we make the menu item call the 'oexit' script command.
