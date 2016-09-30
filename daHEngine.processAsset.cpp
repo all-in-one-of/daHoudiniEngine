@@ -64,7 +64,7 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 	}
 
 	hg->objectsChanged = asset.info().haveObjectsChanged;
-	ofmsg("process_assets: Objects have changed:  %1%", %hg->objectsChanged);
+	ofmsg("process_assets: Objects have changed: %1%", %hg->objectsChanged);
 
 	if (hg->getObjectCount() < objects.size()) {
 		hg->addObject(objects.size() - hg->getObjectCount());
@@ -337,23 +337,21 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 		) );
 
 		if ( curve_info.curveType == HAPI_CURVETYPE_LINEAR )
-			std::cout << "curve mesh type = Linear" << std::endl;
+			omsg("curve mesh type = Linear");
 		else if ( curve_info.curveType == HAPI_CURVETYPE_BEZIER )
-			std::cout << "curve mesh type = Bezier" << std::endl;
+			omsg("curve mesh type = Bezier");
 		else if ( curve_info.curveType == HAPI_CURVETYPE_NURBS )
-			std::cout << "curve mesh type = Nurbs" << std::endl;
+			omsg("curve mesh type = Nurbs");
 		else
-			std::cout << "curve mesh type = Unknown" << std::endl;
+			omsg("curve mesh type = Unknown");
 
-		std::cout << "curve count: " << curve_info.curveCount << std::endl;
+		ofmsg("curve count: %1%", %curve_info.curveCount);
 		int vertex_offset = 0;
 		int knot_offset = 0;
 		int segments = 20;
 
 		for ( int i = 0; i < curve_info.curveCount; i++ ) {
-			std::cout
-				<< "curve " << i + 1 << " of "
-				<< curve_info.curveCount << ":" << std::endl;
+			ofmsg("curve %1% of %2%", %(i + 1) %curve_info.curveCount);
 			// Number of CVs
 			int num_vertices;
 			HAPI_GetCurveCounts(
@@ -366,7 +364,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 				i,
 				1
 			);
-			std::cout << "num vertices: " << num_vertices << std::endl;
+			ofmsg("num vertices: %1%", %num_vertices);
 			// Order of this particular curve
 			int order;
 			if ( curve_info.order != HAPI_CURVE_ORDER_VARYING
@@ -383,13 +381,14 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 					i,
 					1
 				);
-			std::cout << "curve order: " << order << std::endl;
+			ofmsg("curve order: %1%", %order);
 			// If there's not enough vertices, then don't try to
 			// create the curve.
 			if ( num_vertices < order )
 			{
-				std::cout << "not enought vertices on curve " << i << " of "
-					<< curve_info.curveCount << ": skipping" << std::endl;
+				ofmsg("not enought vertices on curve %1% of %2%: skipping",
+					%i
+					%curve_info.curveCount);
 				// The curve at i will have numVertices vertices, and may have
 				// some knots. The knot count will be numVertices + order for
 				// nurbs curves.
@@ -398,8 +397,8 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 				continue;
 			}
 
-			cout << "points size: " << points.size() << endl;
-			cout << "vert size: " << num_vertices << endl;
+			ofmsg("points size: %1%", %points.size());
+			ofmsg("vert size: %1%", %num_vertices);
 
 			// draw the curve
 			// TODO: add bezier function, segmentalise curves
@@ -422,7 +421,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 					);
 
 					hg->addVertex(p, partIndex, geoIndex, objIndex);
-					cout << p << endl;
+					ofmsg("%1%", %p);
 					if(has_point_colors) {
 						hg->addColor(Color(
 							colors[vertex_offset + j][0],
@@ -771,7 +770,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 
     }
 
-	cout << "face count is " << prev_faceCount << endl;
+	ofmsg("face count is %1%", %prev_faceCount);
 
 	if (prev_faceCount == 3) {
 		myType = osg::PrimitiveSet::TRIANGLES;
@@ -782,9 +781,11 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 		myType = osg::PrimitiveSet::TRIANGLE_FAN;
 	}
 
-	cout << "making final primitive set for " << prev_faceCount << ", from " <<
-		prev_faceCountIndex << " plus " <<
-		curr_index - prev_faceCountIndex << endl;
+	ofmsg("making final primitive set for %1%, from %2% plus %3%",
+		%prev_faceCount
+		%prev_faceCountIndex
+		%(curr_index - prev_faceCountIndex)
+	);
 
 	hg->addPrimitiveOsg(myType, prev_faceCountIndex, curr_index - prev_faceCountIndex, partIndex, geoIndex, objIndex);
 
