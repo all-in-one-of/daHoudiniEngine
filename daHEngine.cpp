@@ -360,9 +360,19 @@ void HoudiniEngine::initialize()
 			// create sessions
 			session = new HAPI_Session();
 
+            const char* env_host = std::getenv("DAVM_HOUDINI_ENGINE_HOST");
+            const char* env_port = std::getenv("DAVM_HOUDINI_ENGINE_PORT");
+
 			if (session != NULL) {
-				HAPI_StartThriftSocketServer( true, 7788, 5000, NULL);
-				HAPI_CreateThriftSocketSession(session, "localhost", 7788);
+
+                int port = env_port ? atoi(env_port) : 7788;
+                
+                if (!env_host) {
+				    HAPI_StartThriftSocketServer(true, port, 5000, NULL);
+                    env_host = "localhost";
+                }
+
+				HAPI_CreateThriftSocketSession(session, env_host, port);
 			}
 
 			// TODO: expose these in python to allow changeable options
