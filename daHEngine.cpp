@@ -373,6 +373,8 @@ void HoudiniEngine::initialize()
                 }
 
 				HAPI_CreateThriftSocketSession(session, env_host, port);
+
+                cout << "Connected to " << env_host << ":" << port << endl;
 			}
 
 			// TODO: expose these in python to allow changeable options
