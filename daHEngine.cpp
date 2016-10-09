@@ -360,8 +360,8 @@ void HoudiniEngine::initialize()
 			// create sessions
 			session = new HAPI_Session();
 
-			const char* env_host = std::getenv("DAVM_HOUDINI_ENGINE_HOST");
-			const char* env_port = std::getenv("DAVM_HOUDINI_ENGINE_PORT");
+			const char* env_host = std::getenv("DA_HOUDINI_ENGINE_HOST");
+			const char* env_port = std::getenv("DA_HOUDINI_ENGINE_PORT");
 
 			if (session != NULL) {
 
