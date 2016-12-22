@@ -159,6 +159,7 @@ namespace houdiniEngine {
 
 		Menu* getMenu(const String& asset) { return NULL; } // return this asset's parameter menu
 
+        void loadParameters(const String& asset_name);
 		void createMenu(const String& asset_name);
 		void initializeParameters(const String& asset_name);
 

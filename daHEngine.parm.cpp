@@ -209,6 +209,49 @@ void HoudiniEngine::createParm(const String& asset_name, Container* cont, hapi::
 
 }
 
+void HoudiniEngine::loadParameters(const String& asset_name)
+{
+    hapi::Asset* asset = instancedHEAssetsByName[asset_name];
+
+    if (asset == NULL) {
+        ofwarn("No asset of name %1%", %asset_name);
+    }
+
+	std::vector<hapi::Parm> parms = asset->parms();
+	std::map<std::string, hapi::Parm> parmMap = asset->parmMap();
+
+    vector<hapi::Parm>::iterator i;
+    for (i = parms.begin(); i < parms.end(); i++) {
+        
+        ofmsg("DEBUG %1%: %2% %3% %4% %5% %6%", %i->name() 
+                                                %i->label()
+                                                %i->info().id
+                                                %i->info().type
+                                                %i->info().size
+                                                %i->info().parentId);
+
+        if (i->info().parentId >= 0) {
+            ofmsg("   Parent %1%: %2%:", %parms[i->info().parentId].label()
+                                         %parms[i->info().parentId].info().id);
+        }
+
+        if (i->info().type == HAPI_PARMTYPE_FOLDERLIST) {
+            // folderlist can only contain folders; size appears to correspond to number of folders
+            ofmsg("   Folder %1% %2%", %i->info().type
+                                       %i->info().size);
+        } else {
+            ofmsg("   Parameter %1%", %i->info().type);
+            // we're dealing with a parameter
+        }
+
+        // We want to build a parameter tree for the asset and pass it back into the python
+        // code where we are able to traverse it and build linked handles or whatever - we need
+        // enough information to be able to get the value or map an update back to the parameter
+        //
+        // TODO: create a HoudiniParameter class to represent a node in this tree
+    }
+}
+
 
 // only run on master
 // identical-looking menus get created on slaves
