@@ -2,12 +2,12 @@
 
 using namespace houdiniEngine;
 
-HoudiniParameter::HoudiniParameter(const int id): id(id)
+HoudiniParameter::HoudiniParameter(const int id): ReferenceType(), id(id)
 {
     // pass
 }
 
-HoudiniParameterList::HoudiniParameterList(): parameters()
+HoudiniParameterList::HoudiniParameterList(): ReferenceType(), parameters()
 {
     // pass
 }

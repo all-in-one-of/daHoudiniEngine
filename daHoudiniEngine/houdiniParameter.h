@@ -1,12 +1,16 @@
 #ifndef __HE_HOUDINI_PARAMETER__
 #define __HE_HOUDINI_PARAMETER__
 
+#define OMEGA_NO_GL_HEADERS
+#include <omega.h>
+
 #include <vector>
 
 namespace houdiniEngine {
     using namespace std;
+    using namespace omega;
 
-    class HoudiniParameter
+    class HoudiniParameter: public ReferenceType
     {
         public:
 
@@ -20,7 +24,7 @@ namespace houdiniEngine {
             int id;
     };
 
-    class HoudiniParameterList
+    class HoudiniParameterList: public ReferenceType
     {
         public:
 
