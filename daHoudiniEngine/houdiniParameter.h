@@ -4,6 +4,7 @@
 #include <vector>
 
 namespace houdiniEngine {
+    using namespace std;
 
     class HoudiniParameter
     {
@@ -29,7 +30,7 @@ namespace houdiniEngine {
             size() { return parameters.size(); }
 
             HoudiniParameter
-            getParameter(const int index) { return parameters.at(i); }
+            getParameter(const int index) { return parameters.at(index); }
 
             void
             addParameter(const HoudiniParameter& parameter) { parameters.push_back(parameter); }
@@ -37,7 +38,7 @@ namespace houdiniEngine {
         private:
 
             vector<HoudiniParameter> parameters;
-    }
+    };
 };
 
 #endif
