@@ -41,6 +41,7 @@ daHEngine
 
 #include <daHoudiniEngine/daHEngine.h>
 #include <daHoudiniEngine/houdiniGeometry.h>
+#include <daHoudiniEngine/houdiniParameter.h>
 
 using namespace houdiniEngine;
 
@@ -209,13 +210,15 @@ void HoudiniEngine::createParm(const String& asset_name, Container* cont, hapi::
 
 }
 
-void HoudiniEngine::loadParameters(const String& asset_name)
+HoudiniParameterList* HoudiniEngine::loadParameters(const String& asset_name)
 {
     hapi::Asset* asset = instancedHEAssetsByName[asset_name];
 
     if (asset == NULL) {
         ofwarn("No asset of name %1%", %asset_name);
     }
+
+    HoudiniParameterList* parameters = new HoudiniParameterList();
 
 	std::vector<hapi::Parm> parms = asset->parms();
 	std::map<std::string, hapi::Parm> parmMap = asset->parmMap();
@@ -244,12 +247,10 @@ void HoudiniEngine::loadParameters(const String& asset_name)
             // we're dealing with a parameter
         }
 
-        // We want to build a parameter tree for the asset and pass it back into the python
-        // code where we are able to traverse it and build linked handles or whatever - we need
-        // enough information to be able to get the value or map an update back to the parameter
-        //
-        // TODO: create a HoudiniParameter class to represent a node in this tree
+        parameters->addParameter(HoudiniParameter(i->info().id));
     }
+
+    return parameters;  // TODO: fix memory leak! 
 }
 
 
