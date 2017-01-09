@@ -209,49 +209,6 @@ void HoudiniEngine::createParm(const String& asset_name, Container* cont, hapi::
 	}
 }
 
-HoudiniParameterList* HoudiniEngine::loadParameters(const String& asset_name)
-{
-    hapi::Asset* asset = instancedHEAssetsByName[asset_name];
-
-    if (asset == NULL) {
-        ofwarn("No asset of name %1%", %asset_name);
-    }
-
-    HoudiniParameterList* parameters = 0;
-    Dictionary<String, HoudiniParameterList*>::iterator it = assetParamLists.find(asset_name);
-
-    if (it != assetParamLists.end()) {
-        ofmsg("Asset already loaded: %1%", %asset_name);
-        return it->second;
-    } else {
-        ofmsg("Proceeding to load asset: %1%", %asset_name);
-        parameters = new HoudiniParameterList(); 
-        assetParamLists[asset_name] = parameters;
-    }
-
-	std::vector<hapi::Parm> parms = asset->parms();
-	std::map<std::string, hapi::Parm> parmMap = asset->parmMap();
-
-    for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); i++) {
-        
-        if (i->info().type != HAPI_PARMTYPE_FOLDERLIST) {
-
-            HoudiniParameter* parameter = new HoudiniParameter(i->info().id); 
-
-            parameter->setParentId(i->info().parentId);
-            parameter->setType(i->info().type);
-            parameter->setSize(i->info().size);
-            parameter->setName(i->name());
-            parameter->setLabel(i->label());
-
-            parameters->addParameter(parameter);
-        }
-    }
-
-    return parameters;
-}
-
-
 // only run on master
 // identical-looking menus get created on slaves
 void HoudiniEngine::createMenu(const String& asset_name)
@@ -394,4 +351,71 @@ void HoudiniEngine::createMenu(const String& asset_name)
 
 		i++;
 	}
+}
+
+HoudiniParameterList* HoudiniEngine::loadParameters(const String& asset_name)
+{
+    hapi::Asset* asset = instancedHEAssetsByName[asset_name];
+
+    if (asset == NULL) {
+        ofwarn("No asset of name %1%", %asset_name);
+    }
+
+    HoudiniParameterList* parameters = 0;
+    Dictionary<String, HoudiniParameterList*>::iterator it = assetParamLists.find(asset_name);
+
+    if (it != assetParamLists.end()) {
+        ofmsg("Asset already loaded: %1%", %asset_name);
+        return it->second;
+    } else {
+        ofmsg("Proceeding to load asset: %1%", %asset_name);
+        parameters = new HoudiniParameterList(); 
+        assetParamLists[asset_name] = parameters;
+    }
+
+	std::vector<hapi::Parm> parms = asset->parms();
+
+    for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); i++) {
+        
+        if (i->info().type != HAPI_PARMTYPE_FOLDERLIST) {
+
+            HoudiniParameter* parameter = new HoudiniParameter(i->info().id); 
+
+            parameter->setParentId(i->info().parentId);
+            parameter->setType(i->info().type);
+            parameter->setSize(i->info().size);
+            parameter->setName(i->name());
+            parameter->setLabel(i->label());
+
+            parameters->addParameter(parameter);
+        }
+    }
+
+    return parameters;
+}
+
+void HoudiniEngine::setIntegerParameter(const String& asset_name, int param_id, int param_value) 
+{
+    hapi::Asset* asset = instancedHEAssetsByName[asset_name];
+
+    if (asset == NULL) {
+        ofwarn("No asset of name %1%", %asset_name);
+    }
+
+	std::vector<hapi::Parm> parms = asset->parms();
+
+    for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); i++) {
+        
+        if (i->info().id == param_id && i->info().type == HAPI_PARMTYPE_INT) {
+            i->setIntValue(0, param_value);
+            break;
+        }
+    }
+
+    asset->cook();
+    wait_for_cook();
+
+    process_assets(*asset);
+
+    updateGeos = true;
 }

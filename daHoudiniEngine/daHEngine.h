@@ -160,9 +160,11 @@ namespace houdiniEngine {
 
 		Menu* getMenu(const String& asset) { return NULL; } // return this asset's parameter menu
 
-        HoudiniParameterList* loadParameters(const String& asset_name);
 		void createMenu(const String& asset_name);
 		void initializeParameters(const String& asset_name);
+
+        HoudiniParameterList* loadParameters(const String& asset_name);
+        void setIntegerParameter(const String& asset_name, int param_id, int param_value);
 
 		float getFps();
 
