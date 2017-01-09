@@ -255,6 +255,7 @@ namespace houdiniEngine {
 
 		Menus assetParams;
 		ParmConts assetParamConts;
+        Dictionary<String, HoudiniParameterList*> assetParamLists;
 		Dictionary<String, pair < Menu*, vector<MenuObject> > > assetParamsMenus;
 
 		// logging
@@ -266,7 +267,6 @@ namespace houdiniEngine {
 		int myAssetCount;
 		int currentAsset;
 		String currentAssetName;
-
 #endif
 	};
 };

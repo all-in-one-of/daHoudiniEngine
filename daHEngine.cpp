@@ -84,12 +84,17 @@ BOOST_PYTHON_MODULE(daHEngine)
 
     // HoudiniParameter
     PYAPI_REF_BASE_CLASS(HoudiniParameter)
-        PYAPI_METHOD(HoudiniParameter, getId);
+        PYAPI_METHOD(HoudiniParameter, getId)
+        PYAPI_METHOD(HoudiniParameter, getParentId)
+        PYAPI_METHOD(HoudiniParameter, getType)
+        PYAPI_METHOD(HoudiniParameter, getSize)
+        PYAPI_METHOD(HoudiniParameter, getName)
+        PYAPI_METHOD(HoudiniParameter, getLabel);
 
     // HoudiniParameterList
     PYAPI_REF_BASE_CLASS(HoudiniParameterList)
         PYAPI_METHOD(HoudiniParameterList, size)
-        PYAPI_GETTER(HoudiniParameterList, getParameter);
+        PYAPI_REF_GETTER(HoudiniParameterList, getParameter);
 #endif
 	// tools for generic models exported from houdini
 	PYAPI_REF_BASE_CLASS(LoaderTools)

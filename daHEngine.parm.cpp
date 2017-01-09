@@ -207,7 +207,6 @@ void HoudiniEngine::createParm(const String& asset_name, Container* cont, hapi::
 
 		assetParamConts[asset_name].push_back(cont);
 	}
-
 }
 
 HoudiniParameterList* HoudiniEngine::loadParameters(const String& asset_name)
@@ -218,39 +217,38 @@ HoudiniParameterList* HoudiniEngine::loadParameters(const String& asset_name)
         ofwarn("No asset of name %1%", %asset_name);
     }
 
-    HoudiniParameterList* parameters = new HoudiniParameterList();
+    HoudiniParameterList* parameters = 0;
+    Dictionary<String, HoudiniParameterList*>::iterator it = assetParamLists.find(asset_name);
+
+    if (it != assetParamLists.end()) {
+        ofmsg("Asset already loaded: %1%", %asset_name);
+        return it->second;
+    } else {
+        ofmsg("Proceeding to load asset: %1%", %asset_name);
+        parameters = new HoudiniParameterList(); 
+        assetParamLists[asset_name] = parameters;
+    }
 
 	std::vector<hapi::Parm> parms = asset->parms();
 	std::map<std::string, hapi::Parm> parmMap = asset->parmMap();
 
-    vector<hapi::Parm>::iterator i;
-    for (i = parms.begin(); i < parms.end(); i++) {
+    for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); i++) {
         
-        ofmsg("DEBUG %1%: %2% %3% %4% %5% %6%", %i->name() 
-                                                %i->label()
-                                                %i->info().id
-                                                %i->info().type
-                                                %i->info().size
-                                                %i->info().parentId);
+        if (i->info().type != HAPI_PARMTYPE_FOLDERLIST) {
 
-        if (i->info().parentId >= 0) {
-            ofmsg("   Parent %1%: %2%:", %parms[i->info().parentId].label()
-                                         %parms[i->info().parentId].info().id);
+            HoudiniParameter* parameter = new HoudiniParameter(i->info().id); 
+
+            parameter->setParentId(i->info().parentId);
+            parameter->setType(i->info().type);
+            parameter->setSize(i->info().size);
+            parameter->setName(i->name());
+            parameter->setLabel(i->label());
+
+            parameters->addParameter(parameter);
         }
-
-        if (i->info().type == HAPI_PARMTYPE_FOLDERLIST) {
-            // folderlist can only contain folders; size appears to correspond to number of folders
-            ofmsg("   Folder %1% %2%", %i->info().type
-                                       %i->info().size);
-        } else {
-            ofmsg("   Parameter %1%", %i->info().type);
-            // we're dealing with a parameter
-        }
-
-        parameters->addParameter(HoudiniParameter(i->info().id));
     }
 
-    return parameters;  // TODO: fix memory leak! 
+    return parameters;
 }
 
 
