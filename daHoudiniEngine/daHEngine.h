@@ -143,8 +143,6 @@ namespace houdiniEngine {
 		    const hapi::Part &part, HAPI_AttributeOwner attrib_owner,
 		    const char *attrib_name, vector<Vector3f>& points);
 
-		void wait_for_cook();
-
 		virtual void handleEvent(const Event& evt);
 
 		virtual void commitSharedData(SharedOStream& out);
@@ -165,6 +163,8 @@ namespace houdiniEngine {
 
         HoudiniParameterList* loadParameters(const String& asset_name);
         void setIntegerParameter(const String& asset_name, int param_id, int param_value);
+        void setFloatParameter(const String& asset_name, int param_id, float param_value);
+        void setStringParameter(const String& asset_name, int param_id, String& param_value);
 
 		float getFps();
 
@@ -172,6 +172,8 @@ namespace houdiniEngine {
 		void setTime(float time);
 
 		void cook();
+        void cook_one(hapi::Asset* asset);
+		void wait_for_cook();
 
 		void setLoggingEnabled(const bool toggle);
 

@@ -145,7 +145,6 @@ void HoudiniEngine::createParm(const String& asset_name, Container* cont, hapi::
 			assetParamConts[asset_name].push_back(cont);
 			Button* button = Button::create(cont);
 			button->setText("X");
-// 			button->setCheckable(true);
 			button->setChecked(val);
 			button->setUIEventHandler(this);
 			button->setUserData(label);
@@ -359,6 +358,7 @@ HoudiniParameterList* HoudiniEngine::loadParameters(const String& asset_name)
 
     if (asset == NULL) {
         ofwarn("No asset of name %1%", %asset_name);
+        return NULL;
     }
 
     HoudiniParameterList* parameters = 0;
@@ -400,22 +400,62 @@ void HoudiniEngine::setIntegerParameter(const String& asset_name, int param_id, 
 
     if (asset == NULL) {
         ofwarn("No asset of name %1%", %asset_name);
-    }
 
-	std::vector<hapi::Parm> parms = asset->parms();
+    } else {
+        std::vector<hapi::Parm> parms = asset->parms();
 
-    for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); i++) {
-        
-        if (i->info().id == param_id && i->info().type == HAPI_PARMTYPE_INT) {
-            i->setIntValue(0, param_value);
-            break;
+        for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); i++) {
+            
+            if (i->info().id == param_id) {
+                i->setIntValue(0, param_value);
+                break;
+            }
         }
+
+        cook_one(asset);
     }
+}
 
-    asset->cook();
-    wait_for_cook();
+void HoudiniEngine::setFloatParameter(const String& asset_name, int param_id, float param_value) 
+{
+    hapi::Asset* asset = instancedHEAssetsByName[asset_name];
 
-    process_assets(*asset);
+    if (asset == NULL) {
+        ofwarn("No asset of name %1%", %asset_name);
 
-    updateGeos = true;
+    } else {
+        std::vector<hapi::Parm> parms = asset->parms();
+
+        for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); i++) {
+            
+            if (i->info().id == param_id) {
+                i->setFloatValue(0, param_value);
+                break;
+            }
+        }
+
+        cook_one(asset);
+    }
+}
+
+void HoudiniEngine::setStringParameter(const String& asset_name, int param_id, String& param_value) 
+{
+    hapi::Asset* asset = instancedHEAssetsByName[asset_name];
+
+    if (asset == NULL) {
+        ofwarn("No asset of name %1%", %asset_name);
+
+    } else {
+        std::vector<hapi::Parm> parms = asset->parms();
+
+        for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); i++) {
+            
+            if (i->info().id == param_id) {
+                i->setStringValue(0, param_value.c_str());
+                break;
+            }
+        }
+
+        cook_one(asset);
+    }
 }
