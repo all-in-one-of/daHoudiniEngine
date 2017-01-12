@@ -414,7 +414,7 @@ int HoudiniEngine::getIntegerParameterValue(const String& asset_name, int param_
     }
 }
 
-void HoudiniEngine::setIntegerParameterValue(const String& asset_name, int param_id, int param_value) 
+void HoudiniEngine::setIntegerParameterValue(const String& asset_name, int param_id, int sub_index, int value) 
 {
     hapi::Asset* asset = instancedHEAssetsByName[asset_name];
 
@@ -427,7 +427,7 @@ void HoudiniEngine::setIntegerParameterValue(const String& asset_name, int param
         for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); i++) {
             
             if (i->info().id == param_id) {
-                i->setIntValue(0, param_value);
+                i->setIntValue(sub_index, value);
                 break;
             }
         }
@@ -456,7 +456,7 @@ float HoudiniEngine::getFloatParameterValue(const String& asset_name, int param_
     }
 }
 
-void HoudiniEngine::setFloatParameterValue(const String& asset_name, int param_id, float param_value) 
+void HoudiniEngine::setFloatParameterValue(const String& asset_name, int param_id, int sub_index, float value) 
 {
     hapi::Asset* asset = instancedHEAssetsByName[asset_name];
 
@@ -469,7 +469,7 @@ void HoudiniEngine::setFloatParameterValue(const String& asset_name, int param_i
         for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); i++) {
             
             if (i->info().id == param_id) {
-                i->setFloatValue(0, param_value);
+                i->setFloatValue(sub_index, value);
                 break;
             }
         }
@@ -498,7 +498,7 @@ String HoudiniEngine::getStringParameterValue(const String& asset_name, int para
     }
 }
 
-void HoudiniEngine::setStringParameterValue(const String& asset_name, int param_id, String& param_value) 
+void HoudiniEngine::setStringParameterValue(const String& asset_name, int param_id, int sub_index, String& value) 
 {
     hapi::Asset* asset = instancedHEAssetsByName[asset_name];
 
@@ -511,7 +511,7 @@ void HoudiniEngine::setStringParameterValue(const String& asset_name, int param_
         for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); i++) {
             
             if (i->info().id == param_id) {
-                i->setStringValue(0, param_value.c_str());
+                i->setStringValue(sub_index, value.c_str());
                 break;
             }
         }

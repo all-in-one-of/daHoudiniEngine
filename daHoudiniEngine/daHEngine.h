@@ -164,13 +164,13 @@ namespace houdiniEngine {
         HoudiniParameterList* loadParameters(const String& asset_name);
 
         int getIntegerParameterValue(const String& asset_name, int param_id, int sub_index);
-        void setIntegerParameterValue(const String& asset_name, int param_id, int param_value);
+        void setIntegerParameterValue(const String& asset_name, int param_id, int sub_index, int value);
 
         float getFloatParameterValue(const String& asset_name, int param_id, int sub_index);
-        void setFloatParameterValue(const String& asset_name, int param_id, float param_value);
+        void setFloatParameterValue(const String& asset_name, int param_id, int sub_index, float value);
 
         String getStringParameterValue(const String& asset_name, int param_id, int sub_index);
-        void setStringParameterValue(const String& asset_name, int param_id, String& param_value);
+        void setStringParameterValue(const String& asset_name, int param_id, int sub_index, String& value);
 
 		float getFps();
 
