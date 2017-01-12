@@ -394,7 +394,27 @@ HoudiniParameterList* HoudiniEngine::loadParameters(const String& asset_name)
     return parameters;
 }
 
-void HoudiniEngine::setIntegerParameter(const String& asset_name, int param_id, int param_value) 
+int HoudiniEngine::getIntegerParameterValue(const String& asset_name, int param_id, int sub_index)
+{
+    hapi::Asset* asset = instancedHEAssetsByName[asset_name];
+
+    if (asset == NULL) {
+        ofwarn("No asset of name %1%", %asset_name);
+        return 0;
+
+    } else {
+        std::vector<hapi::Parm> parms = asset->parms();
+
+        for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); i++) {
+            
+            if (i->info().id == param_id) {
+                return i->getIntValue(sub_index);
+            }
+        }
+    }
+}
+
+void HoudiniEngine::setIntegerParameterValue(const String& asset_name, int param_id, int param_value) 
 {
     hapi::Asset* asset = instancedHEAssetsByName[asset_name];
 
@@ -416,7 +436,27 @@ void HoudiniEngine::setIntegerParameter(const String& asset_name, int param_id, 
     }
 }
 
-void HoudiniEngine::setFloatParameter(const String& asset_name, int param_id, float param_value) 
+float HoudiniEngine::getFloatParameterValue(const String& asset_name, int param_id, int sub_index)
+{
+    hapi::Asset* asset = instancedHEAssetsByName[asset_name];
+
+    if (asset == NULL) {
+        ofwarn("No asset of name %1%", %asset_name);
+        return 0;
+
+    } else {
+        std::vector<hapi::Parm> parms = asset->parms();
+
+        for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); i++) {
+            
+            if (i->info().id == param_id) {
+                return i->getFloatValue(sub_index);
+            }
+        }
+    }
+}
+
+void HoudiniEngine::setFloatParameterValue(const String& asset_name, int param_id, float param_value) 
 {
     hapi::Asset* asset = instancedHEAssetsByName[asset_name];
 
@@ -438,7 +478,27 @@ void HoudiniEngine::setFloatParameter(const String& asset_name, int param_id, fl
     }
 }
 
-void HoudiniEngine::setStringParameter(const String& asset_name, int param_id, String& param_value) 
+String HoudiniEngine::getStringParameterValue(const String& asset_name, int param_id, int sub_index)
+{
+    hapi::Asset* asset = instancedHEAssetsByName[asset_name];
+
+    if (asset == NULL) {
+        ofwarn("No asset of name %1%", %asset_name);
+        return "";
+
+    } else {
+        std::vector<hapi::Parm> parms = asset->parms();
+
+        for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); i++) {
+            
+            if (i->info().id == param_id) {
+                return i->getStringValue(sub_index);
+            }
+        }
+    }
+}
+
+void HoudiniEngine::setStringParameterValue(const String& asset_name, int param_id, String& param_value) 
 {
     hapi::Asset* asset = instancedHEAssetsByName[asset_name];
 

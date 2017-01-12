@@ -75,9 +75,12 @@ BOOST_PYTHON_MODULE(daHEngine)
  		PYAPI_REF_GETTER(HoudiniEngine, getStagingCont)
  		PYAPI_REF_GETTER(HoudiniEngine, getHG)
         PYAPI_REF_GETTER(HoudiniEngine, loadParameters)
-        PYAPI_METHOD(HoudiniEngine, setIntegerParameter)
-        PYAPI_METHOD(HoudiniEngine, setFloatParameter)
-        PYAPI_METHOD(HoudiniEngine, setStringParameter);
+        PYAPI_METHOD(HoudiniEngine, getIntegerParameterValue)
+        PYAPI_METHOD(HoudiniEngine, setIntegerParameterValue)
+        PYAPI_METHOD(HoudiniEngine, getFloatParameterValue)
+        PYAPI_METHOD(HoudiniEngine, setFloatParameterValue)
+        PYAPI_METHOD(HoudiniEngine, getStringParameterValue)
+        PYAPI_METHOD(HoudiniEngine, setStringParameterValue);
 
 	// HoudiniGeometry
 	PYAPI_REF_BASE_CLASS(HoudiniGeometry)
