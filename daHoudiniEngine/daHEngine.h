@@ -109,6 +109,7 @@ namespace houdiniEngine {
 #endif
 	//forward references
 	class HE_API HoudiniGeometry;
+    class HE_API HoudiniParameterList;
 
 	class BillboardCallback;
 
@@ -142,8 +143,6 @@ namespace houdiniEngine {
 		    const hapi::Part &part, HAPI_AttributeOwner attrib_owner,
 		    const char *attrib_name, vector<Vector3f>& points);
 
-		void wait_for_cook();
-
 		virtual void handleEvent(const Event& evt);
 
 		virtual void commitSharedData(SharedOStream& out);
@@ -162,12 +161,25 @@ namespace houdiniEngine {
 		void createMenu(const String& asset_name);
 		void initializeParameters(const String& asset_name);
 
+        HoudiniParameterList* loadParameters(const String& asset_name);
+
+        int getIntegerParameterValue(const String& asset_name, int param_id, int sub_index);
+        void setIntegerParameterValue(const String& asset_name, int param_id, int sub_index, int value);
+
+        float getFloatParameterValue(const String& asset_name, int param_id, int sub_index);
+        void setFloatParameterValue(const String& asset_name, int param_id, int sub_index, float value);
+
+        String getStringParameterValue(const String& asset_name, int param_id, int sub_index);
+        void setStringParameterValue(const String& asset_name, int param_id, int sub_index, String& value);
+
 		float getFps();
 
 		float getTime();
 		void setTime(float time);
 
 		void cook();
+        void cook_one(hapi::Asset* asset);
+		void wait_for_cook();
 
 		void setLoggingEnabled(const bool toggle);
 
@@ -253,6 +265,7 @@ namespace houdiniEngine {
 
 		Menus assetParams;
 		ParmConts assetParamConts;
+        Dictionary<String, HoudiniParameterList*> assetParamLists;
 		Dictionary<String, pair < Menu*, vector<MenuObject> > > assetParamsMenus;
 
 		// logging
@@ -264,7 +277,6 @@ namespace houdiniEngine {
 		int myAssetCount;
 		int currentAsset;
 		String currentAssetName;
-
 #endif
 	};
 };

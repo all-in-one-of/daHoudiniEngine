@@ -41,6 +41,7 @@ daHEngine
 
 #include <daHoudiniEngine/daHEngine.h>
 #include <daHoudiniEngine/houdiniGeometry.h>
+#include <daHoudiniEngine/houdiniParameter.h>
 #ifdef DA_ENABLE_HENGINE
 	#include <daHEngine.static.cpp>
 #endif
@@ -73,14 +74,33 @@ BOOST_PYTHON_MODULE(daHEngine)
  		PYAPI_REF_GETTER(HoudiniEngine, getHoudiniCont)
  		PYAPI_REF_GETTER(HoudiniEngine, getStagingCont)
  		PYAPI_REF_GETTER(HoudiniEngine, getHG)
-		;
+        PYAPI_REF_GETTER(HoudiniEngine, loadParameters)
+        PYAPI_METHOD(HoudiniEngine, getIntegerParameterValue)
+        PYAPI_METHOD(HoudiniEngine, setIntegerParameterValue)
+        PYAPI_METHOD(HoudiniEngine, getFloatParameterValue)
+        PYAPI_METHOD(HoudiniEngine, setFloatParameterValue)
+        PYAPI_METHOD(HoudiniEngine, getStringParameterValue)
+        PYAPI_METHOD(HoudiniEngine, setStringParameterValue);
 
 	// HoudiniGeometry
 	PYAPI_REF_BASE_CLASS(HoudiniGeometry)
 		PYAPI_METHOD(HoudiniGeometry, getObjectCount)
 		PYAPI_METHOD(HoudiniGeometry, getGeodeCount)
-		PYAPI_METHOD(HoudiniGeometry, getDrawableCount)
-		;
+		PYAPI_METHOD(HoudiniGeometry, getDrawableCount);
+
+    // HoudiniParameter
+    PYAPI_REF_BASE_CLASS(HoudiniParameter)
+        PYAPI_METHOD(HoudiniParameter, getId)
+        PYAPI_METHOD(HoudiniParameter, getParentId)
+        PYAPI_METHOD(HoudiniParameter, getType)
+        PYAPI_METHOD(HoudiniParameter, getSize)
+        PYAPI_METHOD(HoudiniParameter, getName)
+        PYAPI_METHOD(HoudiniParameter, getLabel);
+
+    // HoudiniParameterList
+    PYAPI_REF_BASE_CLASS(HoudiniParameterList)
+        PYAPI_METHOD(HoudiniParameterList, size)
+        PYAPI_REF_GETTER(HoudiniParameterList, getParameter);
 #endif
 	// tools for generic models exported from houdini
 	PYAPI_REF_BASE_CLASS(LoaderTools)
