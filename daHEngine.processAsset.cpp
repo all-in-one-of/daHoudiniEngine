@@ -70,6 +70,10 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 		hg->addObject(objects.size() - hg->getObjectCount());
 	}
 
+    for (int i=0; i < objects.size(); i++) {
+        hg->setObjectName(i, objects[i].name());
+    }
+
 	if (hg->objectsChanged) {
 // 	if (true) {
 		for (int object_index=0; object_index < int(objects.size()); ++object_index)
