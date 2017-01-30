@@ -368,6 +368,9 @@ namespace houdiniEngine {
 
 		int addObject(const int count);
 		int getObjectCount() { return (myNode == NULL ? 0 : myNode->getNumChildren()); };
+        void setObjectName(const int objIndex, const string& name) {
+            hobjs[objIndex].pat->setName(name);
+        }
 
 		inline int getNormalCount(const int drawableIndex, const int geodeIndex, const int objIndex) {
 			return (hobjs[objIndex].hgeoms[geodeIndex].hparts[drawableIndex].normals == NULL) ?
