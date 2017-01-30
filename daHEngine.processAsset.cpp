@@ -318,7 +318,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 		// this is to do with instancing
  		ofmsg ("No faces, points count? %1%", %points.size());
 		hg->dirty();
-// 		return;
+ 		return;
 	}
 
 	// TODO: render curves
@@ -553,114 +553,119 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 			}
 		}
 
-		// debug output
-// 		for (int i = 0; i < node_info.parmCount; ++i) {
-// 			ofmsg("index %1%: %2% '%3%'",
-// 				  %i
-// 				  %parm_infos[i].id
-// 				  %get_string(session, parm_infos[i].nameSH)
-// 			);
-// 		}
+        if (mapIndex == -1) {
+		    ofmsg("Unsupported material found for %1%", %hg->getName());
+        } else {
 
-// 		ofmsg("the texture path: assetId=%1% matInfo.id=%2% mapIndex=%3% parm_id=%4% string=%5%",
-// 			  %mat_info.assetId
-// 			  %mat_info.id
-// 			  %mapIndex
-// 			  %parm_infos[mapIndex].id
-// 			  %get_string(session, parm_infos[mapIndex].nameSH)
-// 		);
+            // debug output
+    // 		for (int i = 0; i < node_info.parmCount; ++i) {
+    // 			ofmsg("index %1%: %2% '%3%'",
+    // 				  %i
+    // 				  %parm_infos[i].id
+    // 				  %get_string(session, parm_infos[i].nameSH)
+    // 			);
+    // 		}
 
-		// NOTE this works if the image is a png
- 		ENSURE_SUCCESS(session,  HAPI_RenderTextureToImage(
-			session,
-			mat_info.assetId,
- 			mat_info.id,
-			parm_infos[mapIndex].id /* parmIndex for "map" */));
+    // 		ofmsg("the texture path: assetId=%1% matInfo.id=%2% mapIndex=%3% parm_id=%4% string=%5%",
+    // 			  %mat_info.assetId
+    // 			  %mat_info.id
+    // 			  %mapIndex
+    // 			  %parm_infos[mapIndex].id
+    // 			  %get_string(session, parm_infos[mapIndex].nameSH)
+    // 		);
+
+            // NOTE this works if the image is a png
+            ENSURE_SUCCESS(session,  HAPI_RenderTextureToImage(
+                session,
+                mat_info.assetId,
+                mat_info.id,
+                parm_infos[mapIndex].id /* parmIndex for "map" */));
 
 
-		// render using mantra
-//  		ENSURE_SUCCESS(session,  HAPI_RenderMaterialToImage(
-//  			mat_info.assetId,
-//  			mat_info.id,
-// 			HAPI_SHADER_MANTRA));
-// // 			HAPI_SHADER_OPENGL));
+            // render using mantra
+    //  		ENSURE_SUCCESS(session,  HAPI_RenderMaterialToImage(
+    //  			mat_info.assetId,
+    //  			mat_info.id,
+    // 			HAPI_SHADER_MANTRA));
+    // // 			HAPI_SHADER_OPENGL));
 
-		HAPI_ImageInfo image_info;
-		ENSURE_SUCCESS(session,  HAPI_GetImageInfo(
-			session,
-			mat_info.assetId,
-			mat_info.id,
-			&image_info));
+            HAPI_ImageInfo image_info;
+            ENSURE_SUCCESS(session,  HAPI_GetImageInfo(
+                session,
+                mat_info.assetId,
+                mat_info.id,
+                &image_info));
 
-		ofmsg("width %1% height: %2% format: %3% dataFormat: %4% packing %5%",
-			  %image_info.xRes
-			  %image_info.yRes
-			  %get_string(session, image_info.imageFileFormatNameSH)
-			  %image_info.dataFormat
-			  %image_info.packing
-		);
-		// ---------
+            ofmsg("width %1% height: %2% format: %3% dataFormat: %4% packing %5%",
+                  %image_info.xRes
+                  %image_info.yRes
+                  %get_string(session, image_info.imageFileFormatNameSH)
+                  %image_info.dataFormat
+                  %image_info.packing
+            );
+            // ---------
 
-		HAPI_StringHandle imageSH;
+            HAPI_StringHandle imageSH;
 
-		ENSURE_SUCCESS(session,  HAPI_GetImagePlanes(
-			session,
-			mat_info.assetId,
-			mat_info.id,
-			&imageSH,
-			1
-		));
+            ENSURE_SUCCESS(session,  HAPI_GetImagePlanes(
+                session,
+                mat_info.assetId,
+                mat_info.id,
+                &imageSH,
+                1
+            ));
 
-		int imgBufSize = -1;
+            int imgBufSize = -1;
 
-		//TODO: get the image extraction working correctly..
-		// needed to convert from PNG/JPG/etc to RGBA.. use decode() from omegalib
+            //TODO: get the image extraction working correctly..
+            // needed to convert from PNG/JPG/etc to RGBA.. use decode() from omegalib
 
-		// get image planes into a buffer (default is png.. change to RGBA?)
-		ENSURE_SUCCESS(session,  HAPI_ExtractImageToMemory(
-			session,
-			mat_info.assetId,
-			mat_info.id,
-			HAPI_PNG_FORMAT_NAME,
-// 			NULL /* HAPI_DEFAULT_IMAGE_FORMAT_NAME */,
-			"C A", /* image planes */
-			&imgBufSize
-		));
+            // get image planes into a buffer (default is png.. change to RGBA?)
+            ENSURE_SUCCESS(session,  HAPI_ExtractImageToMemory(
+                session,
+                mat_info.assetId,
+                mat_info.id,
+                HAPI_PNG_FORMAT_NAME,
+    // 			NULL /* HAPI_DEFAULT_IMAGE_FORMAT_NAME */,
+                "C A", /* image planes */
+                &imgBufSize
+            ));
 
-		char *myBuffer = new char[imgBufSize];
+            char *myBuffer = new char[imgBufSize];
 
-		// put into a buffer
-		ENSURE_SUCCESS(session,  HAPI_GetImageMemoryBuffer(
-			session,
-			mat_info.assetId,
-			mat_info.id,
-			myBuffer /* tried (char *)pd->map() */,
-			imgBufSize
-		));
+            // put into a buffer
+            ENSURE_SUCCESS(session,  HAPI_GetImageMemoryBuffer(
+                session,
+                mat_info.assetId,
+                mat_info.id,
+                myBuffer /* tried (char *)pd->map() */,
+                imgBufSize
+            ));
 
-		// load into a pixelData bufferObject
-		// this works!
-// 		Ref<PixelData> refPd = ImageUtils::decode((void *) myBuffer, image_info.xRes * image_info.yRes * 4);
-		pds.push_back(ImageUtils::decode((void *) myBuffer, image_info.xRes * image_info.yRes * 4));
+            // load into a pixelData bufferObject
+            // this works!
+    // 		Ref<PixelData> refPd = ImageUtils::decode((void *) myBuffer, image_info.xRes * image_info.yRes * 4);
+            pds.push_back(ImageUtils::decode((void *) myBuffer, image_info.xRes * image_info.yRes * 4));
 
-		// TODO: general case for texture names (diffuse, spec, env, etc)
-		osg::Texture2D* texture = mySceneManager->createTexture("testing", pds[0]);
+            // TODO: general case for texture names (diffuse, spec, env, etc)
+            osg::Texture2D* texture = mySceneManager->createTexture("testing", pds[0]);
 
-		// need to set wrap modes too
-		osg::Texture::WrapMode textureWrapMode;
-		textureWrapMode = osg::Texture::REPEAT;
+            // need to set wrap modes too
+            osg::Texture::WrapMode textureWrapMode;
+            textureWrapMode = osg::Texture::REPEAT;
 
-		texture->setWrap(osg::Texture2D::WRAP_R, textureWrapMode);
-		texture->setWrap(osg::Texture2D::WRAP_S, textureWrapMode);
-		texture->setWrap(osg::Texture2D::WRAP_T, textureWrapMode);
+            texture->setWrap(osg::Texture2D::WRAP_R, textureWrapMode);
+            texture->setWrap(osg::Texture2D::WRAP_S, textureWrapMode);
+            texture->setWrap(osg::Texture2D::WRAP_T, textureWrapMode);
 
-		// should have something else here.. this doesn't seem to be working..
-		// TODO: put textures in HoudiniGeometry, use default shader to show everything properly
-// 		hg->getOsgNode(geoIndex, objIndex)->getOrCreateStateSet()->setTextureAttributeAndModes(0, tex, osg::StateAttribute::ON);
+            // should have something else here.. this doesn't seem to be working..
+            // TODO: put textures in HoudiniGeometry, use default shader to show everything properly
+    // 		hg->getOsgNode(geoIndex, objIndex)->getOrCreateStateSet()->setTextureAttributeAndModes(0, tex, osg::StateAttribute::ON);
 
-// 		ofmsg("my image width %1% height: %2%, size %3%, bufSize %4%",
-// 			%refPd->getWidth() %refPd->getHeight() %refPd->getSize() %imgBufSize
-// 		);
+    // 		ofmsg("my image width %1% height: %2%, size %3%, bufSize %4%",
+    // 			%refPd->getWidth() %refPd->getHeight() %refPd->getSize() %imgBufSize
+    // 		);
+        }
 	} else {
 		ofmsg("No material for %1%", %hg->getName());
 	}
