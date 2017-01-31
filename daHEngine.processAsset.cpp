@@ -93,6 +93,10 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 				hg->addGeode(geos.size() - hg->getGeodeCount(object_index), object_index);
 			}
 
+            for (int i=0; i < geos.size(); i++) {
+                hg->setGeodeName(i, object_index, geos[i].name());
+            }
+
 			hg->setGeosChanged(objInfo.haveGeosChanged, object_index);
 			ofmsg("process_assets: Object Geos %1% have changed: %2%", %object_index %hg->getGeosChanged(object_index));
 
