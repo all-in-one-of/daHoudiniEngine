@@ -348,7 +348,7 @@ namespace houdiniEngine {
 			if (objIndex < myNode->getNumChildren()) {
 				if (geodeIndex < myNode->getChild(objIndex)->asGroup()->getNumChildren()) {
 					return myNode->getChild(objIndex)->asGroup()->
-						getChild(geodeIndex)->asGeode()->getNumDrawables();
+						getChild(geodeIndex)->asGroup()->getNumChildren();
 				}
 			}
 			return 0;
