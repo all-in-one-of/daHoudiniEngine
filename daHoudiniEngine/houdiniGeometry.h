@@ -357,14 +357,17 @@ namespace houdiniEngine {
 		int addDrawable(const int count, const int geodeIndex, const int objIndex);
 
 		int addGeode(const int count, const int objIndex);
-		int addBillboard(const int count, const int objIndex);
-
 		int getGeodeCount(const int objIndex) {
 			if (objIndex < myNode->getNumChildren()) {
 				return myNode->getChild(objIndex)->asGroup()->getNumChildren();
 			}
 			return 0;
 		};
+        void setGeodeName(const int geodeIndex, const int objIndex, const string& name) {
+            hobjs[objIndex].hgeoms[geodeIndex].geode->setName(name);
+        }
+
+		int addBillboard(const int count, const int objIndex);
 
 		int addObject(const int count);
 		int getObjectCount() { return (myNode == NULL ? 0 : myNode->getNumChildren()); };
