@@ -107,7 +107,7 @@ namespace houdiniEngine {
 
 	typedef struct {
 		vector < HGeom > hgeoms;
-		Ref<osg::PositionAttitudeTransform> pat;
+		Ref<osg::Transform> trans;
 		bool transformChanged;
 		bool geosChanged;
 	} HObj;
@@ -372,7 +372,7 @@ namespace houdiniEngine {
 		int addObject(const int count);
 		int getObjectCount() { return (myNode == NULL ? 0 : myNode->getNumChildren()); };
         void setObjectName(const int objIndex, const string& name) {
-            hobjs[objIndex].pat->setName(name);
+            hobjs[objIndex].trans->setName(name);
         }
 
 		inline int getNormalCount(const int drawableIndex, const int geodeIndex, const int objIndex) {

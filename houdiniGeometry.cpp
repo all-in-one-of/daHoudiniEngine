@@ -113,9 +113,9 @@ int HoudiniGeometry::addGeode(const int count, const int objIndex)
 	for (int i = 0; i < count; ++i) {
 		hobjs[objIndex].hgeoms.push_back(HGeom());
 		hobjs[objIndex].hgeoms.back().geode = new osg::Geode();
-		hobjs[objIndex].pat->addChild(hobjs[objIndex].hgeoms.back().geode);
+		hobjs[objIndex].trans->addChild(hobjs[objIndex].hgeoms.back().geode);
 	}
-	return hobjs[objIndex].pat->getNumChildren();
+	return hobjs[objIndex].trans->getNumChildren();
 }
 
 	int HoudiniGeometry::addBillboard(const int count, const int objIndex)
@@ -129,9 +129,9 @@ int HoudiniGeometry::addGeode(const int count, const int objIndex)
 		// billboard->setAxis(osg::Vec3(0.0f,0.0f,1.0f));
 		billboard->setNormal(osg::Vec3(0.0f,0.0f,-1.0f));
 
-		hobjs[objIndex].pat->addChild(hobjs[objIndex].hgeoms.back().geode);
+		hobjs[objIndex].trans->addChild(hobjs[objIndex].hgeoms.back().geode);
 	}
-	return hobjs[objIndex].pat->getNumChildren();
+	return hobjs[objIndex].trans->getNumChildren();
 }
 
 
@@ -142,8 +142,8 @@ int HoudiniGeometry::addObject(const int count)
 {
 	for (int i = 0; i < count; ++i) {
 		hobjs.push_back(HObj());
-		hobjs.back().pat = new osg::PositionAttitudeTransform();
-		myNode->addChild(hobjs.back().pat);
+		hobjs.back().trans = new osg::PositionAttitudeTransform();
+		myNode->addChild(hobjs.back().trans);
 	}
 	return myNode->getNumChildren();
 }
