@@ -75,9 +75,11 @@ Based on ModelGeometry from the Cyclops project
 
 #include <osg/Group>
 #include <osg/PositionAttitudeTransform>
+#include <osg/AutoTransform>
 #include <osg/Geode>
 #include <osg/Geometry>
 #include <osg/Billboard>
+#include <osg/Node>
 
 #define OMEGA_NO_GL_HEADERS
 #include <omega.h>
@@ -432,7 +434,7 @@ namespace houdiniEngine {
 
 	private:
 		vector < HObj > hobjs;
-		osg::PositionAttitudeTransform* myNode;
+		osg::Group* myNode;
 	};
 };
 

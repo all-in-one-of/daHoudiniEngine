@@ -64,9 +64,6 @@ Based on ModelGeometry from the Cyclops project
 ******************************************************************************/
 
 
-#include <osg/Node>
-#include <osg/Geometry>
-
 #include <daHoudiniEngine/houdiniGeometry.h>
 
 using namespace houdiniEngine;
@@ -76,8 +73,7 @@ HoudiniGeometry::HoudiniGeometry(const String& name):
 	ModelGeometry(name)
 {
 	// create geometry and geodes to hold the data
-// 	myNode = new osg::Geode();
-	myNode = new osg::PositionAttitudeTransform();
+	myNode = new osg::Group();
 
 	addObject(1);
 	addGeode(1, 0);
