@@ -170,7 +170,7 @@ namespace houdiniEngine {
         void setFloatParameterValue(const String& asset_name, int param_id, int sub_index, float value);
 
         String getStringParameterValue(const String& asset_name, int param_id, int sub_index);
-        void setStringParameterValue(const String& asset_name, int param_id, int sub_index, String& value);
+        void setStringParameterValue(const String& asset_name, int param_id, int sub_index, const String& value);
 
 		float getFps();
 
