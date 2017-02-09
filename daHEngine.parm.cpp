@@ -498,7 +498,7 @@ String HoudiniEngine::getStringParameterValue(const String& asset_name, int para
     }
 }
 
-void HoudiniEngine::setStringParameterValue(const String& asset_name, int param_id, int sub_index, String& value) 
+void HoudiniEngine::setStringParameterValue(const String& asset_name, int param_id, int sub_index, const String& value) 
 {
     hapi::Asset* asset = instancedHEAssetsByName[asset_name];
 
