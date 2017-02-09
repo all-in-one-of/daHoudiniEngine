@@ -239,8 +239,8 @@ void HoudiniEngine::createMenu(const String& asset_name)
 	assetConts.push_back(assetCont);
 
 	int assetContSize = assetConts.size() - 1;
-	// BUG: do this conversion safer.. void* pointer not the same size as int
-	assetButton->setUserData((void *)assetContSize); // point to the container to use in assetConts
+	// cast to an int that is the same size as void*
+	assetButton->setUserData((void *)(intptr_t)assetContSize); // point to the container to use in assetConts
 
 	std::map<std::string, hapi::Parm> parmMap = myAsset->parmMap();
 	std::vector<hapi::Parm> parms = myAsset->parms();
