@@ -203,6 +203,14 @@ void HoudiniEngine::createParm(const String& asset_name, Container* cont, hapi::
 			}
 		} else if (parm->info().type == HAPI_PARMTYPE_SEPARATOR) {
 			label->setText("----------");
+		} else if (parm->info().type == HAPI_PARMTYPE_MULTIPARMLIST) {
+			ofmsg("this is a multiparm, instance length %1%, instance count %2%, instance offset %3%",
+				  %parm->info().instanceLength
+				  %parm->info().instanceCount
+				  %parm->info().instanceStartOffset
+			);
+			multiParmConts[parm->info().id] = cont;
+			label->setText("MultiParmList");
 		}
 
 		assetParamConts[asset_name].push_back(cont);
@@ -211,6 +219,7 @@ void HoudiniEngine::createParm(const String& asset_name, Container* cont, hapi::
 
 // only run on master
 // identical-looking menus get created on slaves
+// a base assetCont container is created, and this is then pushed onto assetConts
 void HoudiniEngine::createMenu(const String& asset_name)
 {
 	// load only the params in the DA Folder
@@ -224,6 +233,7 @@ void HoudiniEngine::createMenu(const String& asset_name)
 		ofwarn("No asset of name %1%", %asset_name);
 	}
 
+	// button to choose this asset
 	Button* assetButton = Button::create(assetChoiceCont);
 	assetButton->setRadio(true);
 	assetButton->setChecked(true);
@@ -295,6 +305,7 @@ void HoudiniEngine::createMenu(const String& asset_name)
 			Container* myChoiceCont = Container::create(Container::LayoutHorizontal, myFolderListCont);
 			Container* myFolderListContents = Container::create(Container::LayoutVertical, myFolderListCont);
 			myFolderListCont->setVerticalAlign(Container::AlignTop);
+			// move container to be child of relevant parent parm
 			if (parm->info().parentId >= 0) {
 				assetCont->removeChild(myFolderListCont);
 				baseConts[parm->info().parentId]->addChild(myFolderListCont);
@@ -339,9 +350,40 @@ void HoudiniEngine::createMenu(const String& asset_name)
 
 		} else { // its a parm
 			Container* myCont = Container::create(Container::LayoutHorizontal, assetCont);
-			if (parm->info().parentId >= 0) {
+			if (parm->info().isChildOfMultiParm) {
+				hapi::Parm* parentParm = &parms[parm->info().parentId];
+				ofmsg("i am child %1% of a multiParm %2%", 
+					  %parm->info().instanceNum
+					  %parentParm->name()
+				);
+				// move container to be child of relevant parent parm
 				assetCont->removeChild(myCont);
-				baseConts[parm->info().parentId]->addChild(myCont);
+				String childName = ostr("%1%_%2%", 
+					%multiParmConts[parentParm->info().id]->getName()
+					%parm->info().instanceNum
+				);
+				
+				Widget* myParmContWidget = multiParmConts[parentParm->info().id]->getChildByName(childName);
+				Container* myParmCont = NULL;
+
+				if (myParmContWidget == NULL) {
+					myParmCont = Container::create(
+						Container::LayoutVertical, 
+						multiParmConts[parentParm->info().id]
+					);
+					myParmCont->setName(childName);
+					myParmCont->setFillColor(Color("#40B0B0"));
+					myParmCont->setFillEnabled(true);
+				} else {
+					myParmCont = static_cast<Container*>(myParmContWidget);
+				}
+				myParmCont->addChild(myCont);
+			} else {
+				// move container to be child of relevant parent parm
+				if (parm->info().parentId >= 0) {
+					assetCont->removeChild(myCont);
+					baseConts[parm->info().parentId]->addChild(myCont);
+				}
 			}
 			myCont->setFillColor(Color("#B0B040"));
 			myCont->setFillEnabled(true);

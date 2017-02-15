@@ -259,6 +259,7 @@ namespace houdiniEngine {
 		Dictionary<int, Container* > folderLists; // keep ref to container for Folder selection
 		Dictionary<int, Container* > folderListChoices; // buttons to refer to folder lists above
 		Dictionary<int, Container* > folderListContents; // keep refs to folderList container to display child parms
+		Dictionary<int, Container* > multiParmConts; // keep refs for multiParms
 
 		// the link between widget and parmId
 		Dictionary < int, int > widgetIdToParmId; // UI Widget -> HAPI_Parm id
