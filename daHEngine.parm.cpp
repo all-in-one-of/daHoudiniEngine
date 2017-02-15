@@ -194,7 +194,8 @@ void HoudiniEngine::createParm(const String& asset_name, Container* cont, hapi::
 			} else {
 				assetParamConts[asset_name].push_back(cont);
 				TextBox* box = TextBox::create(cont);
-				box->setText("X");
+				box->setFont("fonts/segoeuimod.ttf 14");
+				box->setText(val);
 				box->setUIEventHandler(this);
 				box->setUserData(label);
 
