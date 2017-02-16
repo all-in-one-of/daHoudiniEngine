@@ -153,9 +153,10 @@ void HoudiniEngine::handleEvent(const Event& evt)
 		doUpdate = true;
 	}
 
-	if (!doUpdate) {
-		return;
-	}
+	// do this anyway.. for now
+// 	if (!doUpdate) {
+// 		return;
+// 	}
 
 	// otherwise, do something!
 // 	ofmsg("Widget source: %1%, id: %2%. Do a cook call here..",
@@ -181,6 +182,8 @@ void HoudiniEngine::handleEvent(const Event& evt)
 	}
 
 	UiModule::instance()->activateWidget(myWidget);
+	
+	ofmsg("Active widget %1%? %2%", %myWidget->getName() %myWidget->isActive());
 	
 	// the link between widget and parmId
 	int myParmId = widgetIdToParmId[myWidget->getId()];
