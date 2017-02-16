@@ -214,22 +214,34 @@ void HoudiniEngine::handleEvent(const Event& evt)
 			ofmsg("Value set to %1%", %val);
 			parm->setIntValue(0, val);
 		} else if (parm->info().type == HAPI_PARMTYPE_STRING) {
-			Container* parentCont = button->getContainer();
-			int myIndex = 0;
-			// find the index by matching container name to content
-			for (int i = 0; i < parentCont->getNumChildren(); ++i) {
-				if (parentCont->getChildByIndex(i)->getName() == button->getName()) {
-					myIndex = i;
-					break;
+			if (parm->info().choiceListType == HAPI_CHOICELISTTYPE_NONE ||
+				parm->info().choiceListType == HAPI_CHOICELISTTYPE_NORMAL ||
+				parm->info().choiceListType == HAPI_CHOICELISTTYPE_MINI) {
+				Container* parentCont = button->getContainer();
+				int myIndex = 0;
+				// find the index by matching container name to content
+				for (int i = 0; i < parentCont->getNumChildren(); ++i) {
+					if (parentCont->getChildByIndex(i)->getName() == button->getName()) {
+						myIndex = i;
+						break;
+					}
+				}
+
+				// BUG *parm changes! I'm doing something that causes the pointer location to change..
+				// direct reference to choice item works, (ie myAsset->parms()[myParmId])
+				// but not through *parm.
+				String val = ostr("%1%", %myAsset->parms()[myParmId].choices[myIndex].value());
+				ofmsg("Value set to %1%", %val);
+				parm->setStringValue(0, val.c_str());
+			} else {
+				// same as if there was no parmChoice count
+				// TODO: add the menu as well..
+				TextBox* tb = dynamic_cast<TextBox*>(myWidget);
+				if (tb != NULL) {
+					ofmsg("Value set to %1%", %tb->getText());
+					parm->setStringValue(0, tb->getText().c_str());
 				}
 			}
-
-			// BUG *parm changes! I'm doing something that causes the pointer location to change..
-			// direct reference to choice item works, (ie myAsset->parms()[myParmId])
-			// but not through *parm.
-			String val = ostr("%1%", %myAsset->parms()[myParmId].choices[myIndex].value());
-			ofmsg("Value set to %1%", %val);
-			parm->setStringValue(0, val.c_str());
 		}
 
 	} else
