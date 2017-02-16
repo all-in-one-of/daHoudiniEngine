@@ -270,6 +270,15 @@ void HoudiniEngine::handleEvent(const Event& evt)
 			// don't add value to label, already visible with button checked-ness
 			parm->setIntValue(0, button->isChecked());
 		}
+	} else if (parm->info().type == HAPI_PARMTYPE_STRING ||
+			parm->info().type == HAPI_PARMTYPE_PATH_FILE ||
+			parm->info().type == HAPI_PARMTYPE_PATH_FILE_GEO	||
+			parm->info().type == HAPI_PARMTYPE_PATH_FILE_IMAGE) {
+		TextBox* tb = dynamic_cast<TextBox*>(myWidget);
+		if (tb != NULL) {
+			ofmsg("Value set to %1%", %tb->getText());
+			parm->setStringValue(0, tb->getText().c_str());
+		}
 
 	}
 
