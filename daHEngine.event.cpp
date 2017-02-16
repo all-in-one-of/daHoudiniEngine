@@ -85,8 +85,6 @@ void HoudiniEngine::handleEvent(const Event& evt)
 	ofmsg("widget name: '%1%'", %myWidget->getName());
 	ofmsg("current asset is %1%", %currentAssetName);
 
-	int parmId = -1;
-
 	// do it if source is button and event is toggle or click
 	if (myWidget != NULL) {
 
@@ -142,7 +140,6 @@ void HoudiniEngine::handleEvent(const Event& evt)
 
 
 		doUpdate = evt.getType() == Event::Toggle || evt.getType() == Event::Click;
-		parmId = evt.getSourceId();
 	}
 
 	omsg("about to get source");
@@ -154,7 +151,6 @@ void HoudiniEngine::handleEvent(const Event& evt)
 	if (myWidget != NULL && evt.getType() == Event::ChangeValue) {
 		myWidget = myWidget;
 		doUpdate = true;
-		parmId = evt.getSourceId();
 	}
 
 	if (!doUpdate) {
@@ -184,8 +180,15 @@ void HoudiniEngine::handleEvent(const Event& evt)
 		ofmsg("Asset is %1%", %asset_name);
 	}
 
+	UiModule::instance()->activateWidget(myWidget);
+	
 	// the link between widget and parmId
-	hapi::Parm* parm = &(myAsset->parms()[widgetIdToParmId[myWidget->getId()]]);
+	int myParmId = widgetIdToParmId[myWidget->getId()];
+
+	// this seems unreliable when referring to parm->choices. 
+	// pointer memory location differs and I get corrupt data
+	// therefore use absolute references for it
+	hapi::Parm* parm = &(myAsset->parms()[myParmId]);
 
 	ofmsg("PARM %1%: %2% s-%3% id-%4%",
 		  %parm->label()
@@ -208,31 +211,21 @@ void HoudiniEngine::handleEvent(const Event& evt)
 			ofmsg("Value set to %1%", %val);
 			parm->setIntValue(0, val);
 		} else if (parm->info().type == HAPI_PARMTYPE_STRING) {
-			// BUG There seems to be a bug here, all string choice lists are missing the first choice
-			// is this a houdini engine problem or something i'm doing?
-			// code for this should be almost the same as above
-			std::string val = "";
 			Container* parentCont = button->getContainer();
-			ofmsg("container: %1% %2% %3%", %parentCont->getName() %parentCont %parentCont->getNumChildren());
 			int myIndex = 0;
+			// find the index by matching container name to content
 			for (int i = 0; i < parentCont->getNumChildren(); ++i) {
-				ofmsg("%1% == %2%", %parentCont->getChildByIndex(i)->getName()
-				                    %button->getName()
-					 );
 				if (parentCont->getChildByIndex(i)->getName() == button->getName()) {
 					myIndex = i;
 					break;
 				}
 			}
 
-			ofmsg("parmchoices are %1%, tuple size is %2%", %parm->choices.size()
-				                                            %parm->info().size
-			);
-			ofmsg("value was %1%", %parm->getStringValue(0));
-			// BUG: Code is breaking on the parm->choices[i].label() call
-			for (int i = 0; i < parm->choices.size(); ++i) {
-				ofmsg("choice #%1%: %2%", %i %parm->choices[i].label());
-			}
+			// BUG *parm changes! I'm doing something that causes the pointer location to change..
+			// direct reference to choice item works, (ie myAsset->parms()[myParmId])
+			// but not through *parm.
+			String val = ostr("%1%", %myAsset->parms()[myParmId].choices[myIndex].value());
+			ofmsg("Value set to %1%", %val);
 			parm->setStringValue(0, val.c_str());
 		}
 
