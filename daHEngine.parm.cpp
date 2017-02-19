@@ -298,8 +298,27 @@ void HoudiniEngine::createParm(const String& asset_name, Container* cont, hapi::
 				  %parm->info().instanceCount
 				  %parm->info().instanceStartOffset
 			);
+			label->setText(parm->label() + " " + ostr("%1%", %parm->info().instanceCount));
+			// TODO: Add/Remove buttons, number of items, clear button?
 			multiParmConts[parm->info().id] = cont;
-			label->setText("MultiParmList");
+			// add another container to contain label and buttons
+			Container* multiParmButtonCont = Container::create(Container::LayoutVertical, cont);
+			cont->removeChild(label);
+			multiParmButtonCont->addChild(label);
+			cont->addChild(multiParmButtonCont);
+			Button* addButton = Button::create(multiParmButtonCont);
+			addButton->setName(ostr("%1%_add", %parm->info().id));
+			addButton->setText("+");
+			addButton->setUIEventHandler(this);
+			Button* remButton = Button::create(multiParmButtonCont);
+			remButton->setName(ostr("%1%_rem", %parm->info().id));
+			remButton->setText("-");
+			remButton->setUIEventHandler(this);
+			Button* clrButton = Button::create(multiParmButtonCont);
+			clrButton->setName(ostr("%1%_clr", %parm->info().id));
+			clrButton->setText("Clear");
+			clrButton->setUIEventHandler(this);
+
 		}
 
 		assetParamConts[asset_name].push_back(cont);

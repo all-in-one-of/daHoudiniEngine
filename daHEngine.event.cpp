@@ -153,7 +153,8 @@ void HoudiniEngine::handleEvent(const Event& evt)
 		doUpdate = true;
 	}
 
-	// do this anyway.. for now
+	ofmsg("event type here is %1%", %evt.getType());
+	// don't return yet..
 // 	if (!doUpdate) {
 // 		return;
 // 	}
@@ -169,8 +170,6 @@ void HoudiniEngine::handleEvent(const Event& evt)
 	// HAPI_GeoInfo::hasGeoChanged
 	// HAPI_GeoInfo::hasMaterialChanged
 
-	omsg("got here");
-
 	String asset_name = currentAssetName;
 	hapi::Asset* myAsset = instancedHEAssetsByName[asset_name];
 
@@ -185,19 +184,57 @@ void HoudiniEngine::handleEvent(const Event& evt)
 	
 	ofmsg("Active widget %1%? %2%", %myWidget->getName() %myWidget->isActive());
 	
+	// debugging
+// 	foreach(Dictionary<int, int >::Item item, widgetIdToParmId) {
+// 		ofmsg("widget id %1%: parmId %2%", %item.first %item.second);
+// 	}
+// 	for(Dictionary<int, int >::iterator it = widgetIdToParmId.begin(); it != widgetIdToParmId.end(); ++it) {
+// 		ofmsg("widget id %1%: parmId %2%", %it->first %it->second);
+// 	}
+	
 	// the link between widget and parmId
-	int myParmId = widgetIdToParmId[myWidget->getId()];
+	ofmsg("myasset has %1% parms", %myAsset->nodeInfo().parmCount);
+// 	for (int i = 0; i < myAsset->parms().size(); ++i) {
+// 		hapi::Parm* p = &(myAsset->parms()[i]z);
+// 		ofmsg("Parm #%1%->%2%", %i %p->name());
+// 	}
+	
+	// a lot of asset properties are CONST, so I can't change them!
+	// need to recreate an asset object each time parameters change!
+	// this may mean shuffling around representations of things..
+	
+	Ref <RefAsset> myNewAsset = new RefAsset(myAsset->id, session);
+	ofmsg("myNewAsset has %1% parms", %myNewAsset->nodeInfo().parmCount);
+	
+	int myParmId = -1;
+	
+	if (StringUtils::endsWith(myWidget->getName(), "_add")) {
+		String s = myWidget->getName().substr(0, myWidget->getName().find('_'));
+		myParmId = atoi(s.c_str());
+	} else if (StringUtils::endsWith(myWidget->getName(), "_rem")) {
+		String s = myWidget->getName().substr(0, myWidget->getName().find('_'));
+		myParmId = atoi(s.c_str());
+	} else if (StringUtils::endsWith(myWidget->getName(), "_clr")) {
+		String s = myWidget->getName().substr(0, myWidget->getName().find('_'));
+		myParmId = atoi(s.c_str());
+	} else {
+		myParmId = widgetIdToParmId[myWidget->getId()];
+	}
 
 	// this seems unreliable when referring to parm->choices. 
 	// pointer memory location differs and I get corrupt data
 	// therefore use absolute references for it
+	// Reason is that asset data changes under hapi::Assest!
+	// need to regenerate asset after getting/setting parms?
 	hapi::Parm* parm = &(myAsset->parms()[myParmId]);
 
-	ofmsg("PARM %1%: %2% s-%3% id-%4%",
+	ofmsg("PARM %1%: %2% s-%3% name-%4% id-%5%",
 		  %parm->label()
 		  %parm->info().type
 		  %parm->info().size
-		  %parm->name() );
+		  %parm->name() 
+		  %parm->info().id
+	);
 
 	if (parm->info().choiceCount > 0) {
 		ofmsg("I'm a choice %1%: %2%", %parm->info().choiceCount %parm->name());
@@ -230,6 +267,8 @@ void HoudiniEngine::handleEvent(const Event& evt)
 				// BUG *parm changes! I'm doing something that causes the pointer location to change..
 				// direct reference to choice item works, (ie myAsset->parms()[myParmId])
 				// but not through *parm.
+				// reason is hapi::Asset has const methods, so things don't update as they
+				// should. Need to regenerate it each time.
 				String val = ostr("%1%", %myAsset->parms()[myParmId].choices[myIndex].value());
 				ofmsg("Value set to %1%", %val);
 				parm->setStringValue(0, val.c_str());
@@ -287,7 +326,19 @@ void HoudiniEngine::handleEvent(const Event& evt)
 			ofmsg("Value set to %1%", %tb->getText());
 			parm->setStringValue(0, tb->getText().c_str());
 		}
-
+	} else if (parm->info().type == HAPI_PARMTYPE_MULTIPARMLIST) {
+		if (StringUtils::endsWith(myWidget->getName(), "_add")) {
+			parm->insertMultiparmInstance(parm->info().instanceStartOffset - 1 + parm->info().instanceCount);
+			
+		} else if (StringUtils::endsWith(myWidget->getName(), "_rem")) {
+			parm->removeMultiparmInstance(parm->info().instanceStartOffset - 1 + parm->info().instanceCount);
+		} else if (StringUtils::endsWith(myWidget->getName(), "_clr")) {
+			int i = parm->info().instanceCount - 1;
+			while (i >= 0) {
+				parm->removeMultiparmInstance(parm->info().instanceStartOffset + i);
+				i--;
+			}
+		}
 	}
 
 	evt.setProcessed();
