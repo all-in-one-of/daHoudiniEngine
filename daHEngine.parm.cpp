@@ -95,18 +95,67 @@ void HoudiniEngine::createParm(const String& asset_name, Container* cont, hapi::
 		if (parm->info().type == HAPI_PARMTYPE_INT) {
 			int val = parm->getIntValue(i);
 			if (parm->info().choiceCount > 0) {
+				switch (parm->info().choiceListType) {
+					case HAPI_CHOICELISTTYPE_NONE:
+						omsg("choice list type is NONE");
+						break;
+					case HAPI_CHOICELISTTYPE_NORMAL:
+						omsg("choice list type is NORMAL");
+						break;
+					case HAPI_CHOICELISTTYPE_MINI:
+						omsg("choice list type is MINI");
+						break;
+					case HAPI_CHOICELISTTYPE_REPLACE:
+						omsg("choice list type is REPLACE");
+						break;
+					case HAPI_CHOICELISTTYPE_TOGGLE:
+						omsg("choice list type is TOGGLE");
+						break;
+					default:
+						break;
+				}
 				ofmsg("  choiceindex: %1% count: %2%", %parm->info().choiceIndex  %parm->info().choiceCount);
-				Container* choiceCont = Container::create(Container::LayoutVertical, cont);
-				for (int j = 0; j < parm->choices.size(); ++j) {
-					Button* button = Button::create(choiceCont);
-					button->setRadio(true);
-					button->setCheckable(true);
-					button->setChecked(j == val);
-					button->setText(parm->choices[j].label());
-					ofmsg("  choice %1%: %2% %3%", %j %parm->choices[j].label() %parm->choices[j].value());
-					button->setUIEventHandler(this);
-					button->setUserData(label);
-					widgetIdToParmId[button->getId()] = parm->info().id;
+				// display as a selection menu
+				if (parm->info().choiceListType == HAPI_CHOICELISTTYPE_NONE ||
+					parm->info().choiceListType == HAPI_CHOICELISTTYPE_NORMAL ||
+					parm->info().choiceListType == HAPI_CHOICELISTTYPE_MINI) {
+					
+					Container* choiceCont = Container::create(Container::LayoutVertical, cont);
+					for (int j = 0; j < parm->choices.size(); ++j) {
+						Button* button = Button::create(choiceCont);
+						button->setRadio(true);
+						button->setCheckable(true);
+						button->setChecked(j == val);
+						button->setText(parm->choices[j].label());
+						ofmsg("  choice %1%: %2% (%3%) parentId: %4%", %j %parm->choices[j].label() %parm->choices[j].value()
+						%parm->choices[j].info().parentParmId
+						);
+						button->setUIEventHandler(this);
+						button->setUserData(label);
+						widgetIdToParmId[button->getId()] = parm->info().id;
+					}
+				} else {// display as a text box which can be filled in by preset selections
+					// same as if there was no parmChoice count
+					// TODO: add the menu as well..
+					label->setText(parm->label() + " " + ostr("%1%", %val));
+					assetParamConts[asset_name].push_back(cont);
+					Slider* slider = Slider::create(cont);
+					if (parm->info().hasUIMin && parm->info().hasUIMax) {
+						ofmsg("min %1% max %2%", %parm->info().UIMin %parm->info().UIMax);
+						slider->setTicks(parm->info().UIMax - parm->info().UIMin + 1);
+						slider->setValue(val - parm->info().UIMin);
+					} else {
+						if (parm->info().hasMin) ofmsg("min %1%", %parm->info().min);
+						if (parm->info().hasMax) ofmsg("max %1%", %parm->info().max);
+						slider->setTicks(parm->info().max + 1);
+						slider->setValue(val);
+					}
+					slider->setDeferUpdate(true);
+					slider->setUIEventHandler(this);
+					// TODO refactor setUserData to refer to parms and label?
+					slider->setUserData(label); // reference to the label for this widget item
+					
+					widgetIdToParmId[slider->getId()] = parm->info().id;
 				}
 			} else {
 				label->setText(parm->label() + " " + ostr("%1%", %val));
@@ -177,24 +226,65 @@ void HoudiniEngine::createParm(const String& asset_name, Container* cont, hapi::
 				   parm->info().type == HAPI_PARMTYPE_PATH_FILE_IMAGE) { // TODO: update with TextBox
 			std::string val = parm->getStringValue(i);
 			if (parm->info().choiceCount > 0) {
-				ofmsg("  choiceindex: %1% count: %2%", %parm->info().choiceIndex  %parm->info().choiceCount);
-				assetParamConts[asset_name].push_back(cont);
-				Container* choiceCont = Container::create(Container::LayoutVertical, cont);
-				for (int j = 0; j < parm->choices.size(); ++j) {
-					Button* button = Button::create(choiceCont);
-					button->setRadio(true);
-					button->setCheckable(true);
-					button->setChecked(parm->choices[j].value() == val);
-					button->setText(parm->choices[j].label());
-					ofmsg("  choice %1%: %2% %3%", %j %parm->choices[j].label() %parm->choices[j].value());
-					button->setUIEventHandler(this);
-					button->setUserData(label);
-					widgetIdToParmId[button->getId()] = parm->info().id;
+				switch (parm->info().choiceListType) {
+					case HAPI_CHOICELISTTYPE_NONE:
+						omsg("choice list type is NONE");
+						break;
+					case HAPI_CHOICELISTTYPE_NORMAL:
+						omsg("choice list type is NORMAL");
+						break;
+					case HAPI_CHOICELISTTYPE_MINI:
+						omsg("choice list type is MINI");
+						break;
+					case HAPI_CHOICELISTTYPE_REPLACE:
+						omsg("choice list type is REPLACE");
+						break;
+					case HAPI_CHOICELISTTYPE_TOGGLE:
+						omsg("choice list type is TOGGLE");
+						break;
+					default:
+						break;
+				}
+				ofmsg("  choiceindex: %1% count: %2%", 
+					  %parm->info().choiceIndex  
+					  %parm->info().choiceCount
+				);
+				// display as a selection menu
+				if (parm->info().choiceListType == HAPI_CHOICELISTTYPE_NONE ||
+					parm->info().choiceListType == HAPI_CHOICELISTTYPE_NORMAL ||
+					parm->info().choiceListType == HAPI_CHOICELISTTYPE_MINI) {
+					assetParamConts[asset_name].push_back(cont);
+					Container* choiceCont = Container::create(Container::LayoutVertical, cont);
+					for (int j = 0; j < parm->choices.size(); ++j) {
+						Button* button = Button::create(choiceCont);
+						button->setRadio(true);
+						button->setCheckable(true);
+						button->setChecked(parm->choices[j].value() == val);
+						button->setText(parm->choices[j].label());
+						ofmsg("  choice %1%: %2% (%3%) parentId: %4%", %j %parm->choices[j].label() %parm->choices[j].value()
+						%parm->choices[j].info().parentParmId
+						);
+						button->setUIEventHandler(this);
+						button->setUserData(label);
+						widgetIdToParmId[button->getId()] = parm->info().id;
+					}
+				} else {// display as a text box which can be filled in by preset selections
+					// same as if there was no parmChoice count
+					// TODO: add the menu as well..
+					assetParamConts[asset_name].push_back(cont);
+					TextBox* box = TextBox::create(cont);
+					box->setFont("fonts/segoeuimod.ttf 14");
+					box->setText(val);
+					box->setUIEventHandler(this);
+					box->setUserData(label);
+					
+					widgetIdToParmId[box->getId()] = parm->info().id;
 				}
 			} else {
 				assetParamConts[asset_name].push_back(cont);
 				TextBox* box = TextBox::create(cont);
-				box->setText("X");
+				box->setFont("fonts/segoeuimod.ttf 14");
+				box->setText(val);
 				box->setUIEventHandler(this);
 				box->setUserData(label);
 
@@ -202,6 +292,33 @@ void HoudiniEngine::createParm(const String& asset_name, Container* cont, hapi::
 			}
 		} else if (parm->info().type == HAPI_PARMTYPE_SEPARATOR) {
 			label->setText("----------");
+		} else if (parm->info().type == HAPI_PARMTYPE_MULTIPARMLIST) {
+			ofmsg("this is a multiparm, instance length %1%, instance count %2%, instance offset %3%",
+				  %parm->info().instanceLength
+				  %parm->info().instanceCount
+				  %parm->info().instanceStartOffset
+			);
+			label->setText(parm->label() + " " + ostr("%1%", %parm->info().instanceCount));
+			// TODO: Add/Remove buttons, number of items, clear button?
+			multiParmConts[parm->info().id] = cont;
+			// add another container to contain label and buttons
+			Container* multiParmButtonCont = Container::create(Container::LayoutVertical, cont);
+			cont->removeChild(label);
+			multiParmButtonCont->addChild(label);
+			cont->addChild(multiParmButtonCont);
+			Button* addButton = Button::create(multiParmButtonCont);
+			addButton->setName(ostr("%1%_add", %parm->info().id));
+			addButton->setText("+");
+			addButton->setUIEventHandler(this);
+			Button* remButton = Button::create(multiParmButtonCont);
+			remButton->setName(ostr("%1%_rem", %parm->info().id));
+			remButton->setText("-");
+			remButton->setUIEventHandler(this);
+			Button* clrButton = Button::create(multiParmButtonCont);
+			clrButton->setName(ostr("%1%_clr", %parm->info().id));
+			clrButton->setText("Clear");
+			clrButton->setUIEventHandler(this);
+
 		}
 
 		assetParamConts[asset_name].push_back(cont);
@@ -210,6 +327,7 @@ void HoudiniEngine::createParm(const String& asset_name, Container* cont, hapi::
 
 // only run on master
 // identical-looking menus get created on slaves
+// a base assetCont container is created, and this is then pushed onto assetConts
 void HoudiniEngine::createMenu(const String& asset_name)
 {
 	// load only the params in the DA Folder
@@ -223,6 +341,7 @@ void HoudiniEngine::createMenu(const String& asset_name)
 		ofwarn("No asset of name %1%", %asset_name);
 	}
 
+	// button to choose this asset
 	Button* assetButton = Button::create(assetChoiceCont);
 	assetButton->setRadio(true);
 	assetButton->setChecked(true);
@@ -294,6 +413,7 @@ void HoudiniEngine::createMenu(const String& asset_name)
 			Container* myChoiceCont = Container::create(Container::LayoutHorizontal, myFolderListCont);
 			Container* myFolderListContents = Container::create(Container::LayoutVertical, myFolderListCont);
 			myFolderListCont->setVerticalAlign(Container::AlignTop);
+			// move container to be child of relevant parent parm
 			if (parm->info().parentId >= 0) {
 				assetCont->removeChild(myFolderListCont);
 				baseConts[parm->info().parentId]->addChild(myFolderListCont);
@@ -338,9 +458,40 @@ void HoudiniEngine::createMenu(const String& asset_name)
 
 		} else { // its a parm
 			Container* myCont = Container::create(Container::LayoutHorizontal, assetCont);
-			if (parm->info().parentId >= 0) {
+			if (parm->info().isChildOfMultiParm) {
+				hapi::Parm* parentParm = &parms[parm->info().parentId];
+				ofmsg("i am child %1% of a multiParm %2%", 
+					  %parm->info().instanceNum
+					  %parentParm->name()
+				);
+				// move container to be child of relevant parent parm
 				assetCont->removeChild(myCont);
-				baseConts[parm->info().parentId]->addChild(myCont);
+				String childName = ostr("%1%_%2%", 
+					%multiParmConts[parentParm->info().id]->getName()
+					%parm->info().instanceNum
+				);
+				
+				Widget* myParmContWidget = multiParmConts[parentParm->info().id]->getChildByName(childName);
+				Container* myParmCont = NULL;
+
+				if (myParmContWidget == NULL) {
+					myParmCont = Container::create(
+						Container::LayoutVertical, 
+						multiParmConts[parentParm->info().id]
+					);
+					myParmCont->setName(childName);
+					myParmCont->setFillColor(Color("#40B0B0"));
+					myParmCont->setFillEnabled(true);
+				} else {
+					myParmCont = static_cast<Container*>(myParmContWidget);
+				}
+				myParmCont->addChild(myCont);
+			} else {
+				// move container to be child of relevant parent parm
+				if (parm->info().parentId >= 0) {
+					assetCont->removeChild(myCont);
+					baseConts[parm->info().parentId]->addChild(myCont);
+				}
 			}
 			myCont->setFillColor(Color("#B0B040"));
 			myCont->setFillEnabled(true);
