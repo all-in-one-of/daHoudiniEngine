@@ -42,7 +42,7 @@ daHEngine
 #include <daHoudiniEngine/daHEngine.h>
 #include <daHoudiniEngine/houdiniGeometry.h>
 #include <daHoudiniEngine/houdiniParameter.h>
-#ifdef DA_ENABLE_HENGINE
+#if DA_ENABLE_HENGINE > 0
 	#include <daHEngine.static.cpp>
 #endif
 #include <daHoudiniEngine/loaderTools.h>
@@ -56,7 +56,7 @@ using namespace houdiniEngine;
 #include "omega/PythonInterpreterWrapper.h"
 BOOST_PYTHON_MODULE(daHEngine)
 {
-#ifdef DA_ENABLE_HENGINE
+#if DA_ENABLE_HENGINE > 0
 	// HoudiniEngine
 	PYAPI_REF_BASE_CLASS(HoudiniEngine)
 		PYAPI_STATIC_REF_GETTER(HoudiniEngine, createAndInitialize)
@@ -115,9 +115,9 @@ BOOST_PYTHON_MODULE(daHEngine)
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+#if DA_ENABLE_HENGINE > 0
 HoudiniEngine* HoudiniEngine::createAndInitialize()
 {
-#ifdef DA_ENABLE_HENGINE
 	int minHoudiniVersion = 15;
 	int minHEngineVersion = 2;
 	int houdiniVersionMajor = 0;
@@ -139,14 +139,13 @@ HoudiniEngine* HoudiniEngine::createAndInitialize()
 	ModuleServices::addModule(instance);
 	instance->doInitialize(Engine::instance());
 	return instance;
-#else
-	return NULL;
-#endif
 }
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 HoudiniEngine::HoudiniEngine():
-#ifdef DA_ENABLE_HENGINE
+#if DA_ENABLE_HENGINE > 0
+
 	EngineModule("HoudiniEngine"),
 	mySceneManager(NULL),
 	myLogEnabled(false),
@@ -161,7 +160,8 @@ HoudiniEngine::HoudiniEngine():
 
 HoudiniEngine::~HoudiniEngine()
 {
-#ifdef DA_ENABLE_HENGINE
+#if DA_ENABLE_HENGINE > 0
+
 	if (SystemManager::instance()->isMaster())
 	{
 	    try
@@ -181,7 +181,8 @@ HoudiniEngine::~HoudiniEngine()
 #endif
 }
 
-#ifdef DA_ENABLE_HENGINE
+#if DA_ENABLE_HENGINE > 0
+
 
 int HoudiniEngine::loadAssetLibraryFromFile(const String& otlFile)
 {
@@ -367,11 +368,11 @@ StaticObject* HoudiniEngine::instantiateGeometry(const String& asset)
 	return so;
 }
 
-static int pid = 0;
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 void HoudiniEngine::initialize()
 {
-#ifdef DA_ENABLE_HENGINE
+#if DA_ENABLE_HENGINE > 0
 	enableSharedData();
 
 	if (SystemManager::instance()->isMaster()) {
@@ -386,37 +387,33 @@ void HoudiniEngine::initialize()
 			if (session != NULL) {
 
 				int port = env_port ? atoi(env_port) : 7788;
-
-                // start Thrift Socket Server on default localhost:port
-                // This only works within a sourced houdini environment
+                
 				if (!env_host) {
+					HAPI_StartThriftSocketServer(true, port, 5000, NULL);
 					env_host = "localhost";
-					ofmsg("Starting server on %1%:%2%", %env_host %port);
-					ENSURE_SUCCESS(session, HAPI_StartThriftSocketServer(true, port, 5000, &pid));
-                }
+				}
 
-				ENSURE_SUCCESS(NULL, HAPI_CreateThriftSocketSession(session, env_host, port));
-				ofmsg("Connected to %1%:%2%, PID:%3%", %env_host %port %pid);
+				HAPI_CreateThriftSocketSession(session, env_host, port);
+
+				cout << "Connected to " << env_host << ":" << port << endl;
 			}
 
 			// TODO: expose these in python to allow changeable options
 			HAPI_CookOptions cook_options = HAPI_CookOptions_Create();
 			cook_options.cookTemplatedGeos = true; // default false
 
-			if (HAPI_IsInitialized(session) != HAPI_RESULT_SUCCESS) {
-				ENSURE_SUCCESS(session, HAPI_Initialize(
-                    session,
-                    &cook_options,
-                    /*use_cooking_thread=*/true,
-                    /*cooking_thread_max_size=*/-1,
-                    /*otl search path*/ getenv("$HOME"),
-                    /*dso_search_path=*/ NULL,
-                    /*image_dso_search_path=*/ NULL,
-                    /*audio_dso_search_path=*/ NULL
-                ));
-            } else {
-                omsg("Already initialized..");
-            }
+
+			ENSURE_SUCCESS(session, HAPI_Initialize(
+// 				/* session */ NULL,
+				session,
+				&cook_options,
+				/*use_cooking_thread=*/true,
+				/*cooking_thread_max_size=*/-1,
+				/*otl search path*/ getenv("$HOME"),
+				/*dso_search_path=*/ NULL,
+				/*image_dso_search_path=*/ NULL,
+				/*audio_dso_search_path=*/ NULL
+			));
 	    }
 	    catch (hapi::Failure &failure)
 	    {
@@ -468,11 +465,9 @@ void HoudiniEngine::initialize()
 	myQuitMenuItem = menu->addItem(MenuItem::Button);
 	myQuitMenuItem->setText("Quit");
 	myQuitMenuItem->setCommand("oexit()");
-#else
 #endif
 
 }
-
 
 #endif
 
