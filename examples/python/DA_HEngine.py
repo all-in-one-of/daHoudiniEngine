@@ -32,6 +32,8 @@ examples = [
         ("Additional/WheelAsset.otl", "Object/WheelAsset", "WheelAsset1"),
         # curves
         ("curve_object.otl", "Object/curve_object", "curve_object1"),
+        # cluster otl example
+        ("cluster.otl", "Object/cluster", "cluster1"),
         # multiple assets in library
         ("axisA1.otl", "Object/axis3D", "axis3D1")
 ]
@@ -60,6 +62,10 @@ def createHGId(otl, assetIndex, geoName):
 asset = createHG(*examples[-1]) # 3d graph example
 asset.setPosition(-1, 2, -5)
 hg = he.getHG("axis3D1")
+
+# asset = createHG(*examples[-2]) # cluster example
+# asset.setPosition(-1, 2, -5)
+# hg = he.getHG("cluster1")
 
 ##asset = createHG(*examples[5]) # spaceship
 ##asset.setPosition(0, 2, -5)
