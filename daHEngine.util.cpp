@@ -115,14 +115,14 @@ void HoudiniEngine::showMappings() {
 		return;
 	}
 
-	typedef Dictionary < int, int >::iterator myIt;
-
-	for (myIt item = widgetIdToParmId.begin(); item != widgetIdToParmId.end(); ++item) {
-// 		ofmsg("%1%: %2%", %item->first %item->second);
-// 		Widget* myWidget = Widget::mysWidgets[item->first];
-		hapi::Parm* parm = &(myAsset->parms()[widgetIdToParmId[item->first]]);
-		ofmsg("%1%: %2%", %item->first %parm->name());
-	}
+// 	typedef Dictionary < int, int >::iterator myIt;
+// 
+// 	for (myIt item = widgetIdToParmId.begin(); item != widgetIdToParmId.end(); ++item) {
+// // 		ofmsg("%1%: %2%", %item->first %item->second);
+// // 		Widget* myWidget = Widget::mysWidgets[item->first];
+// 		hapi::Parm* parm = &(myAsset->parms()[widgetIdToParmId[item->first]]);
+// 		ofmsg("%1%: %2%", %item->first %parm->name());
+// 	}
 }
 
 Container* HoudiniEngine::getContainerForAsset(int n){
