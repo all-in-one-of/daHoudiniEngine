@@ -49,7 +49,6 @@ if (HOUDINI_BASE)
 	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DDA_ENABLE_HENGINE")
 else()
 	message(WARNING "Could not find Houdini base directory. Set this manually and enable 'DA_ENABLE_HENGINE'")
-# 	set(DA_ENABLE_HENGINE false CACHE BOOL "Enables compiling against Houdini Engine")
 endif()
 
 set(MODULE_NAME daHEngine)
@@ -59,7 +58,6 @@ if (DA_ENABLE_HENGINE)
 	include_directories(.)
 	include_directories(${OSG_INCLUDES})
 	link_directories(${HOUDINI_BASE}/dsolib)
-
 else()
 	include_directories(.)
 	include_directories(${OSG_INCLUDES})
@@ -67,53 +65,41 @@ endif()
 
 link_directories(./)
 
+set (SRCS 
+		houdiniGeometry.cpp
+		houdiniParameter.cpp
+		daHEngine.cpp
+		loaderTools.cpp
+		daPly/ReaderWriterPLY.cpp
+		daPly/vertexData.cpp
+		daPly/plyfile.cpp
+)
+
+set ( LIBS
+		omega
+		omegaToolkit
+		omegaOsg
+)
+
 if (DA_ENABLE_HENGINE)
 	add_subdirectory(examples/daOsgHEngine)
 	add_subdirectory(examples/daHoudiniEngine)
-endif()
-
-if (DA_ENABLE_HENGINE)
-	add_library(${MODULE_NAME} MODULE
-		houdiniGeometry.cpp
-        houdiniParameter.cpp
-		daHEngine.cpp
+	set (SRCS 
+		${SRCS}
 		daHEngine.event.cpp
 		daHEngine.parm.cpp
 		daHEngine.processAsset.cpp
 		daHEngine.sharedData.cpp
 		daHEngine.util.cpp
-		loaderTools.cpp
-		daPly/ReaderWriterPLY.cpp
-		daPly/vertexData.cpp
-		daPly/plyfile.cpp
 	)
-else()
-	add_library(${MODULE_NAME} MODULE
-		houdiniGeometry.cpp
-        houdiniParameter.cpp
-		daHEngine.cpp
-		loaderTools.cpp
-		daPly/ReaderWriterPLY.cpp
-		daPly/vertexData.cpp
-		daPly/plyfile.cpp
-	)
-endif()
-
-
-if (DA_ENABLE_HENGINE)
-	target_link_libraries(${MODULE_NAME}
-		omega
-		omegaToolkit
-		omegaOsg
+	set ( LIBS
+		${LIBS}
 		HAPIL
 	)
-else()
-	target_link_libraries(${MODULE_NAME}
-		omega
-		omegaToolkit
-		omegaOsg
-	)
 endif()
+
+add_library(${MODULE_NAME} MODULE ${SRCS} )
+target_link_libraries(${MODULE_NAME} ${LIBS} )
 
 # # need to add some compiler flags
 IF( CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" )
