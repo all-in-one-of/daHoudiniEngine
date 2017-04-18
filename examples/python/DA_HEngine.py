@@ -61,6 +61,10 @@ def createHGId(otl, assetIndex, geoName):
 #asset.setPosition(0, 2, -5)
 #hg = he.getHG("axisA11")
 
+#asset = createHG(*examples[-4]) # text example
+#asset.setPosition(-1, 2, -5)
+#hg = he.getHG("text1")
+
 asset = createHG(*examples[-1]) # 3d graph example
 asset.setPosition(-1, 2, -5)
 hg = he.getHG("axis3D1")
