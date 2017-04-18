@@ -51,9 +51,13 @@ either expressed or implied, of the Data Arena Project.
         #define HE_API
 #endif
 
+#ifndef DA_ENABLE_HENGINE
+	#define DA_ENABLE_HENGINE 0
+#endif
+
 
 #include <cyclops/cyclops.h>
-#ifdef DA_ENABLE_HENGINE
+#if DA_ENABLE_HENGINE > 0
 #include "HAPI_CPP.h"
 #endif
 
@@ -74,7 +78,7 @@ namespace houdiniEngine {
 	using namespace omegaToolkit;
 	using namespace omegaToolkit::ui;
 
-#ifdef DA_ENABLE_HENGINE
+#if DA_ENABLE_HENGINE > 0
 	#define ENSURE_SUCCESS(session, result) \
 	    if ((result) != HAPI_RESULT_SUCCESS) \
 	    { \
@@ -121,13 +125,13 @@ namespace houdiniEngine {
 		HoudiniEngine();
 		~HoudiniEngine();
 
-        static HoudiniEngine* instance() { return myInstance; }
+#if DA_ENABLE_HENGINE > 0
+	        static HoudiniEngine* instance() { return myInstance; }
+
 		//! Convenience method to create the module, register and initialize it.
 		static HoudiniEngine* createAndInitialize();
 
 		virtual void initialize();
-
-#ifdef DA_ENABLE_HENGINE
 
 		virtual void update(const UpdateContext& context);
 		virtual void onMenuItemEvent(MenuItem* mi);
