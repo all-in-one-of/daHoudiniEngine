@@ -200,8 +200,8 @@ void HoudiniEngine::handleEvent(const Event& evt)
 	// HAPI_GeoInfo::hasGeoChanged
 	// HAPI_GeoInfo::hasMaterialChanged
 
-	String asset_name = currentAssetName;
-	Ref <RefAsset> myAsset = instancedHEAssetsByName[asset_name];
+	Ref <RefAsset> myAsset = instancedHEAssets[currentAsset];
+	String asset_name = myAsset->name();
 
 	if (myAsset == NULL) {
 		ofwarn("No instanced asset %1%", %asset_name);
@@ -233,7 +233,7 @@ void HoudiniEngine::handleEvent(const Event& evt)
 	// this may mean shuffling around representations of things..
 	
 	Ref <RefAsset> myNewAsset = new RefAsset(myAsset->id, session);
-	instancedHEAssetsByName[asset_name] = myNewAsset;
+	instancedHEAssets[myAsset->id] = myNewAsset;
 	ofmsg("myNewAsset has %1% parms", %myNewAsset->nodeInfo().parmCount);
 	
 	// the link between widget and parmId
@@ -517,7 +517,7 @@ void HoudiniEngine::handleEvent(const Event& evt)
 
 	// TODO: do a null check here.. may break
 	String asset_name = ((MenuItem*)mi->getUserData())->getUserTag();
-	hapi::Asset* myAsset = instancedHEAssetsByName[asset_name];
+	hapi::Asset* myAsset = instancedHEAssets[asset_id];
 
 	std::map<std::string, hapi::Parm> parmMap = myAsset->parmMap();
 

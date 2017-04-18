@@ -270,10 +270,10 @@ int HoudiniEngine::instantiateAsset(const String& asset_name)
 
 
 	Ref <RefAsset> myAsset = new RefAsset(asset_id, session);
-	instancedHEAssetsByName[asset_name] = myAsset;
+	instancedHEAssets[asset_id] = myAsset;
     process_assets(*myAsset.get());
 
-	createMenu(asset_name);
+	createMenu(asset_id);
 	updateGeos = true;
 
 	} catch (hapi::Failure &failure)
@@ -325,7 +325,9 @@ int HoudiniEngine::instantiateAssetById(int asset_id)
 	wait_for_cook();
 
 	Ref <RefAsset> myAsset = new RefAsset(asset_id, session);
-	instancedHEAssetsByName[asset_name] = myAsset;
+	instancedHEAssets[asset_id] = myAsset;
+
+	assetNameToIds[asset_name] = asset_id;
 
 	// asset_id is now NOT the same as the id defined in the library
 	// is this important?
@@ -333,7 +335,7 @@ int HoudiniEngine::instantiateAssetById(int asset_id)
 
     process_assets(*myAsset.get());
 
-	createMenu(asset_name);
+	createMenu(asset_id);
 	updateGeos = true;
 
 	delete [] asset_name_sh;

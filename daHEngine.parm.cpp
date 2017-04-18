@@ -331,14 +331,15 @@ void HoudiniEngine::createParm(const String& asset_name, Container* cont, hapi::
 // only run on master
 // identical-looking menus get created on slaves
 // a base assetCont container is created, and this is then pushed onto assetConts
-void HoudiniEngine::createMenu(const String& asset_name)
+void HoudiniEngine::createMenu(const int asset_id)
 {
 	// load only the params in the DA Folder
 	// first find the index of the folder, then iterate through the list of params
 	// from there onwards
 	const char* daFolderName = "daFolder_0";
 
-	hapi::Asset* myAsset = instancedHEAssetsByName[asset_name];
+	hapi::Asset* myAsset = instancedHEAssets[asset_id];
+	std::string asset_name = myAsset->name();
 
 	if (myAsset == NULL) {
 		ofwarn("No asset of name %1%", %asset_name);
@@ -508,7 +509,9 @@ void HoudiniEngine::createMenu(const String& asset_name)
 
 HoudiniParameterList* HoudiniEngine::loadParameters(const String& asset_name)
 {
-    hapi::Asset* asset = instancedHEAssetsByName[asset_name];
+
+	int asset_id = assetNameToIds[asset_name];
+    hapi::Asset* asset = instancedHEAssets[asset_id];
 
     if (asset == NULL) {
         ofwarn("No asset of name %1%", %asset_name);
@@ -550,7 +553,8 @@ HoudiniParameterList* HoudiniEngine::loadParameters(const String& asset_name)
 
 int HoudiniEngine::getIntegerParameterValue(const String& asset_name, int param_id, int sub_index)
 {
-    hapi::Asset* asset = instancedHEAssetsByName[asset_name];
+	int asset_id = assetNameToIds[asset_name];
+    hapi::Asset* asset = instancedHEAssets[asset_id];
 
     if (asset == NULL) {
         ofwarn("No asset of name %1%", %asset_name);
@@ -570,7 +574,8 @@ int HoudiniEngine::getIntegerParameterValue(const String& asset_name, int param_
 
 void HoudiniEngine::setIntegerParameterValue(const String& asset_name, int param_id, int sub_index, int value) 
 {
-    hapi::Asset* asset = instancedHEAssetsByName[asset_name];
+	int asset_id = assetNameToIds[asset_name];
+    hapi::Asset* asset = instancedHEAssets[asset_id];
 
     if (asset == NULL) {
         ofwarn("No asset of name %1%", %asset_name);
@@ -592,7 +597,8 @@ void HoudiniEngine::setIntegerParameterValue(const String& asset_name, int param
 
 float HoudiniEngine::getFloatParameterValue(const String& asset_name, int param_id, int sub_index)
 {
-    hapi::Asset* asset = instancedHEAssetsByName[asset_name];
+	int asset_id = assetNameToIds[asset_name];
+    hapi::Asset* asset = instancedHEAssets[asset_id];
 
     if (asset == NULL) {
         ofwarn("No asset of name %1%", %asset_name);
@@ -612,7 +618,8 @@ float HoudiniEngine::getFloatParameterValue(const String& asset_name, int param_
 
 void HoudiniEngine::setFloatParameterValue(const String& asset_name, int param_id, int sub_index, float value) 
 {
-    hapi::Asset* asset = instancedHEAssetsByName[asset_name];
+	int asset_id = assetNameToIds[asset_name];
+    hapi::Asset* asset = instancedHEAssets[asset_id];
 
     if (asset == NULL) {
         ofwarn("No asset of name %1%", %asset_name);
@@ -634,7 +641,8 @@ void HoudiniEngine::setFloatParameterValue(const String& asset_name, int param_i
 
 String HoudiniEngine::getStringParameterValue(const String& asset_name, int param_id, int sub_index)
 {
-    hapi::Asset* asset = instancedHEAssetsByName[asset_name];
+	int asset_id = assetNameToIds[asset_name];
+    hapi::Asset* asset = instancedHEAssets[asset_id];
 
     if (asset == NULL) {
         ofwarn("No asset of name %1%", %asset_name);
@@ -654,7 +662,8 @@ String HoudiniEngine::getStringParameterValue(const String& asset_name, int para
 
 void HoudiniEngine::setStringParameterValue(const String& asset_name, int param_id, int sub_index, const String& value) 
 {
-    hapi::Asset* asset = instancedHEAssetsByName[asset_name];
+	int asset_id = assetNameToIds[asset_name];
+    hapi::Asset* asset = instancedHEAssets[asset_id];
 
     if (asset == NULL) {
         ofwarn("No asset of name %1%", %asset_name);

@@ -86,7 +86,7 @@ void HoudiniEngine::cook()
 		return;
 	}
 
-	foreach(Mapping::Item asset, instancedHEAssetsByName) {
+	foreach(Mapping::Item asset, instancedHEAssets) {
         cook_one(asset.second);
 	}
 }

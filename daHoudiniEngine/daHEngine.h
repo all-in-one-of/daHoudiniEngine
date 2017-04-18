@@ -159,7 +159,7 @@ namespace houdiniEngine {
 
 		Menu* getMenu(const String& asset) { return NULL; } // return this asset's parameter menu
 
-		void createMenu(const String& asset_name);
+		void createMenu(const int asset_id);
 		void initializeParameters(const String& asset_name);
 
         HoudiniParameterList* loadParameters(const String& asset_name);
@@ -216,7 +216,7 @@ namespace houdiniEngine {
 		// I change the verts, faces, normals, etc in this and StaticObjects
 		// in the scene get updated accordingly
 		typedef Dictionary<String, Ref<HoudiniGeometry> > HGDictionary;
-		typedef Dictionary<String, Ref<RefAsset> > Mapping;
+		typedef Dictionary<int, Ref<RefAsset> > Mapping;
 
 		// geometries
 		HGDictionary myHoudiniGeometrys;
@@ -225,8 +225,7 @@ namespace houdiniEngine {
 		vector <Ref<PixelData> > pds;
 
 		// this is only maintained on the master
-		Mapping instancedHEAssetsByName;
-		vector<Ref <RefAsset> > instancedHEAssetsById;
+		Mapping instancedHEAssets;
 
 		//parameters
 		// make it look like this:
@@ -273,6 +272,9 @@ namespace houdiniEngine {
 		// the link between widget and parmId
 		Dictionary < int, String > widgetIdToParmName; // UI Widget -> HAPI_Parm (asset.parmMap())
 		
+		// asset name to id
+		Dictionary < String, int > assetNameToIds;
+
 		Menus assetParams;
 		ParmConts assetParamConts;
         Dictionary<String, HoudiniParameterList*> assetParamLists;
