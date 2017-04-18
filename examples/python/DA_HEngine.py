@@ -65,13 +65,13 @@ def createHGId(otl, assetIndex, geoName):
 #asset.setPosition(-1, 2, -5)
 #hg = he.getHG("text1")
 
-asset = createHG(*examples[-1]) # 3d graph example
-asset.setPosition(-1, 2, -5)
-hg = he.getHG("axis3D1")
+#asset = createHG(*examples[-1]) # 3d graph example
+#asset.setPosition(-1, 2, -5)
+#hg = he.getHG("axis3D1")
 
-# asset = createHG(*examples[-2]) # cluster example
-# asset.setPosition(-1, 2, -5)
-# hg = he.getHG("cluster1")
+asset = createHG(*examples[-2]) # cluster example
+asset.setPosition(-1, 2, -5)
+hg = he.getHG("cluster1")
 
 ##asset = createHG(*examples[5]) # spaceship
 ##asset.setPosition(0, 2, -5)
