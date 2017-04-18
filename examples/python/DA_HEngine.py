@@ -30,6 +30,8 @@ examples = [
         ("texture.otl", "Object/texture", "texture1"),
         # has custom ui elements
         ("Additional/WheelAsset.otl", "Object/WheelAsset", "WheelAsset1"),
+        # Text
+        ("text.otl", "Object/text", "text1"),
         # curves
         ("curve_object.otl", "Object/curve_object", "curve_object1"),
         # cluster otl example
