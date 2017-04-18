@@ -51,9 +51,13 @@ either expressed or implied, of the Data Arena Project.
         #define HE_API
 #endif
 
+#ifndef DA_ENABLE_HENGINE
+	#define DA_ENABLE_HENGINE 0
+#endif
+
 
 #include <cyclops/cyclops.h>
-#ifdef DA_ENABLE_HENGINE
+#if DA_ENABLE_HENGINE > 0
 #include "HAPI_CPP.h"
 #endif
 
@@ -74,7 +78,7 @@ namespace houdiniEngine {
 	using namespace omegaToolkit;
 	using namespace omegaToolkit::ui;
 
-#ifdef DA_ENABLE_HENGINE
+#if DA_ENABLE_HENGINE > 0
 	#define ENSURE_SUCCESS(session, result) \
 	    if ((result) != HAPI_RESULT_SUCCESS) \
 	    { \
@@ -87,7 +91,7 @@ namespace houdiniEngine {
 	    if ((result) != HAPI_STATE_READY) \
 	    { \
 		ofmsg("cook failure at %1%:%2%", %__FILE__ %__LINE__); \
-		ofmsg("%1% '%2%'", %hapi::Failure::lastErrorMessage(session) %result);\
+		ofmsg("%1% '%2%'", %hapi::Failure::lastCookErrorMessage(session) %result);\
 		exit(1); \
 	    }
 
@@ -109,6 +113,7 @@ namespace houdiniEngine {
 #endif
 	//forward references
 	class HE_API HoudiniGeometry;
+    class HE_API HoudiniParameterList;
 
 	class BillboardCallback;
 
@@ -119,12 +124,11 @@ namespace houdiniEngine {
 		HoudiniEngine();
 		~HoudiniEngine();
 
+#if DA_ENABLE_HENGINE > 0
 		//! Convenience method to create the module, register and initialize it.
 		static HoudiniEngine* createAndInitialize();
 
 		virtual void initialize();
-
-#ifdef DA_ENABLE_HENGINE
 
 		virtual void update(const UpdateContext& context);
 		virtual void onMenuItemEvent(MenuItem* mi);
@@ -141,8 +145,6 @@ namespace houdiniEngine {
 		void process_float_attrib(
 		    const hapi::Part &part, HAPI_AttributeOwner attrib_owner,
 		    const char *attrib_name, vector<Vector3f>& points);
-
-		void wait_for_cook();
 
 		virtual void handleEvent(const Event& evt);
 
@@ -162,12 +164,25 @@ namespace houdiniEngine {
 		void createMenu(const String& asset_name);
 		void initializeParameters(const String& asset_name);
 
+        HoudiniParameterList* loadParameters(const String& asset_name);
+
+        int getIntegerParameterValue(const String& asset_name, int param_id, int sub_index);
+        void setIntegerParameterValue(const String& asset_name, int param_id, int sub_index, int value);
+
+        float getFloatParameterValue(const String& asset_name, int param_id, int sub_index);
+        void setFloatParameterValue(const String& asset_name, int param_id, int sub_index, float value);
+
+        String getStringParameterValue(const String& asset_name, int param_id, int sub_index);
+        void setStringParameterValue(const String& asset_name, int param_id, int sub_index, const String& value);
+
 		float getFps();
 
 		float getTime();
 		void setTime(float time);
 
 		void cook();
+        void cook_one(hapi::Asset* asset);
+		void wait_for_cook();
 
 		void setLoggingEnabled(const bool toggle);
 
@@ -247,12 +262,14 @@ namespace houdiniEngine {
 		Dictionary<int, Container* > folderLists; // keep ref to container for Folder selection
 		Dictionary<int, Container* > folderListChoices; // buttons to refer to folder lists above
 		Dictionary<int, Container* > folderListContents; // keep refs to folderList container to display child parms
+		Dictionary<int, Container* > multiParmConts; // keep refs for multiParms
 
 		// the link between widget and parmId
 		Dictionary < int, int > widgetIdToParmId; // UI Widget -> HAPI_Parm id
 
 		Menus assetParams;
 		ParmConts assetParamConts;
+        Dictionary<String, HoudiniParameterList*> assetParamLists;
 		Dictionary<String, pair < Menu*, vector<MenuObject> > > assetParamsMenus;
 
 		// logging
@@ -264,7 +281,6 @@ namespace houdiniEngine {
 		int myAssetCount;
 		int currentAsset;
 		String currentAssetName;
-
 #endif
 	};
 };

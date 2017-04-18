@@ -41,7 +41,8 @@ daHEngine
 
 #include <daHoudiniEngine/daHEngine.h>
 #include <daHoudiniEngine/houdiniGeometry.h>
-#ifdef DA_ENABLE_HENGINE
+#include <daHoudiniEngine/houdiniParameter.h>
+#if DA_ENABLE_HENGINE > 0
 	#include <daHEngine.static.cpp>
 #endif
 #include <daHoudiniEngine/loaderTools.h>
@@ -55,7 +56,7 @@ using namespace houdiniEngine;
 #include "omega/PythonInterpreterWrapper.h"
 BOOST_PYTHON_MODULE(daHEngine)
 {
-#ifdef DA_ENABLE_HENGINE
+#if DA_ENABLE_HENGINE > 0
 	// HoudiniEngine
 	PYAPI_REF_BASE_CLASS(HoudiniEngine)
 		PYAPI_STATIC_REF_GETTER(HoudiniEngine, createAndInitialize)
@@ -73,14 +74,33 @@ BOOST_PYTHON_MODULE(daHEngine)
  		PYAPI_REF_GETTER(HoudiniEngine, getHoudiniCont)
  		PYAPI_REF_GETTER(HoudiniEngine, getStagingCont)
  		PYAPI_REF_GETTER(HoudiniEngine, getHG)
-		;
+        PYAPI_REF_GETTER(HoudiniEngine, loadParameters)
+        PYAPI_METHOD(HoudiniEngine, getIntegerParameterValue)
+        PYAPI_METHOD(HoudiniEngine, setIntegerParameterValue)
+        PYAPI_METHOD(HoudiniEngine, getFloatParameterValue)
+        PYAPI_METHOD(HoudiniEngine, setFloatParameterValue)
+        PYAPI_METHOD(HoudiniEngine, getStringParameterValue)
+        PYAPI_METHOD(HoudiniEngine, setStringParameterValue);
 
 	// HoudiniGeometry
 	PYAPI_REF_BASE_CLASS(HoudiniGeometry)
 		PYAPI_METHOD(HoudiniGeometry, getObjectCount)
 		PYAPI_METHOD(HoudiniGeometry, getGeodeCount)
-		PYAPI_METHOD(HoudiniGeometry, getDrawableCount)
-		;
+		PYAPI_METHOD(HoudiniGeometry, getDrawableCount);
+
+    // HoudiniParameter
+    PYAPI_REF_BASE_CLASS(HoudiniParameter)
+        PYAPI_METHOD(HoudiniParameter, getId)
+        PYAPI_METHOD(HoudiniParameter, getParentId)
+        PYAPI_METHOD(HoudiniParameter, getType)
+        PYAPI_METHOD(HoudiniParameter, getSize)
+        PYAPI_METHOD(HoudiniParameter, getName)
+        PYAPI_METHOD(HoudiniParameter, getLabel);
+
+    // HoudiniParameterList
+    PYAPI_REF_BASE_CLASS(HoudiniParameterList)
+        PYAPI_METHOD(HoudiniParameterList, size)
+        PYAPI_REF_GETTER(HoudiniParameterList, getParameter);
 #endif
 	// tools for generic models exported from houdini
 	PYAPI_REF_BASE_CLASS(LoaderTools)
@@ -95,9 +115,9 @@ BOOST_PYTHON_MODULE(daHEngine)
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+#if DA_ENABLE_HENGINE > 0
 HoudiniEngine* HoudiniEngine::createAndInitialize()
 {
-#ifdef DA_ENABLE_HENGINE
 	int minHoudiniVersion = 15;
 	int minHEngineVersion = 2;
 	int houdiniVersionMajor = 0;
@@ -119,14 +139,13 @@ HoudiniEngine* HoudiniEngine::createAndInitialize()
 	ModuleServices::addModule(instance);
 	instance->doInitialize(Engine::instance());
 	return instance;
-#else
-	return NULL;
-#endif
 }
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 HoudiniEngine::HoudiniEngine():
-#ifdef DA_ENABLE_HENGINE
+#if DA_ENABLE_HENGINE > 0
+
 	EngineModule("HoudiniEngine"),
 	mySceneManager(NULL),
 	myLogEnabled(false),
@@ -141,7 +160,8 @@ HoudiniEngine::HoudiniEngine():
 
 HoudiniEngine::~HoudiniEngine()
 {
-#ifdef DA_ENABLE_HENGINE
+#if DA_ENABLE_HENGINE > 0
+
 	if (SystemManager::instance()->isMaster())
 	{
 	    try
@@ -161,7 +181,8 @@ HoudiniEngine::~HoudiniEngine()
 #endif
 }
 
-#ifdef DA_ENABLE_HENGINE
+#if DA_ENABLE_HENGINE > 0
+
 
 int HoudiniEngine::loadAssetLibraryFromFile(const String& otlFile)
 {
@@ -351,7 +372,7 @@ StaticObject* HoudiniEngine::instantiateGeometry(const String& asset)
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 void HoudiniEngine::initialize()
 {
-#ifdef DA_ENABLE_HENGINE
+#if DA_ENABLE_HENGINE > 0
 	enableSharedData();
 
 	if (SystemManager::instance()->isMaster()) {
@@ -444,11 +465,9 @@ void HoudiniEngine::initialize()
 	myQuitMenuItem = menu->addItem(MenuItem::Button);
 	myQuitMenuItem->setText("Quit");
 	myQuitMenuItem->setCommand("oexit()");
-#else
 #endif
 
 }
-
 
 #endif
 

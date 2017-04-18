@@ -75,6 +75,7 @@ endif()
 if (DA_ENABLE_HENGINE)
 	add_library(${MODULE_NAME} MODULE
 		houdiniGeometry.cpp
+        houdiniParameter.cpp
 		daHEngine.cpp
 		daHEngine.event.cpp
 		daHEngine.parm.cpp
@@ -89,6 +90,7 @@ if (DA_ENABLE_HENGINE)
 else()
 	add_library(${MODULE_NAME} MODULE
 		houdiniGeometry.cpp
+        houdiniParameter.cpp
 		daHEngine.cpp
 		loaderTools.cpp
 		daPly/ReaderWriterPLY.cpp

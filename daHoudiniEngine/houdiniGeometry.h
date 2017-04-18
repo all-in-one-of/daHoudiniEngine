@@ -75,9 +75,11 @@ Based on ModelGeometry from the Cyclops project
 
 #include <osg/Group>
 #include <osg/PositionAttitudeTransform>
+#include <osg/AutoTransform>
 #include <osg/Geode>
 #include <osg/Geometry>
 #include <osg/Billboard>
+#include <osg/Node>
 
 #define OMEGA_NO_GL_HEADERS
 #include <omega.h>
@@ -107,7 +109,7 @@ namespace houdiniEngine {
 
 	typedef struct {
 		vector < HGeom > hgeoms;
-		Ref<osg::PositionAttitudeTransform> pat;
+		Ref<osg::Transform> trans;
 		bool transformChanged;
 		bool geosChanged;
 	} HObj;
@@ -348,7 +350,7 @@ namespace houdiniEngine {
 			if (objIndex < myNode->getNumChildren()) {
 				if (geodeIndex < myNode->getChild(objIndex)->asGroup()->getNumChildren()) {
 					return myNode->getChild(objIndex)->asGroup()->
-						getChild(geodeIndex)->asGeode()->getNumDrawables();
+						getChild(geodeIndex)->asGroup()->getNumChildren();
 				}
 			}
 			return 0;
@@ -357,17 +359,23 @@ namespace houdiniEngine {
 		int addDrawable(const int count, const int geodeIndex, const int objIndex);
 
 		int addGeode(const int count, const int objIndex);
-		int addBillboard(const int count, const int objIndex);
-
 		int getGeodeCount(const int objIndex) {
 			if (objIndex < myNode->getNumChildren()) {
 				return myNode->getChild(objIndex)->asGroup()->getNumChildren();
 			}
 			return 0;
 		};
+        void setGeodeName(const int geodeIndex, const int objIndex, const string& name) {
+            hobjs[objIndex].hgeoms[geodeIndex].geode->setName(name);
+        }
+
+		int addBillboard(const int count, const int objIndex);
 
 		int addObject(const int count);
 		int getObjectCount() { return (myNode == NULL ? 0 : myNode->getNumChildren()); };
+        void setObjectName(const int objIndex, const string& name) {
+            hobjs[objIndex].trans->setName(name);
+        }
 
 		inline int getNormalCount(const int drawableIndex, const int geodeIndex, const int objIndex) {
 			return (hobjs[objIndex].hgeoms[geodeIndex].hparts[drawableIndex].normals == NULL) ?
@@ -426,7 +434,7 @@ namespace houdiniEngine {
 
 	private:
 		vector < HObj > hobjs;
-		osg::PositionAttitudeTransform* myNode;
+		osg::Group* myNode;
 	};
 };
 
