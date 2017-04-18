@@ -120,6 +120,7 @@ namespace houdiniEngine {
 		HoudiniEngine();
 		~HoudiniEngine();
 
+        static HoudiniEngine* instance() { return myInstance; }
 		//! Convenience method to create the module, register and initialize it.
 		static HoudiniEngine* createAndInitialize();
 
@@ -290,6 +291,8 @@ namespace houdiniEngine {
 		// build a list of widgets to remove
 		Vector<Widget* > removeTheseWidgets;
 		
+		static HoudiniEngine* myInstance;
+
 #endif
 	};
 };

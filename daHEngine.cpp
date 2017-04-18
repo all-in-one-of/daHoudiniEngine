@@ -50,6 +50,10 @@ daHEngine
 
 using namespace houdiniEngine;
 
+#ifdef DA_ENABLE_HENGINE
+HoudiniEngine* HoudiniEngine::myInstance = NULL;
+#endif
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // Python wrapper code.
 #ifdef OMEGA_USE_PYTHON
@@ -134,11 +138,14 @@ HoudiniEngine* HoudiniEngine::createAndInitialize()
 	}
 
 	// Initialize and register the HoudiniEngine module.
-	HoudiniEngine* instance = new HoudiniEngine();
-	instance->setPriority(HoudiniEngine::PriorityHigh);
-	ModuleServices::addModule(instance);
-	instance->doInitialize(Engine::instance());
-	return instance;
+	if (myInstance == NULL) {
+		myInstance = new HoudiniEngine();
+		myInstance->setPriority(HoudiniEngine::PriorityHigh);
+		ModuleServices::addModule(myInstance);
+		myInstance->doInitialize(Engine::instance());
+	}
+
+	return myInstance;
 #else
 	return NULL;
 #endif
