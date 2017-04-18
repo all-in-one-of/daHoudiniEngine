@@ -29,6 +29,7 @@ namespace houdiniEngine {
         void setContainer(Container* cont ) { myContainer = cont; };
 
         Label* getLabel() { return myLabel; };
+        Label* getParmLabel(const int i) { return parmLabels[i]; };
 
         hapi::Parm getParm() { return myParm; };
         void setParm(hapi::Parm parm) { myParm = parm; };
@@ -36,6 +37,7 @@ namespace houdiniEngine {
         private:
 
         Container* myContainer;
+        Vector<Label*> parmLabels;
         Label* myLabel;
         // store a copy of the parm
         hapi::Parm myParm;
