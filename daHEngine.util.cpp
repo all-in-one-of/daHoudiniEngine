@@ -107,13 +107,6 @@ void HoudiniEngine::cook_one(hapi::Asset* asset)
 }
 
 void HoudiniEngine::showMappings() {
-	String asset_name = "SideFX::Object/spaceship";
-	hapi::Asset* myAsset = instancedHEAssetsByName[asset_name];
-
-	if (myAsset == NULL) {
-		ofwarn("No asset of name %1%", %asset_name);
-		return;
-	}
 
 // 	typedef Dictionary < int, int >::iterator myIt;
 // 
