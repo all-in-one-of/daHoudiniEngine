@@ -41,7 +41,8 @@ daHEngine
 
 #include <daHoudiniEngine/daHEngine.h>
 #include <daHoudiniEngine/houdiniGeometry.h>
-#ifdef DA_ENABLE_HENGINE
+#include <daHoudiniEngine/houdiniParameter.h>
+#if DA_ENABLE_HENGINE > 0
 	#include <daHEngine.static.cpp>
 #endif
 #include <daHoudiniEngine/loaderTools.h>
@@ -49,13 +50,17 @@ daHEngine
 
 using namespace houdiniEngine;
 
+#ifdef DA_ENABLE_HENGINE
+HoudiniEngine* HoudiniEngine::myInstance = NULL;
+#endif
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // Python wrapper code.
 #ifdef OMEGA_USE_PYTHON
 #include "omega/PythonInterpreterWrapper.h"
 BOOST_PYTHON_MODULE(daHEngine)
 {
-#ifdef DA_ENABLE_HENGINE
+#if DA_ENABLE_HENGINE > 0
 	// HoudiniEngine
 	PYAPI_REF_BASE_CLASS(HoudiniEngine)
 		PYAPI_STATIC_REF_GETTER(HoudiniEngine, createAndInitialize)
@@ -73,14 +78,33 @@ BOOST_PYTHON_MODULE(daHEngine)
  		PYAPI_REF_GETTER(HoudiniEngine, getHoudiniCont)
  		PYAPI_REF_GETTER(HoudiniEngine, getStagingCont)
  		PYAPI_REF_GETTER(HoudiniEngine, getHG)
-		;
+        PYAPI_REF_GETTER(HoudiniEngine, loadParameters)
+        PYAPI_METHOD(HoudiniEngine, getIntegerParameterValue)
+        PYAPI_METHOD(HoudiniEngine, setIntegerParameterValue)
+        PYAPI_METHOD(HoudiniEngine, getFloatParameterValue)
+        PYAPI_METHOD(HoudiniEngine, setFloatParameterValue)
+        PYAPI_METHOD(HoudiniEngine, getStringParameterValue)
+        PYAPI_METHOD(HoudiniEngine, setStringParameterValue);
 
 	// HoudiniGeometry
 	PYAPI_REF_BASE_CLASS(HoudiniGeometry)
 		PYAPI_METHOD(HoudiniGeometry, getObjectCount)
 		PYAPI_METHOD(HoudiniGeometry, getGeodeCount)
-		PYAPI_METHOD(HoudiniGeometry, getDrawableCount)
-		;
+		PYAPI_METHOD(HoudiniGeometry, getDrawableCount);
+
+    // HoudiniParameter
+    PYAPI_REF_BASE_CLASS(HoudiniParameter)
+        PYAPI_METHOD(HoudiniParameter, getId)
+        PYAPI_METHOD(HoudiniParameter, getParentId)
+        PYAPI_METHOD(HoudiniParameter, getType)
+        PYAPI_METHOD(HoudiniParameter, getSize)
+        PYAPI_METHOD(HoudiniParameter, getName)
+        PYAPI_METHOD(HoudiniParameter, getLabel);
+
+    // HoudiniParameterList
+    PYAPI_REF_BASE_CLASS(HoudiniParameterList)
+        PYAPI_METHOD(HoudiniParameterList, size)
+        PYAPI_REF_GETTER(HoudiniParameterList, getParameter);
 #endif
 	// tools for generic models exported from houdini
 	PYAPI_REF_BASE_CLASS(LoaderTools)
@@ -95,9 +119,9 @@ BOOST_PYTHON_MODULE(daHEngine)
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+#if DA_ENABLE_HENGINE > 0
 HoudiniEngine* HoudiniEngine::createAndInitialize()
 {
-#ifdef DA_ENABLE_HENGINE
 	int minHoudiniVersion = 15;
 	int minHEngineVersion = 2;
 	int houdiniVersionMajor = 0;
@@ -114,19 +138,21 @@ HoudiniEngine* HoudiniEngine::createAndInitialize()
 	}
 
 	// Initialize and register the HoudiniEngine module.
-	HoudiniEngine* instance = new HoudiniEngine();
-	instance->setPriority(HoudiniEngine::PriorityHigh);
-	ModuleServices::addModule(instance);
-	instance->doInitialize(Engine::instance());
-	return instance;
-#else
-	return NULL;
-#endif
+	if (myInstance == NULL) {
+		myInstance = new HoudiniEngine();
+		myInstance->setPriority(HoudiniEngine::PriorityHigh);
+		ModuleServices::addModule(myInstance);
+		myInstance->doInitialize(Engine::instance());
+	}
+
+	return myInstance;
 }
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 HoudiniEngine::HoudiniEngine():
-#ifdef DA_ENABLE_HENGINE
+#if DA_ENABLE_HENGINE > 0
+
 	EngineModule("HoudiniEngine"),
 	mySceneManager(NULL),
 	myLogEnabled(false),
@@ -141,7 +167,8 @@ HoudiniEngine::HoudiniEngine():
 
 HoudiniEngine::~HoudiniEngine()
 {
-#ifdef DA_ENABLE_HENGINE
+#if DA_ENABLE_HENGINE > 0
+
 	if (SystemManager::instance()->isMaster())
 	{
 	    try
@@ -161,7 +188,8 @@ HoudiniEngine::~HoudiniEngine()
 #endif
 }
 
-#ifdef DA_ENABLE_HENGINE
+#if DA_ENABLE_HENGINE > 0
+
 
 int HoudiniEngine::loadAssetLibraryFromFile(const String& otlFile)
 {
@@ -243,10 +271,10 @@ int HoudiniEngine::instantiateAsset(const String& asset_name)
 
 
 	Ref <RefAsset> myAsset = new RefAsset(asset_id, session);
-	instancedHEAssetsByName[asset_name] = myAsset;
+	instancedHEAssets[asset_id] = myAsset;
     process_assets(*myAsset.get());
 
-	createMenu(asset_name);
+	createMenu(asset_id);
 	updateGeos = true;
 
 	} catch (hapi::Failure &failure)
@@ -298,7 +326,9 @@ int HoudiniEngine::instantiateAssetById(int asset_id)
 	wait_for_cook();
 
 	Ref <RefAsset> myAsset = new RefAsset(asset_id, session);
-	instancedHEAssetsByName[asset_name] = myAsset;
+	instancedHEAssets[asset_id] = myAsset;
+
+	assetNameToIds[asset_name] = asset_id;
 
 	// asset_id is now NOT the same as the id defined in the library
 	// is this important?
@@ -306,7 +336,7 @@ int HoudiniEngine::instantiateAssetById(int asset_id)
 
     process_assets(*myAsset.get());
 
-	createMenu(asset_name);
+	createMenu(asset_id);
 	updateGeos = true;
 
 	delete [] asset_name_sh;
@@ -351,7 +381,7 @@ StaticObject* HoudiniEngine::instantiateGeometry(const String& asset)
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 void HoudiniEngine::initialize()
 {
-#ifdef DA_ENABLE_HENGINE
+#if DA_ENABLE_HENGINE > 0
 	enableSharedData();
 
 	if (SystemManager::instance()->isMaster()) {
@@ -360,13 +390,25 @@ void HoudiniEngine::initialize()
 			// create sessions
 			session = new HAPI_Session();
 
+			const char* env_host = std::getenv("DA_HOUDINI_ENGINE_HOST");
+			const char* env_port = std::getenv("DA_HOUDINI_ENGINE_PORT");
+
 			if (session != NULL) {
-				HAPI_StartThriftSocketServer( true, 7788, 5000, NULL);
-				HAPI_CreateThriftSocketSession(session, "localhost", 7788);
+
+				int port = env_port ? atoi(env_port) : 7788;
+                
+				if (!env_host) {
+					HAPI_StartThriftSocketServer(true, port, 5000, NULL);
+					env_host = "localhost";
+				}
+
+				HAPI_CreateThriftSocketSession(session, env_host, port);
+
+				cout << "Connected to " << env_host << ":" << port << endl;
 			}
 
 			// TODO: expose these in python to allow changeable options
-		    HAPI_CookOptions cook_options = HAPI_CookOptions_Create();
+			HAPI_CookOptions cook_options = HAPI_CookOptions_Create();
 			cook_options.cookTemplatedGeos = true; // default false
 
 
@@ -432,11 +474,9 @@ void HoudiniEngine::initialize()
 	myQuitMenuItem = menu->addItem(MenuItem::Button);
 	myQuitMenuItem->setText("Quit");
 	myQuitMenuItem->setCommand("oexit()");
-#else
 #endif
 
 }
-
 
 #endif
 
