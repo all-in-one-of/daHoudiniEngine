@@ -86,6 +86,7 @@ if (DA_ENABLE_HENGINE)
 	add_subdirectory(examples/daHoudiniEngine)
 	set (SRCS 
 		${SRCS}
+		houdiniUiParm.cpp
 		daHEngine.event.cpp
 		daHEngine.parm.cpp
 		daHEngine.processAsset.cpp

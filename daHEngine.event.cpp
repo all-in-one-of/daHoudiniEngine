@@ -179,7 +179,6 @@ void HoudiniEngine::handleEvent(const Event& evt)
 	// problem was bug in Slider.cpp, myValueChanged was never set back to false. Fixed
 	// stop if widget source is not a slider or event type is not changeValue
 	if (myWidget != NULL && evt.getType() == Event::ChangeValue) {
-		myWidget = myWidget;
 		doUpdate = true;
 	}
 
@@ -236,8 +235,6 @@ void HoudiniEngine::handleEvent(const Event& evt)
 	instancedHEAssets[myAsset->id] = myNewAsset;
 	ofmsg("myNewAsset has %1% parms", %myNewAsset->nodeInfo().parmCount);
 	
-	// the link between widget and parmId
-	int myParmId = -1;
 	String myParmName;
 	
 	if (StringUtils::endsWith(myWidget->getName(), "_add")) {

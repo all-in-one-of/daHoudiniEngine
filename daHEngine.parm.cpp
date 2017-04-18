@@ -42,6 +42,7 @@ daHEngine
 #include <daHoudiniEngine/daHEngine.h>
 #include <daHoudiniEngine/houdiniGeometry.h>
 #include <daHoudiniEngine/houdiniParameter.h>
+#include <daHoudiniEngine/UI/houdiniUiParm.h>
 
 using namespace houdiniEngine;
 
@@ -354,7 +355,10 @@ void HoudiniEngine::createMenu(const int asset_id)
 	assetButton->setUIEventHandler(this);
 
 	// all params go on an assetCont container
-	Container* assetCont = Container::create(Container::LayoutVertical, stagingCont);
+	// layout should be justified somehow
+	Container* assetCont = Container::create(Container::LayoutHorizontal, stagingCont);
+	assetCont->setHorizontalAlign(Container::AlignCenter);
+	assetCont->setVerticalAlign(Container::AlignTop);
 	assetCont->setFillColor(Color("#806040"));
 	assetCont->setPosition(Vector2f(50, 50));
 	Label* assetLabel = Label::create(assetCont);
@@ -382,8 +386,6 @@ void HoudiniEngine::createMenu(const int asset_id)
 		}
 	}
 
-	ui::Menu* menu = houdiniMenu;
-
 // 	int i = daFolderIndex; // skipping this for now
 	int i = 0;
 
@@ -397,111 +399,29 @@ void HoudiniEngine::createMenu(const int asset_id)
 	// 3 - When a HAPI_PARMTYPE_FOLDERLIST is encountered, we should dive into its
 	// 	contents immediately, while everything else is traversed in a breadth first manner.
 
+	Container* target = assetCont;
+
+	// NOTE: folder types have parentId of -1 as well.. mistake?
 	while (i < parms.size()) {
 		hapi::Parm* parm = &parms[i];
-		ofmsg("PARM %1%: %2% %3% %4% %5%", %parm->label()
-		                                   %parm->info().id
-		                                   %parm->info().type
-		                                   %parm->info().size
-		                                   %parm->info().parentId
-		);
-		if (parm->info().parentId >= 0) {
-			ofmsg("  Parent PARM %1%: %2% ", %(&parms[parm->info().parentId])->label()
-			                                 %(&parms[parm->info().parentId])->info().id
-			);
+		if (parm->info().parentId == -1) {
+			target = assetCont;
+		} else {
+			for (int j = 0; j < uiParms[asset_id].size(); ++j) {
+				if (uiParms[asset_id][j]->getParm().info().id == parm->info().parentId) {
+					target = uiParms[asset_id][j]->getContainer();
+					break;
+				}
+			}
 		}
 
-		if (parm->info().type == HAPI_PARMTYPE_FOLDERLIST) { // only contains folders
-			// add at asset container level
-			Container* myFolderListCont = Container::create(Container::LayoutVertical, assetCont);
-			Container* myChoiceCont = Container::create(Container::LayoutHorizontal, myFolderListCont);
-			Container* myFolderListContents = Container::create(Container::LayoutVertical, myFolderListCont);
-			myFolderListCont->setVerticalAlign(Container::AlignTop);
-			// move container to be child of relevant parent parm
-			if (parm->info().parentId >= 0) {
-				assetCont->removeChild(myFolderListCont);
-				baseConts[parms[parm->info().parentId].name()]->addChild(myFolderListCont);
-			}
-			Label* label = Label::create(myFolderListCont);
-			label->setName(ostr("%1%_label", %parm->name()));
-			label->setText(parm->label());
-			baseConts[parm->name()] = myFolderListCont;
-			folderLists[parm->name()] = myFolderListCont;
-			folderListChoices[parm->name()] = myChoiceCont;
-			myFolderListCont->setFillColor(Color("#404040"));
-			myFolderListCont->setFillEnabled(true);
+		HoudiniUiParm* uip;
 
-			i++;
+		uip = HoudiniUiParm::create(*parm, target);
 
-			for (int j = 0; j < parm->info().size; ++j) {
-				hapi::Parm* parm = &parms[i + j];
-				// this is redundant, should always be folder type
-				if (parm->info().type == HAPI_PARMTYPE_FOLDER) { // can contain folderLists and parms
-					// this will get swapped in/out based on linked folderButton
-					Container* myFolderCont = Container::create(Container::LayoutVertical, stagingCont);
-					myFolderCont->setName(ostr("C_%1%", %parm->name()));
-					baseConts[parm->name()] = myFolderCont;
-
-					Button* button = Button::create(myChoiceCont);
-					button->setName(ostr("FolderButton %1%", %parm->name()));
-					button->setText(parm->label());
-					button->setRadio(true);
-					button->setCheckable(true);
-					button->setUIEventHandler(this);
-					button->setUserData(myFolderCont);
-
-					myFolderCont->setFillColor(Color("#808080"));
-					myFolderCont->setFillEnabled(true);
-
-					// use widget id??
-					folderListContents[button->getId()] = myFolderListContents;
-				}
-			}
-
-			i += parm->info().size;
-
-		} else { // its a parm
-			Container* myCont = Container::create(Container::LayoutHorizontal, assetCont);
-			if (parm->info().isChildOfMultiParm) {
-				hapi::Parm* parentParm = &parms[parm->info().parentId];
-				ofmsg("i am child %1% of a multiParm %2%", 
-					  %parm->info().instanceNum
-					  %parentParm->name()
-				);
-				// move container to be child of relevant parent parm
-				assetCont->removeChild(myCont);
-				String childName = ostr("%1%_%2%", 
-					%multiParmConts[parentParm->name()]->getName()
-					%parm->info().instanceNum
-				);
-				
-				Widget* myParmContWidget = multiParmConts[parentParm->name()]->getChildByName(childName);
-				Container* myParmCont = NULL;
-
-				if (myParmContWidget == NULL) {
-					myParmCont = Container::create(
-						Container::LayoutVertical, 
-						multiParmConts[parentParm->name()]
-					);
-					myParmCont->setName(childName);
-					myParmCont->setFillColor(Color("#40B0B0"));
-					myParmCont->setFillEnabled(true);
-				} else {
-					myParmCont = static_cast<Container*>(myParmContWidget);
-				}
-				myParmCont->addChild(myCont);
-			} else {
-				// move container to be child of relevant parent parm
-				if (parm->info().parentId >= 0) {
-					assetCont->removeChild(myCont);
-					baseConts[parms[parm->info().parentId].name()]->addChild(myCont);
-				}
-			}
-			myCont->setFillColor(Color("#B0B040"));
-			myCont->setFillEnabled(true);
-
-			createParm(asset_name, myCont, parm);
-		}
+		// this will not work on a HoudiniUiParm that isn't part of a folder?
+		uip->getContainer()->setUIEventHandler(uip);
+		uiParms[asset_id].push_back(uip);
 
 		i++;
 	}

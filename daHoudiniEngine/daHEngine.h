@@ -109,7 +109,8 @@ namespace houdiniEngine {
 #endif
 	//forward references
 	class HE_API HoudiniGeometry;
-    class HE_API HoudiniParameterList;
+	class HE_API HoudiniParameterList;
+	class HE_API HoudiniUiParm;
 
 	class BillboardCallback;
 
@@ -154,6 +155,8 @@ namespace houdiniEngine {
 		int instantiateAsset(const String& asset);
 		int instantiateAssetById(int asset_id);
 		StaticObject* instantiateGeometry(const String& asset);
+
+		Ref< RefAsset > getAsset(int asset_id) { return instancedHEAssets[asset_id]; }
 
 		HoudiniGeometry* getHG(const String& asset) { return myHoudiniGeometrys[asset]; };
 
@@ -271,7 +274,10 @@ namespace houdiniEngine {
 
 		// the link between widget and parmId
 		Dictionary < int, String > widgetIdToParmName; // UI Widget -> HAPI_Parm (asset.parmMap())
-		
+
+		// houdiniUiParms by asset_ID
+		Dictionary < int, Vector<HoudiniUiParm*> > uiParms;
+
 		// asset name to id
 		Dictionary < String, int > assetNameToIds;
 
