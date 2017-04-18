@@ -86,7 +86,7 @@ void HoudiniEngine::cook()
 		return;
 	}
 
-	foreach(Mapping::Item asset, instancedHEAssetsByName) {
+	foreach(Mapping::Item asset, instancedHEAssets) {
         cook_one(asset.second);
 	}
 }
@@ -107,22 +107,15 @@ void HoudiniEngine::cook_one(hapi::Asset* asset)
 }
 
 void HoudiniEngine::showMappings() {
-	String asset_name = "SideFX::Object/spaceship";
-	hapi::Asset* myAsset = instancedHEAssetsByName[asset_name];
 
-	if (myAsset == NULL) {
-		ofwarn("No asset of name %1%", %asset_name);
-		return;
-	}
-
-	typedef Dictionary < int, int >::iterator myIt;
-
-	for (myIt item = widgetIdToParmId.begin(); item != widgetIdToParmId.end(); ++item) {
-// 		ofmsg("%1%: %2%", %item->first %item->second);
-// 		Widget* myWidget = Widget::mysWidgets[item->first];
-		hapi::Parm* parm = &(myAsset->parms()[widgetIdToParmId[item->first]]);
-		ofmsg("%1%: %2%", %item->first %parm->name());
-	}
+// 	typedef Dictionary < int, int >::iterator myIt;
+// 
+// 	for (myIt item = widgetIdToParmId.begin(); item != widgetIdToParmId.end(); ++item) {
+// // 		ofmsg("%1%: %2%", %item->first %item->second);
+// // 		Widget* myWidget = Widget::mysWidgets[item->first];
+// 		hapi::Parm* parm = &(myAsset->parms()[widgetIdToParmId[item->first]]);
+// 		ofmsg("%1%: %2%", %item->first %parm->name());
+// 	}
 }
 
 Container* HoudiniEngine::getContainerForAsset(int n){
