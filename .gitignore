@@ -10,3 +10,4 @@
 /otl/backup/*
 /orun.spaceship.otl.valgrind.txt
 /.vscode/*
+**/*.old.*
