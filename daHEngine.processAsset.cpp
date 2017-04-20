@@ -49,7 +49,6 @@ using namespace houdiniEngine;
 void HoudiniEngine::process_assets(const hapi::Asset &asset)
 {
     vector<hapi::Object> objects = asset.objects();
-	ofmsg("process_assets: %1%: %2% objects", %asset.name() %objects.size());
 
 	String s = ostr("%1%", %asset.name());
 
@@ -64,7 +63,7 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 	}
 
 	hg->objectsChanged = asset.info().haveObjectsChanged;
-	ofmsg("process_assets: Objects have changed: %1%", %hg->objectsChanged);
+	ofmsg("process_assets: %1%: %2% objects %3%", %asset.name() %objects.size() %(hg->objectsChanged == 1 ? "Changed" : ""));
 
 	if (hg->getObjectCount() < objects.size()) {
 		hg->addObject(objects.size() - hg->getObjectCount());
@@ -86,7 +85,6 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 			}
 
 			vector<hapi::Geo> geos = objects[object_index].geos();
-			ofmsg("%1%: %2%: %3% geos", %objects[object_index].name() %object_index %geos.size());
 
 			if (hg->getGeodeCount(object_index) < geos.size()) {
 				hg->addGeode(geos.size() - hg->getGeodeCount(object_index), object_index);
@@ -97,35 +95,48 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 			}
 
 			hg->setGeosChanged(objInfo.haveGeosChanged, object_index);
-			ofmsg("process_assets: Object Geos %1% have changed: %2%", %object_index %hg->getGeosChanged(object_index));
+			ofmsg("process_assets:   %1%/%2%: %3% %4%", 
+				%(object_index + 1)
+				%geos.size()
+				%objects[object_index].name() 
+				%(hg->getGeosChanged(object_index) == 1 ? "Changed" : "")
+			);
 
 			if (hg->getGeosChanged(object_index)) {
 
 				for (int geo_index=0; geo_index < int(geos.size()); ++geo_index)
 				{
 				    vector<hapi::Part> parts = geos[geo_index].parts();
-					ofmsg("process_assets: Geo %1%:%2% %3% parts", %object_index %geo_index %parts.size());
 
 					if (hg->getDrawableCount(geo_index, object_index) < parts.size()) {
 						hg->addDrawable(parts.size() - hg->getDrawableCount(geo_index, object_index), geo_index, object_index);
 					}
 
 					hg->setGeoChanged(geos[geo_index].info().hasGeoChanged, geo_index, object_index);
-					ofmsg("process_assets: Geo %1%:%2% has changed:  %3%", %object_index %geo_index %hg->getGeosChanged(object_index));
+					ofmsg("process_assets:     %1%:%2%/%3% %4% %5% %6%", 
+						%(object_index + 1)
+						%(geo_index + 1)
+						%parts.size()
+						%(hg->getGeoChanged(geo_index, object_index) == 1 ? "Changed" : "")
+						%(geos[geo_index].info().isDisplayGeo == 1 ? "Display" : "-")
+						%(geos[geo_index].info().isTemplated == 1 ? "Template" : "-")
+					);
 
 					hg->clear(geo_index, object_index);
 					if (hg->getGeoChanged(geo_index, object_index)) {
 					    for (int part_index=0; part_index < int(parts.size()); ++part_index)
 						{
-							ofmsg("processing %1% %2%", %s %parts[part_index].name());
-							process_geo_part(parts[part_index], object_index, geo_index, part_index, hg);
+							ofmsg("process_assets:     processing %1% %2%", %s %parts[part_index].name());
+							if (geos[geo_index].info().isDisplayGeo == 1) {
+								process_geo_part(parts[part_index], object_index, geo_index, part_index, hg);
+							}
 						}
 					}
 				}
 			}
 
  			hg->setTransformChanged(objInfo.hasTransformChanged, object_index);
-			ofmsg("process_assets: Object %1% Transform has changed: %2%", %object_index %hg->getTransformChanged(object_index));
+			ofmsg("process_assets:   Transform changed: %2%", %object_index %(hg->getTransformChanged(object_index) == 1 ? "Yes" : "No"));
 		}
 
 		HAPI_Transform* objTransforms = new HAPI_Transform[objects.size()];
@@ -177,15 +188,15 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 	);
 
 	// should have the matrix here.. check it out.
-	ofmsg("matrix pos   %1% %2% %3%", %assetTransformEuler.position[0]
+	ofmsg("process_assets:   matrix pos   %1% %2% %3%", %assetTransformEuler.position[0]
 		                              %assetTransformEuler.position[1]
 		                              %assetTransformEuler.position[2]);
 
-	ofmsg("matrix rot   %1% %2% %3%", %assetTransformEuler.rotationEuler[0]
+	ofmsg("process_assets:   matrix rot   %1% %2% %3%", %assetTransformEuler.rotationEuler[0]
 		                              %assetTransformEuler.rotationEuler[1]
 		                              %assetTransformEuler.rotationEuler[2]);
 
-	ofmsg("matrix scale %1% %2% %3%", %assetTransformEuler.scale[0]
+	ofmsg("process_assets:   matrix scale %1% %2% %3%", %assetTransformEuler.scale[0]
 		                              %assetTransformEuler.scale[1]
 		                              %assetTransformEuler.scale[2]);
 
@@ -246,12 +257,14 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
     vector<std::string> point_attrib_names = part.attribNames(
 	HAPI_ATTROWNER_POINT);
 
-	omsg("Point Attributes:");
+	ologaddnewline(false);
+
+	omsg("process_assets:     Point:  ");
 
     for (int attrib_index=0; attrib_index < int(point_attrib_names.size());
 	    ++attrib_index) {
 
-		ofmsg("has %1%", %point_attrib_names[attrib_index]);
+		ofmsg("%1% ", %point_attrib_names[attrib_index]);
 
 		if (point_attrib_names[attrib_index] == "P") {
 		    process_float_attrib(part, HAPI_ATTROWNER_POINT, "P", points);
@@ -270,15 +283,17 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 		}
 	}
 
+	omsg("\n");
+
     vector<std::string> vertex_attrib_names = part.attribNames(
 	HAPI_ATTROWNER_VERTEX);
 
-	omsg("Vertex Attributes");
+	omsg("process_assets:     Vert:   ");
 
 	for (int attrib_index=0; attrib_index < int(vertex_attrib_names.size());
 	    ++attrib_index) {
 
-		ofmsg("has %1%", %vertex_attrib_names[attrib_index]);
+		ofmsg("%1% ", %vertex_attrib_names[attrib_index]);
 
 		if (vertex_attrib_names[attrib_index] == "N") {
 			has_vertex_normals = true;
@@ -290,15 +305,17 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 		}
 	}
 
-    vector<std::string> primitive_attrib_names = part.attribNames(
+ 	omsg("\n");
+
+   vector<std::string> primitive_attrib_names = part.attribNames(
 	HAPI_ATTROWNER_PRIM);
 
-	omsg("Primitive Attributes");
+	omsg("process_assets:     Prim:   ");
 
 	for (int attrib_index=0; attrib_index < int(primitive_attrib_names.size());
 	    ++attrib_index) {
 
-		ofmsg("has %1%", %primitive_attrib_names[attrib_index]);
+		ofmsg("%1% ", %primitive_attrib_names[attrib_index]);
 
 		if (primitive_attrib_names[attrib_index] == "Cd") {
 			has_primitive_colors = true;
@@ -306,23 +323,28 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 		}
 	}
 
+	omsg("\n");
+
     vector<std::string> detail_attrib_names = part.attribNames(
 	HAPI_ATTROWNER_DETAIL);
 
-	omsg("Detail Attributes");
+	omsg("process_assets:     Detail: ");
 
 	for (int attrib_index=0; attrib_index < int(detail_attrib_names.size());
 	    ++attrib_index) {
 
-		ofmsg("has %1%", %detail_attrib_names[attrib_index]);
+		ofmsg("%1% ", %detail_attrib_names[attrib_index]);
 
 	}
+
+	omsg("\n");
+	ologaddnewline(true);
 
 	if (part.info().faceCount == 0) {
 		// this is to do with instancing
  		ofmsg ("No faces, points count? %1%", %points.size());
-		hg->dirty();
- 		return;
+		// hg->dirty();
+ 		// return;
 	}
 
 	// TODO: render curves
@@ -507,7 +529,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 		&mat_info));
 
 	if (mat_info.exists) {
-		ofmsg("Material info for %1%: matId: %2% assetId: %3% nodeId: %4%",
+		ofmsg("process_assets:   Material info for %1%: matId: %2% assetId: %3% nodeId: %4%",
 			  %hg->getName() %mat_info.id %mat_info.assetId %mat_info.nodeId
 		);
 
@@ -515,7 +537,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 		ENSURE_SUCCESS(session,  HAPI_GetNodeInfo(
 			session,
 			mat_info.nodeId, &node_info ));
-		ofmsg("Node info for %1%: id: %2% assetId: %3% internal path: %4%",
+		ofmsg("process_assets:   Node info for %1%: id: %2% assetId: %3% internal path: %4%",
 			  %get_string( session, node_info.nameSH) %node_info.id %node_info.assetId
 			  %get_string( session, node_info.internalNodePathSH)
 		);
@@ -557,7 +579,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 		}
 
         if (mapIndex == -1) {
-		    ofmsg("Unsupported material found for %1%", %hg->getName());
+		    ofmsg("process_assets:   Unsupported material found for %1%", %hg->getName());
         } else {
 
             // debug output
@@ -599,7 +621,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
                 mat_info.id,
                 &image_info));
 
-            ofmsg("width %1% height: %2% format: %3% dataFormat: %4% packing %5%",
+            ofmsg("process_assets:   width %1% height: %2% format: %3% dataFormat: %4% packing %5%",
                   %image_info.xRes
                   %image_info.yRes
                   %get_string(session, image_info.imageFileFormatNameSH)
@@ -670,7 +692,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
     		// );
         }
 	} else {
-		ofmsg("No material for %1%", %hg->getName());
+		ofmsg("process_assets:   No material for %1%", %hg->getName());
 	}
 
 	// end materials
@@ -788,7 +810,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 		myType = osg::PrimitiveSet::TRIANGLE_FAN;
 	}
 
-	ofmsg("making final primitive set for %1%, from %2% plus %3%",
+	ofmsg("process_assets:   make primitive set face size %1%, from %2% plus %3%",
 		%prev_faceCount
 		%prev_faceCountIndex
 		%(curr_index - prev_faceCountIndex)
