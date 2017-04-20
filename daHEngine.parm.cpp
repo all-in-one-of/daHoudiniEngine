@@ -184,7 +184,7 @@ HoudiniParameterList* HoudiniEngine::loadParameters(const String& asset_name)
 
 	std::vector<hapi::Parm> parms = asset->parms();
 
-    for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); i++) {
+    for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); ++i) {
         
         if (i->info().type != HAPI_PARMTYPE_FOLDERLIST) {
 
@@ -215,7 +215,7 @@ int HoudiniEngine::getIntegerParameterValue(const String& asset_name, int param_
     } else {
         std::vector<hapi::Parm> parms = asset->parms();
 
-        for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); i++) {
+        for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); ++i) {
             
             if (i->info().id == param_id) {
                 return i->getIntValue(sub_index);
@@ -235,7 +235,7 @@ void HoudiniEngine::setIntegerParameterValue(const String& asset_name, int param
     } else {
         std::vector<hapi::Parm> parms = asset->parms();
 
-        for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); i++) {
+        for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); ++i) {
             
             if (i->info().id == param_id) {
                 i->setIntValue(sub_index, value);
@@ -259,7 +259,7 @@ float HoudiniEngine::getFloatParameterValue(const String& asset_name, int param_
     } else {
         std::vector<hapi::Parm> parms = asset->parms();
 
-        for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); i++) {
+        for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); ++i) {
             
             if (i->info().id == param_id) {
                 return i->getFloatValue(sub_index);
@@ -279,7 +279,7 @@ void HoudiniEngine::setFloatParameterValue(const String& asset_name, int param_i
     } else {
         std::vector<hapi::Parm> parms = asset->parms();
 
-        for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); i++) {
+        for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); ++i) {
             
             if (i->info().id == param_id) {
                 i->setFloatValue(sub_index, value);
@@ -303,7 +303,7 @@ String HoudiniEngine::getStringParameterValue(const String& asset_name, int para
     } else {
         std::vector<hapi::Parm> parms = asset->parms();
 
-        for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); i++) {
+        for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); ++i) {
             
             if (i->info().id == param_id) {
                 return i->getStringValue(sub_index);
@@ -323,7 +323,7 @@ void HoudiniEngine::setStringParameterValue(const String& asset_name, int param_
     } else {
         std::vector<hapi::Parm> parms = asset->parms();
 
-        for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); i++) {
+        for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); ++i) {
             
             if (i->info().id == param_id) {
                 i->setStringValue(sub_index, value.c_str());
