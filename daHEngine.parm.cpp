@@ -121,18 +121,21 @@ void HoudiniEngine::createMenu(const int asset_id)
 	// NOTE: folder types have parentId of -1 as well.. mistake?
 	while (i < parms.size()) {
 		hapi::Parm* parm = &parms[i];
+		HoudiniUiParm* uip;
+
 		if (parm->info().parentId == -1) {
 			target = assetCont;
 		} else {
 			for (int j = 0; j < uiParms[asset_id].size(); ++j) {
-				if (uiParms[asset_id][j]->getParm().info().id == parm->info().parentId) {
-					target = uiParms[asset_id][j]->getContainer();
+                // can't forward reference nested class HoudiniUiParm, so this is current
+                // workaround
+                uip = (HoudiniUiParm*) uiParms[asset_id][j].get();
+				if (uip->getParm().info().id == parm->info().parentId) {
+					target = uip->getContainer();
 					break;
 				}
 			}
 		}
-
-		HoudiniUiParm* uip;
 
 		uip = HoudiniUiParm::create(*parm, target);
 

@@ -2,6 +2,7 @@
 
 using namespace houdiniEngine;
 
+Dictionary<int, HoudiniUiParm* > HoudiniUiParm::myUiParms;
 
 // TODO: generalise this so the following works:
 // check for uiMin/uiMax, then use sliders
@@ -303,10 +304,15 @@ HoudiniUiParm::HoudiniUiParm(hapi::Parm parm, Container* cont):
 			clrButton->setText("Clear");
 		}
 	}
+	myUiParms[myParm.info().id] = this;
  }
 
 HoudiniUiParm::~HoudiniUiParm() {
 	// myContainer->setContainer(NULL);
+	parmLabels.clear();
+	myContainer = NULL;
+	myLabel = NULL;
+	myUiParms.erase(myParm.info().id);
 }
 
 void HoudiniUiParm::handleEvent(const Event& evt) {

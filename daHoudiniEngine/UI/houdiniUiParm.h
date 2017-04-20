@@ -42,6 +42,8 @@ namespace houdiniEngine {
         // store a copy of the parm
         hapi::Parm myParm;
 
+        static Dictionary<int,HoudiniUiParm* > myUiParms;
+
     };
     
 };

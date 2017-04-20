@@ -280,7 +280,9 @@ namespace houdiniEngine {
 		Dictionary < int, String > widgetIdToParmName; // UI Widget -> HAPI_Parm (asset.parmMap())
 
 		// houdiniUiParms by asset_ID
-		Dictionary < int, Vector<HoudiniUiParm*> > uiParms;
+		// can't forward reference nested class HoudiniUiParm, so this is current
+		// workaround
+		Dictionary < int, vector<Ref<ReferenceType> > > uiParms;
 
 		// asset name to id
 		Dictionary < String, int > assetNameToIds;

@@ -186,6 +186,28 @@ HoudiniEngine::~HoudiniEngine()
 	    }
 	}
 #endif
+
+	mySceneManager = NULL;
+	myEditor = NULL;
+	myMenuManager = NULL;
+	myQuitMenuItem = NULL;
+	houdiniMenu = NULL;
+	houdiniCont = NULL;
+	assetChoiceCont = NULL;
+	stagingCont = NULL;
+	assetConts.clear();
+	baseConts.clear();
+	folderLists.clear();
+	folderListChoices.clear();
+	folderListContents.clear();
+	multiParmConts.clear();
+	// uiParms.clear();
+	assetParamLists.clear();
+	assetParamsMenus.clear();
+	removeTheseWidgets.clear();
+
+	myInstance = NULL;
+
 }
 
 #if DA_ENABLE_HENGINE > 0
