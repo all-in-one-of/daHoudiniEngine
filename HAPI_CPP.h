@@ -448,6 +448,13 @@ public:
     std::vector<std::string> attribNames(HAPI_AttributeOwner attrib_owner) const
     {
 	int num_attribs = numAttribs(attrib_owner);
+	std::vector<std::string> result;
+
+    // HAPI_GetAttributeNames() will fail if num_attribs given is 0, even if
+    // that is the number of attributes. Return empty string vector if that is the case.
+    if (num_attribs == 0) {
+        return result;
+    }
 	std::vector<int> attrib_names_sh(num_attribs);
 
 	throwOnFailure(HAPI_GetAttributeNames(
@@ -455,7 +462,6 @@ public:
 	    this->geo.object.asset.id, this->geo.object.id, this->geo.id,
 	    this->id, attrib_owner, &attrib_names_sh[0], num_attribs));
 
-	std::vector<std::string> result;
 	for (int attrib_index=0; attrib_index < int(attrib_names_sh.size());
 		++attrib_index)
 	    result.push_back(getString(session, attrib_names_sh[attrib_index]));
