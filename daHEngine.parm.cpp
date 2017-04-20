@@ -118,6 +118,8 @@ void HoudiniEngine::createMenu(const int asset_id)
 
 	Container* target = assetCont;
 
+	Widget* prevWidget = NULL;
+
 	// NOTE: folder types have parentId of -1 as well.. mistake?
 	while (i < parms.size()) {
 		hapi::Parm* parm = &parms[i];
@@ -137,11 +139,21 @@ void HoudiniEngine::createMenu(const int asset_id)
 			}
 		}
 
+        // ui navigation
 		uip = HoudiniUiParm::create(*parm, target);
+        Widget* thisWidget = uip->getContainer()->getChildByIndex(uip->getContainer()->getNumChildren() - 1);
+        if (thisWidget != NULL) {
+            thisWidget->setVerticalPrevWidget(prevWidget);
+        }
+        if (prevWidget != NULL) {
+            prevWidget->setVerticalNextWidget(thisWidget);
+        }
 
 		// this will not work on a HoudiniUiParm that isn't part of a folder?
 		uip->getContainer()->setUIEventHandler(uip);
 		uiParms[asset_id].push_back(uip);
+
+		prevWidget = thisWidget;
 
 		i++;
 	}
