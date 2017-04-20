@@ -3,6 +3,16 @@
 using namespace houdiniEngine;
 
 
+// TODO: generalise this so the following works:
+// check for uiMin/uiMax, then use sliders
+// use text boxes for vectors and non min/max things
+// use submenus/containers for choices
+// use the joinNext variable for displaying items
+// use checkbox for HAPI_PARMTYPE_TOGGLE
+// use text box for string
+// do multiparms
+// do menu layout
+
 // help to parse params:
 // 1 - Parameters such as HAPI_PARMTYPE_FOLDERLIST's and HAPI_PARMTYPE_FOLDER's
 // 	have a child count associated with them. The child count is stored as the

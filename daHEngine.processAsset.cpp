@@ -448,24 +448,24 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 
 			omsg("done this curve");
 
-// 			if (curve_info.hasKnots) {
-// 				std::vector< float > knots;
-// 				knots.resize( num_vertices + order );
-// 				HAPI_GetCurveKnots(
-// 					session,
-// 					part.geo.object.asset.id,
-// 					part.geo.object.id,
-// 					part.geo.id,
-// 			        part.id,
-// 					&knots.front(),
-// 					knot_offset,
-// 					num_vertices + order
-//
-// 				);
-// 				for( int j = 0; j < num_vertices + order; j++ ) {
-// 					cout << "knot " << j << ": " << knots[ j ] << endl;
-// 				}
-// 			}
+			// if (curve_info.hasKnots) {
+			// 	std::vector< float > knots;
+			// 	knots.resize( num_vertices + order );
+			// 	HAPI_GetCurveKnots(
+			// 		session,
+			// 		part.geo.object.asset.id,
+			// 		part.geo.object.id,
+			// 		part.geo.id,
+			//         part.id,
+			// 		&knots.front(),
+			// 		knot_offset,
+			// 		num_vertices + order
+
+			// 	);
+			// 	for( int j = 0; j < num_vertices + order; j++ ) {
+			// 		cout << "knot " << j << ": " << knots[ j ] << endl;
+			// 	}
+			// }
 
 		}
 		hg->dirty();
@@ -532,11 +532,11 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 
 		for (int i =0; i < node_info.parmCount; ++i) {
 			// node parm output
-// 			ofmsg("%1% %2% (%3%) id = %4%",
-// 				  %i
-// 				  %get_string( session, parm_infos[i].labelSH)
-// 				  %get_string( session, parm_infos[i].nameSH)
-// 				  %parm_infos[i].id);
+			// ofmsg("%1% %2% (%3%) id = %4%",
+			// 	  %i
+			// 	  %get_string( session, parm_infos[i].labelSH)
+			// 	  %get_string( session, parm_infos[i].nameSH)
+			// 	  %parm_infos[i].id);
 			if (parm_infos[i].stringValuesIndex >= 0) {
 				int sh = -1;
 				ENSURE_SUCCESS(session,  HAPI_GetParmStringValues(
@@ -546,11 +546,11 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 					parm_infos[i].stringValuesIndex, 1)
 				);
 				// more node parm output
-// 				ofmsg("%1%  %2%: %3%", %i %parm_infos[i].id
-// 				                       %get_string(session, sh));
+				// ofmsg("%1%  %2%: %3%", %i %parm_infos[i].id
+				//                        %get_string(session, sh));
 
 				if (sh != -1 && (get_string(session, parm_infos[i].nameSH) == "baseColorMap")) {
-// 				if (sh != -1 && (get_string(session, parm_infos[i].nameSH) == "map")) {
+				// if (sh != -1 && (get_string(session, parm_infos[i].nameSH) == "map")) {
 					mapIndex = i;
 				}
 			}
@@ -561,21 +561,21 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
         } else {
 
             // debug output
-    // 		for (int i = 0; i < node_info.parmCount; ++i) {
-    // 			ofmsg("index %1%: %2% '%3%'",
-    // 				  %i
-    // 				  %parm_infos[i].id
-    // 				  %get_string(session, parm_infos[i].nameSH)
-    // 			);
-    // 		}
+    		// for (int i = 0; i < node_info.parmCount; ++i) {
+    		// 	ofmsg("index %1%: %2% '%3%'",
+    		// 		  %i
+    		// 		  %parm_infos[i].id
+    		// 		  %get_string(session, parm_infos[i].nameSH)
+    		// 	);
+    		// }
 
-    // 		ofmsg("the texture path: assetId=%1% matInfo.id=%2% mapIndex=%3% parm_id=%4% string=%5%",
-    // 			  %mat_info.assetId
-    // 			  %mat_info.id
-    // 			  %mapIndex
-    // 			  %parm_infos[mapIndex].id
-    // 			  %get_string(session, parm_infos[mapIndex].nameSH)
-    // 		);
+    		// ofmsg("the texture path: assetId=%1% matInfo.id=%2% mapIndex=%3% parm_id=%4% string=%5%",
+    		// 	  %mat_info.assetId
+    		// 	  %mat_info.id
+    		// 	  %mapIndex
+    		// 	  %parm_infos[mapIndex].id
+    		// 	  %get_string(session, parm_infos[mapIndex].nameSH)
+    		// );
 
             // NOTE this works if the image is a png
             ENSURE_SUCCESS(session,  HAPI_RenderTextureToImage(
@@ -586,11 +586,11 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 
 
             // render using mantra
-    //  		ENSURE_SUCCESS(session,  HAPI_RenderMaterialToImage(
-    //  			mat_info.assetId,
-    //  			mat_info.id,
-    // 			HAPI_SHADER_MANTRA));
-    // // 			HAPI_SHADER_OPENGL));
+     		// ENSURE_SUCCESS(session,  HAPI_RenderMaterialToImage(
+     		// 	mat_info.assetId,
+     		// 	mat_info.id,
+    		// 	HAPI_SHADER_MANTRA));
+    		// 	// HAPI_SHADER_OPENGL));
 
             HAPI_ImageInfo image_info;
             ENSURE_SUCCESS(session,  HAPI_GetImageInfo(
@@ -629,7 +629,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
                 mat_info.assetId,
                 mat_info.id,
                 HAPI_PNG_FORMAT_NAME,
-    // 			NULL /* HAPI_DEFAULT_IMAGE_FORMAT_NAME */,
+    			// NULL /* HAPI_DEFAULT_IMAGE_FORMAT_NAME */,
                 "C A", /* image planes */
                 &imgBufSize
             ));
@@ -647,7 +647,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 
             // load into a pixelData bufferObject
             // this works!
-    // 		Ref<PixelData> refPd = ImageUtils::decode((void *) myBuffer, image_info.xRes * image_info.yRes * 4);
+    		// Ref<PixelData> refPd = ImageUtils::decode((void *) myBuffer, image_info.xRes * image_info.yRes * 4);
             pds.push_back(ImageUtils::decode((void *) myBuffer, image_info.xRes * image_info.yRes * 4));
 
             // TODO: general case for texture names (diffuse, spec, env, etc)
@@ -663,11 +663,11 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 
             // should have something else here.. this doesn't seem to be working..
             // TODO: put textures in HoudiniGeometry, use default shader to show everything properly
-    // 		hg->getOsgNode(geoIndex, objIndex)->getOrCreateStateSet()->setTextureAttributeAndModes(0, tex, osg::StateAttribute::ON);
+    		// hg->getOsgNode(geoIndex, objIndex)->getOrCreateStateSet()->setTextureAttributeAndModes(0, tex, osg::StateAttribute::ON);
 
-    // 		ofmsg("my image width %1% height: %2%, size %3%, bufSize %4%",
-    // 			%refPd->getWidth() %refPd->getHeight() %refPd->getSize() %imgBufSize
-    // 		);
+    		// ofmsg("my image width %1% height: %2%, size %3%, bufSize %4%",
+    		// 	%refPd->getWidth() %refPd->getHeight() %refPd->getSize() %imgBufSize
+    		// );
         }
 	} else {
 		ofmsg("No material for %1%", %hg->getName());
@@ -713,18 +713,18 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 				myType = osg::PrimitiveSet::QUADS;
 			}
 
-// 			cout << "making primitive set for " << prev_faceCount << ", from " <<
-// 				prev_faceCountIndex << " plus " <<
-// 				curr_index - prev_faceCountIndex << endl;
+			// cout << "making primitive set for " << prev_faceCount << ", from " <<
+			// 	prev_faceCountIndex << " plus " <<
+			// 	curr_index - prev_faceCountIndex << endl;
 
 			hg->addPrimitiveOsg(myType, prev_faceCountIndex, curr_index - prev_faceCountIndex, partIndex, geoIndex, objIndex);
 
 			prev_faceCountIndex = curr_index;
 			prev_faceCount = face_counts[ii];
 		} else if ((ii > 0) && (prev_faceCount > 4)) {
-// 			cout << "making primitive set for " << prev_faceCount << ", plus " <<
-// 				prev_faceCountIndex << " to " <<
-// 				curr_index - prev_faceCountIndex << endl;
+			// cout << "making primitive set for " << prev_faceCount << ", plus " <<
+			// 	prev_faceCountIndex << " to " <<
+			// 	curr_index - prev_faceCountIndex << endl;
 			hg->addPrimitiveOsg(osg::PrimitiveSet::TRIANGLE_FAN,
 				prev_faceCountIndex,
 			    curr_index - prev_faceCountIndex, partIndex, geoIndex, objIndex);
@@ -733,12 +733,12 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 			prev_faceCount = face_counts[ii];
 		}
 
-// 		cout << "face (" << face_counts[ii] << "): " << ii << " ";
+		// cout << "face (" << face_counts[ii] << "): " << ii << " ";
         for( int jj=0; jj < face_counts[ii]; jj++ )
         {
 
 			int myIndex = curr_index + (face_counts[ii] - jj) % face_counts[ii];
-// 			cout << "i: " << vertex_list[myIndex] << " ";
+			// cout << "i: " << vertex_list[myIndex] << " ";
 
 			int lastIndex = hg->addVertex(points[vertex_list[ myIndex ]], partIndex, geoIndex, objIndex);
 
@@ -764,22 +764,20 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 			}
 			if (has_point_uvs) {
 				hg->addUV(uvs[vertex_list[ myIndex ]], partIndex, geoIndex, objIndex);
-// 				cout << "(p)uvs: " << uvs[vertex_list[ myIndex ]][0] << ", " << uvs[vertex_list[ myIndex ]][1] << endl;
+				// cout << "(p)uvs: " << uvs[vertex_list[ myIndex ]][0] << ", " << uvs[vertex_list[ myIndex ]][1] << endl;
 			} else if (has_vertex_uvs) {
-// 				hg->addUV(uvs[vertex_list[ myIndex ]], partIndex, geoIndex, objIndex);
+				// hg->addUV(uvs[vertex_list[ myIndex ]], partIndex, geoIndex, objIndex);
 				hg->addUV(uvs[myIndex], partIndex, geoIndex, objIndex);
-// 				cout << "(v)uvs: " << uvs[myIndex][0] << ", " << uvs[myIndex][1] << endl;
+				// cout << "(v)uvs: " << uvs[myIndex][0] << ", " << uvs[myIndex][1] << endl;
 			}
 
-//             cout << "v:" << myIndex << ", i: "
-// 				<< hg->getVertex(lastIndex) << endl; //" ";
+            // cout << "v:" << myIndex << ", i: "
+			// 	<< hg->getVertex(lastIndex) << endl; //" ";
         }
 
         curr_index += face_counts[ii];
 
     }
-
-	ofmsg("face count is %1%", %prev_faceCount);
 
 	if (prev_faceCount == 3) {
 		myType = osg::PrimitiveSet::TRIANGLES;

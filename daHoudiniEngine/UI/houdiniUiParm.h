@@ -16,7 +16,7 @@ namespace houdiniEngine {
 
     class HoudiniUiParm : public ReferenceType, public IEventListener
     {
-        friend class Container;
+
         public:
         HoudiniUiParm(hapi::Parm parm, Container* cont);
         ~HoudiniUiParm();
