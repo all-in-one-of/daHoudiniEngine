@@ -369,16 +369,16 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 	//  parameter list
 	// TODO: reimplement reading of new ui layout
 
-	ofmsg("SLAVE: currently have %1% asset parameter lists", %assetParamConts.size());
-    foreach(ParmConts::Item mis, assetParamConts)
-	{
-		ofmsg("SLAVE: name %1%", %mis.first);
-		ofmsg("SLAVE: number %1%", %mis.second.size());
-		for (int i = 0; i < mis.second.size(); ++i) {
-			ofmsg("SLAVE: menu item %1%", %mis.second[i]);
-		}
-	}
-	ofmsg("SLAVE: received %1% asset parameter lists", %parmCount);
+	// ofmsg("SLAVE: currently have %1% asset parameter lists", %assetParamConts.size());
+    // foreach(ParmConts::Item mis, assetParamConts)
+	// {
+	// 	ofmsg("SLAVE: name %1%", %mis.first);
+	// 	ofmsg("SLAVE: number %1%", %mis.second.size());
+	// 	for (int i = 0; i < mis.second.size(); ++i) {
+	// 		ofmsg("SLAVE: menu item %1%", %mis.second[i]);
+	// 	}
+	// }
+	// ofmsg("SLAVE: received %1% asset parameter lists", %parmCount);
 
 }
 

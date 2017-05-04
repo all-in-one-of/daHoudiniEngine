@@ -79,12 +79,19 @@ BOOST_PYTHON_MODULE(daHEngine)
  		PYAPI_REF_GETTER(HoudiniEngine, getStagingCont)
  		PYAPI_REF_GETTER(HoudiniEngine, getHG)
         PYAPI_REF_GETTER(HoudiniEngine, loadParameters)
+ 		PYAPI_REF_GETTER(HoudiniEngine, getParmCont)
+ 		PYAPI_REF_GETTER(HoudiniEngine, getParmBase)
         PYAPI_METHOD(HoudiniEngine, getIntegerParameterValue)
         PYAPI_METHOD(HoudiniEngine, setIntegerParameterValue)
         PYAPI_METHOD(HoudiniEngine, getFloatParameterValue)
         PYAPI_METHOD(HoudiniEngine, setFloatParameterValue)
         PYAPI_METHOD(HoudiniEngine, getStringParameterValue)
-        PYAPI_METHOD(HoudiniEngine, setStringParameterValue);
+        PYAPI_METHOD(HoudiniEngine, setStringParameterValue)
+		// extras
+        PYAPI_METHOD(HoudiniEngine, doIt)
+        PYAPI_METHOD(HoudiniEngine, test)
+        PYAPI_METHOD(HoudiniEngine, printParms)
+		;
 
 	// HoudiniGeometry
 	PYAPI_REF_BASE_CLASS(HoudiniGeometry)
@@ -196,18 +203,12 @@ HoudiniEngine::~HoudiniEngine()
 	assetChoiceCont = NULL;
 	stagingCont = NULL;
 	assetConts.clear();
-	baseConts.clear();
-	folderLists.clear();
-	folderListChoices.clear();
-	folderListContents.clear();
-	multiParmConts.clear();
 	// uiParms.clear();
-	assetParamLists.clear();
-	assetParamsMenus.clear();
 	removeTheseWidgets.clear();
 
 	myInstance = NULL;
 
+	omsg("~HoudiniEngine");
 }
 
 #if DA_ENABLE_HENGINE > 0
@@ -293,6 +294,7 @@ int HoudiniEngine::instantiateAsset(const String& asset_name)
 
 
 	Ref <RefAsset> myAsset = new RefAsset(asset_id, session);
+	// TODO: this isn't the right way to do this.. remove
 	instancedHEAssets[asset_id] = myAsset;
     process_assets(*myAsset.get());
 
@@ -348,6 +350,7 @@ int HoudiniEngine::instantiateAssetById(int asset_id)
 	wait_for_cook();
 
 	Ref <RefAsset> myAsset = new RefAsset(asset_id, session);
+	// TODO: this isn't the right way to do this
 	instancedHEAssets[asset_id] = myAsset;
 
 	assetNameToIds[asset_name] = asset_id;

@@ -95,10 +95,10 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 			}
 
 			hg->setGeosChanged(objInfo.haveGeosChanged, object_index);
-			ofmsg("process_assets:   %1%/%2%: %3% %4%", 
+			ofmsg("process_assets:   %1%/%2%: %3% %4%",
 				%(object_index + 1)
 				%geos.size()
-				%objects[object_index].name() 
+				%objects[object_index].name()
 				%(hg->getGeosChanged(object_index) == 1 ? "Changed" : "")
 			);
 
@@ -113,7 +113,7 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 					}
 
 					hg->setGeoChanged(geos[geo_index].info().hasGeoChanged, geo_index, object_index);
-					ofmsg("process_assets:     %1%:%2%/%3% %4% %5% %6%", 
+					ofmsg("process_assets:     %1%:%2%/%3% %4% %5% %6%",
 						%(object_index + 1)
 						%(geo_index + 1)
 						%parts.size()
@@ -221,6 +221,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 	vector<Vector3f> points;
 	vector<Vector3f> normals;
 	vector<Vector3f> colors;
+	vector<float> alphas;
 
 	// texture coordinates
 	vector<Vector3f> uvs;
@@ -228,14 +229,15 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 	bool has_point_normals = false;
 	bool has_vertex_normals = false;
 	bool has_point_colors = false;
+	bool has_point_alphas = false;
 	bool has_vertex_colors = false;
 	bool has_primitive_colors = false;
 
 	bool has_point_uvs = false;
 	bool has_vertex_uvs = false;
 
-// 	ofmsg("clearing %1%", %hg->getName());
-// 	hg->clear();
+	// 	ofmsg("clearing %1%", %hg->getName());
+	// 	hg->clear();
 
 	//  attrib owners:
 	// 	HAPI_ATTROWNER_VERTEX
@@ -276,6 +278,10 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 		if (point_attrib_names[attrib_index] == "Cd") {
 			has_point_colors = true;
 		    process_float_attrib(part, HAPI_ATTROWNER_POINT, "Cd", colors);
+		}
+		if (point_attrib_names[attrib_index] == "Alpha") {
+			has_point_alphas = true;
+		    process_attrib(part, HAPI_ATTROWNER_POINT, "Alpha", alphas);
 		}
 		if (point_attrib_names[attrib_index] == "uv") {
 			has_point_uvs = true;
@@ -340,17 +346,22 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 	omsg("\n");
 	ologaddnewline(true);
 
-	if (part.info().faceCount == 0) {
-		// this is to do with instancing
- 		ofmsg ("No faces, points count? %1%", %points.size());
-		// hg->dirty();
- 		// return;
+	// construct primitive sets based on type of part
+	// HAPI_PARTTYPE_INVALID
+	// HAPI_PARTTYPE_MESH
+	// HAPI_PARTTYPE_CURVE
+	// HAPI_PARTTYPE_VOLUME
+	// HAPI_PARTTYPE_INSTANCER
+	// HAPI_PARTTYPE_MAX
+
+	if (part.info().type == HAPI_PARTTYPE_INSTANCER) {
+		omsg("process_assets:     Instancer");
 	}
 
 	// TODO: render curves
 	// CONTINUE FROM HERE, rendering these curves!
 	if (part.info().type == HAPI_PARTTYPE_CURVE) {
- 		ofmsg ("This part is a curve: %1% %2%", %part.name() %part.id);
+ 		ofmsg ("process_assets:     Curve: %1% %2%", %part.name() %part.id);
 
 		HAPI_CurveInfo curve_info;
 		ENSURE_SUCCESS(session, HAPI_GetCurveInfo(
@@ -494,334 +505,363 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 		return;
 	}
 
-    int *face_counts = new int[ part.info().faceCount ];
-    ENSURE_SUCCESS(session,  HAPI_GetFaceCounts(
-		session,
-		part.geo.object.asset.id,
-		part.geo.object.id,
-		part.geo.id,
-        part.id,
-		face_counts,
-		0,
-		part.info().faceCount
-	) );
-
-	// Material handling (WIP)
-
-	bool all_same = true;
-	HAPI_MaterialId* mat_ids = new HAPI_MaterialId[ part.info().faceCount ];
-
-    ENSURE_SUCCESS(session,  HAPI_GetMaterialIdsOnFaces(
-		session,
-		part.geo.object.asset.id,
-		part.geo.object.id,
-		part.geo.id,
-        part.id,
-		&all_same /* are_all_the_same*/,
-		mat_ids, 0, part.info().faceCount ));
-
-	HAPI_MaterialInfo mat_info;
-
-	ENSURE_SUCCESS(session,  HAPI_GetMaterialInfo (
-		session,
-		part.geo.object.asset.id,
-		mat_ids[0],
-		&mat_info));
-
-	if (mat_info.exists) {
-		ofmsg("process_assets:   Material info for %1%: matId: %2% assetId: %3% nodeId: %4%",
-			  %hg->getName() %mat_info.id %mat_info.assetId %mat_info.nodeId
+	if (part.info().type == HAPI_PARTTYPE_MESH) {
+		ofmsg("process_assets:     Mesh (faceCount: %1% pointCount: %2% vertCount: %3%)", 
+			%part.info().faceCount
+			%part.info().pointCount
+			%part.info().vertexCount
 		);
 
-		HAPI_NodeInfo node_info;
-		ENSURE_SUCCESS(session,  HAPI_GetNodeInfo(
+		// no faces..
+		if (part.info().faceCount == 0) {
+			// but has points, so draw them?
+			if (part.info().pointCount > 0) {
+				foreach(Vector3f point, points) {
+					hg->addVertex(point, partIndex, geoIndex, objIndex);
+				}
+				osg::PrimitiveSet::Mode myType = osg::PrimitiveSet::POINTS;
+				hg->addPrimitiveOsg(myType, 0, part.info().pointCount - 1, partIndex, geoIndex, objIndex);
+			}
+			
+			hg->dirty();
+			return;
+		}
+
+		int *face_counts = new int[ part.info().faceCount ];
+		ENSURE_SUCCESS(session,  HAPI_GetFaceCounts(
 			session,
-			mat_info.nodeId, &node_info ));
-		ofmsg("process_assets:   Node info for %1%: id: %2% assetId: %3% internal path: %4%",
-			  %get_string( session, node_info.nameSH) %node_info.id %node_info.assetId
-			  %get_string( session, node_info.internalNodePathSH)
-		);
+			part.geo.object.asset.id,
+			part.geo.object.id,
+			part.geo.id,
+			part.id,
+			face_counts,
+			0,
+			part.info().faceCount
+		) );
 
-		HAPI_ParmInfo* parm_infos = new HAPI_ParmInfo[node_info.parmCount];
-		ENSURE_SUCCESS(session,  HAPI_GetParameters(
+		// Material handling (WIP)
+
+		bool all_same = true;
+		HAPI_MaterialId* mat_ids = new HAPI_MaterialId[ part.info().faceCount ];
+
+		ENSURE_SUCCESS(session,  HAPI_GetMaterialIdsOnFaces(
 			session,
-			mat_info.nodeId,
-			parm_infos,
-			0 /* start */,
-			node_info.parmCount));
+			part.geo.object.asset.id,
+			part.geo.object.id,
+			part.geo.id,
+			part.id,
+			&all_same /* are_all_the_same*/,
+			mat_ids, 0, part.info().faceCount ));
 
-		int mapIndex = -1;
+		HAPI_MaterialInfo mat_info;
 
-		for (int i =0; i < node_info.parmCount; ++i) {
-			// node parm output
-			// ofmsg("%1% %2% (%3%) id = %4%",
-			// 	  %i
-			// 	  %get_string( session, parm_infos[i].labelSH)
-			// 	  %get_string( session, parm_infos[i].nameSH)
-			// 	  %parm_infos[i].id);
-			if (parm_infos[i].stringValuesIndex >= 0) {
-				int sh = -1;
-				ENSURE_SUCCESS(session,  HAPI_GetParmStringValues(
-					session,
-					mat_info.nodeId, true,
-					&sh,
-					parm_infos[i].stringValuesIndex, 1)
-				);
-				// more node parm output
-				// ofmsg("%1%  %2%: %3%", %i %parm_infos[i].id
-				//                        %get_string(session, sh));
+		ENSURE_SUCCESS(session,  HAPI_GetMaterialInfo (
+			session,
+			part.geo.object.asset.id,
+			mat_ids[0],
+			&mat_info));
 
-				if (sh != -1 && (get_string(session, parm_infos[i].nameSH) == "baseColorMap")) {
-				// if (sh != -1 && (get_string(session, parm_infos[i].nameSH) == "map")) {
-					mapIndex = i;
+		if (mat_info.exists) {
+			ofmsg("process_assets:   Material info for %1%: matId: %2% assetId: %3% nodeId: %4%",
+				%hg->getName() %mat_info.id %mat_info.assetId %mat_info.nodeId
+			);
+
+			HAPI_NodeInfo node_info;
+			ENSURE_SUCCESS(session,  HAPI_GetNodeInfo(
+				session,
+				mat_info.nodeId, &node_info ));
+			ofmsg("process_assets:   Node info for %1%: id: %2% assetId: %3% internal path: %4%",
+				%get_string( session, node_info.nameSH) %node_info.id %node_info.assetId
+				%get_string( session, node_info.internalNodePathSH)
+			);
+
+			HAPI_ParmInfo* parm_infos = new HAPI_ParmInfo[node_info.parmCount];
+			ENSURE_SUCCESS(session,  HAPI_GetParameters(
+				session,
+				mat_info.nodeId,
+				parm_infos,
+				0 /* start */,
+				node_info.parmCount));
+
+			int mapIndex = -1;
+
+			for (int i =0; i < node_info.parmCount; ++i) {
+				// node parm output
+				// ofmsg("%1% %2% (%3%) id = %4%",
+				// 	  %i
+				// 	  %get_string( session, parm_infos[i].labelSH)
+				// 	  %get_string( session, parm_infos[i].nameSH)
+				// 	  %parm_infos[i].id);
+				if (parm_infos[i].stringValuesIndex >= 0) {
+					int sh = -1;
+					ENSURE_SUCCESS(session,  HAPI_GetParmStringValues(
+						session,
+						mat_info.nodeId, true,
+						&sh,
+						parm_infos[i].stringValuesIndex, 1)
+					);
+					// more node parm output
+					// ofmsg("%1%  %2%: %3%", %i %parm_infos[i].id
+					//                        %get_string(session, sh));
+
+					if (sh != -1 && (get_string(session, parm_infos[i].nameSH) == "baseColorMap")) {
+					// if (sh != -1 && (get_string(session, parm_infos[i].nameSH) == "map")) {
+						mapIndex = i;
+					}
 				}
 			}
+
+			if (mapIndex == -1) {
+				ofmsg("process_assets:   Unsupported material found for %1%", %hg->getName());
+			} else {
+
+				// debug output
+				// for (int i = 0; i < node_info.parmCount; ++i) {
+				// 	ofmsg("index %1%: %2% '%3%'",
+				// 		  %i
+				// 		  %parm_infos[i].id
+				// 		  %get_string(session, parm_infos[i].nameSH)
+				// 	);
+				// }
+
+				// ofmsg("the texture path: assetId=%1% matInfo.id=%2% mapIndex=%3% parm_id=%4% string=%5%",
+				// 	  %mat_info.assetId
+				// 	  %mat_info.id
+				// 	  %mapIndex
+				// 	  %parm_infos[mapIndex].id
+				// 	  %get_string(session, parm_infos[mapIndex].nameSH)
+				// );
+
+				// NOTE this works if the image is a png
+				ENSURE_SUCCESS(session,  HAPI_RenderTextureToImage(
+					session,
+					mat_info.assetId,
+					mat_info.id,
+					parm_infos[mapIndex].id /* parmIndex for "map" */));
+
+
+				// render using mantra
+				// ENSURE_SUCCESS(session,  HAPI_RenderMaterialToImage(
+				// 	mat_info.assetId,
+				// 	mat_info.id,
+				// 	HAPI_SHADER_MANTRA));
+				// 	// HAPI_SHADER_OPENGL));
+
+				HAPI_ImageInfo image_info;
+				ENSURE_SUCCESS(session,  HAPI_GetImageInfo(
+					session,
+					mat_info.assetId,
+					mat_info.id,
+					&image_info));
+
+				ofmsg("process_assets:   width %1% height: %2% format: %3% dataFormat: %4% packing %5%",
+					%image_info.xRes
+					%image_info.yRes
+					%get_string(session, image_info.imageFileFormatNameSH)
+					%image_info.dataFormat
+					%image_info.packing
+				);
+				// ---------
+
+				HAPI_StringHandle imageSH;
+
+				ENSURE_SUCCESS(session,  HAPI_GetImagePlanes(
+					session,
+					mat_info.assetId,
+					mat_info.id,
+					&imageSH,
+					1
+				));
+
+				int imgBufSize = -1;
+
+				//TODO: get the image extraction working correctly..
+				// needed to convert from PNG/JPG/etc to RGBA.. use decode() from omegalib
+
+				// get image planes into a buffer (default is png.. change to RGBA?)
+				ENSURE_SUCCESS(session,  HAPI_ExtractImageToMemory(
+					session,
+					mat_info.assetId,
+					mat_info.id,
+					HAPI_PNG_FORMAT_NAME,
+					// NULL /* HAPI_DEFAULT_IMAGE_FORMAT_NAME */,
+					"C A", /* image planes */
+					&imgBufSize
+				));
+
+				char *myBuffer = new char[imgBufSize];
+
+				// put into a buffer
+				ENSURE_SUCCESS(session,  HAPI_GetImageMemoryBuffer(
+					session,
+					mat_info.assetId,
+					mat_info.id,
+					myBuffer /* tried (char *)pd->map() */,
+					imgBufSize
+				));
+
+				// load into a pixelData bufferObject
+				// this works!
+				// Ref<PixelData> refPd = ImageUtils::decode((void *) myBuffer, image_info.xRes * image_info.yRes * 4);
+				pds.push_back(ImageUtils::decode((void *) myBuffer, image_info.xRes * image_info.yRes * 4));
+
+				// TODO: general case for texture names (diffuse, spec, env, etc)
+				osg::Texture2D* texture = mySceneManager->createTexture("testing", pds[0]);
+
+				// need to set wrap modes too
+				osg::Texture::WrapMode textureWrapMode;
+				textureWrapMode = osg::Texture::REPEAT;
+
+				texture->setWrap(osg::Texture2D::WRAP_R, textureWrapMode);
+				texture->setWrap(osg::Texture2D::WRAP_S, textureWrapMode);
+				texture->setWrap(osg::Texture2D::WRAP_T, textureWrapMode);
+
+				// should have something else here.. this doesn't seem to be working..
+				// TODO: put textures in HoudiniGeometry, use default shader to show everything properly
+				// hg->getOsgNode(geoIndex, objIndex)->getOrCreateStateSet()->setTextureAttributeAndModes(0, tex, osg::StateAttribute::ON);
+
+				// ofmsg("my image width %1% height: %2%, size %3%, bufSize %4%",
+				// 	%refPd->getWidth() %refPd->getHeight() %refPd->getSize() %imgBufSize
+				// );
+			}
+		} else {
+			ofmsg("process_assets:   No material for %1%", %hg->getName());
 		}
 
-        if (mapIndex == -1) {
-		    ofmsg("process_assets:   Unsupported material found for %1%", %hg->getName());
-        } else {
+		// end materials
 
-            // debug output
-    		// for (int i = 0; i < node_info.parmCount; ++i) {
-    		// 	ofmsg("index %1%: %2% '%3%'",
-    		// 		  %i
-    		// 		  %parm_infos[i].id
-    		// 		  %get_string(session, parm_infos[i].nameSH)
-    		// 	);
-    		// }
+		int * vertex_list = new int[ part.info().vertexCount ];
+		ENSURE_SUCCESS(session,  HAPI_GetVertexList(
+			session,
+			part.geo.object.asset.id,
+			part.geo.object.id,
+			part.geo.id,
+			part.id,
+			vertex_list, 0, part.info().vertexCount ) );
+		int curr_index = 0;
 
-    		// ofmsg("the texture path: assetId=%1% matInfo.id=%2% mapIndex=%3% parm_id=%4% string=%5%",
-    		// 	  %mat_info.assetId
-    		// 	  %mat_info.id
-    		// 	  %mapIndex
-    		// 	  %parm_infos[mapIndex].id
-    		// 	  %get_string(session, parm_infos[mapIndex].nameSH)
-    		// );
+		int prev_faceCount = face_counts[0];
+		int prev_faceCountIndex = 0;
 
-            // NOTE this works if the image is a png
-            ENSURE_SUCCESS(session,  HAPI_RenderTextureToImage(
-                session,
-                mat_info.assetId,
-                mat_info.id,
-                parm_infos[mapIndex].id /* parmIndex for "map" */));
+		// TODO: get primitive set working for different triangles..
 
+		// primitives with sides > 4 can't use drawArrays, as it thinks all points are part
+		// of the triangle_fan. should use drawMultipleArrays, but osg doesn't have it?
+		// instead, make a primitive set for each primitive > 4 facecount.
+		// it has something better: drawArrayLengths(osgPrimitiveType(TRIANGLE_FAN), start index, length)
+		// may use next iteration over this
 
-            // render using mantra
-     		// ENSURE_SUCCESS(session,  HAPI_RenderMaterialToImage(
-     		// 	mat_info.assetId,
-     		// 	mat_info.id,
-    		// 	HAPI_SHADER_MANTRA));
-    		// 	// HAPI_SHADER_OPENGL));
+		osg::PrimitiveSet::Mode myType;
 
-            HAPI_ImageInfo image_info;
-            ENSURE_SUCCESS(session,  HAPI_GetImageInfo(
-                session,
-                mat_info.assetId,
-                mat_info.id,
-                &image_info));
+		// objects with primitives of different side count > 4 don't get rendered well. get around this
+		// by triangulating meshes on houdini engine side.
 
-            ofmsg("process_assets:   width %1% height: %2% format: %3% dataFormat: %4% packing %5%",
-                  %image_info.xRes
-                  %image_info.yRes
-                  %get_string(session, image_info.imageFileFormatNameSH)
-                  %image_info.dataFormat
-                  %image_info.packing
-            );
-            // ---------
+		for( int ii=0; ii < part.info().faceCount; ii++ )
+		{
 
-            HAPI_StringHandle imageSH;
+			// add primitive group if face count is different from previous
+			if (face_counts[ii] != prev_faceCount) {
 
-            ENSURE_SUCCESS(session,  HAPI_GetImagePlanes(
-                session,
-                mat_info.assetId,
-                mat_info.id,
-                &imageSH,
-                1
-            ));
+				if (prev_faceCount == 1) {
+					myType = osg::PrimitiveSet::POINTS;
+				} else if (prev_faceCount == 3) {
+					myType = osg::PrimitiveSet::TRIANGLES;
+				} else if (prev_faceCount == 4) {
+					myType = osg::PrimitiveSet::QUADS;
+				}
 
-            int imgBufSize = -1;
+				// cout << "making primitive set for " << prev_faceCount << ", from " <<
+				// 	prev_faceCountIndex << " plus " <<
+				// 	curr_index - prev_faceCountIndex << endl;
 
-            //TODO: get the image extraction working correctly..
-            // needed to convert from PNG/JPG/etc to RGBA.. use decode() from omegalib
+				hg->addPrimitiveOsg(myType, prev_faceCountIndex, curr_index - prev_faceCountIndex, partIndex, geoIndex, objIndex);
 
-            // get image planes into a buffer (default is png.. change to RGBA?)
-            ENSURE_SUCCESS(session,  HAPI_ExtractImageToMemory(
-                session,
-                mat_info.assetId,
-                mat_info.id,
-                HAPI_PNG_FORMAT_NAME,
-    			// NULL /* HAPI_DEFAULT_IMAGE_FORMAT_NAME */,
-                "C A", /* image planes */
-                &imgBufSize
-            ));
+				prev_faceCountIndex = curr_index;
+				prev_faceCount = face_counts[ii];
+			} else if ((ii > 0) && (prev_faceCount > 4)) {
+				// cout << "making primitive set for " << prev_faceCount << ", plus " <<
+				// 	prev_faceCountIndex << " to " <<
+				// 	curr_index - prev_faceCountIndex << endl;
+				hg->addPrimitiveOsg(osg::PrimitiveSet::TRIANGLE_FAN,
+					prev_faceCountIndex,
+					curr_index - prev_faceCountIndex, partIndex, geoIndex, objIndex);
 
-            char *myBuffer = new char[imgBufSize];
-
-            // put into a buffer
-            ENSURE_SUCCESS(session,  HAPI_GetImageMemoryBuffer(
-                session,
-                mat_info.assetId,
-                mat_info.id,
-                myBuffer /* tried (char *)pd->map() */,
-                imgBufSize
-            ));
-
-            // load into a pixelData bufferObject
-            // this works!
-    		// Ref<PixelData> refPd = ImageUtils::decode((void *) myBuffer, image_info.xRes * image_info.yRes * 4);
-            pds.push_back(ImageUtils::decode((void *) myBuffer, image_info.xRes * image_info.yRes * 4));
-
-            // TODO: general case for texture names (diffuse, spec, env, etc)
-            osg::Texture2D* texture = mySceneManager->createTexture("testing", pds[0]);
-
-            // need to set wrap modes too
-            osg::Texture::WrapMode textureWrapMode;
-            textureWrapMode = osg::Texture::REPEAT;
-
-            texture->setWrap(osg::Texture2D::WRAP_R, textureWrapMode);
-            texture->setWrap(osg::Texture2D::WRAP_S, textureWrapMode);
-            texture->setWrap(osg::Texture2D::WRAP_T, textureWrapMode);
-
-            // should have something else here.. this doesn't seem to be working..
-            // TODO: put textures in HoudiniGeometry, use default shader to show everything properly
-    		// hg->getOsgNode(geoIndex, objIndex)->getOrCreateStateSet()->setTextureAttributeAndModes(0, tex, osg::StateAttribute::ON);
-
-    		// ofmsg("my image width %1% height: %2%, size %3%, bufSize %4%",
-    		// 	%refPd->getWidth() %refPd->getHeight() %refPd->getSize() %imgBufSize
-    		// );
-        }
-	} else {
-		ofmsg("process_assets:   No material for %1%", %hg->getName());
-	}
-
-	// end materials
-
-    int * vertex_list = new int[ part.info().vertexCount ];
-    ENSURE_SUCCESS(session,  HAPI_GetVertexList(
-		session,
-		part.geo.object.asset.id,
-		part.geo.object.id,
-		part.geo.id,
-        part.id,
-		vertex_list, 0, part.info().vertexCount ) );
-    int curr_index = 0;
-
-	int prev_faceCount = face_counts[0];
-    int prev_faceCountIndex = 0;
-
-	// TODO: get primitive set working for different triangles..
-
-	// primitives with sides > 4 can't use drawArrays, as it thinks all points are part
-	// of the triangle_fan. should use drawMultipleArrays, but osg doesn't have it?
-	// instead, make a primitive set for each primitive > 4 facecount.
-	// it has something better: drawArrayLengths(osgPrimitiveType(TRIANGLE_FAN), start index, length)
-	// may use next iteration over this
-
-	osg::PrimitiveSet::Mode myType;
-
-	// objects with primitives of different side count > 4 don't get rendered well. get around this
-	// by triangulating meshes on houdini engine side.
-
-    for( int ii=0; ii < part.info().faceCount; ii++ )
-    {
-
-		// add primitive group if face count is different from previous
-		if (face_counts[ii] != prev_faceCount) {
-
-			if (prev_faceCount == 3) {
-				myType = osg::PrimitiveSet::TRIANGLES;
-			} else if (prev_faceCount == 4) {
-				myType = osg::PrimitiveSet::QUADS;
+				prev_faceCountIndex = curr_index;
+				prev_faceCount = face_counts[ii];
 			}
 
-			// cout << "making primitive set for " << prev_faceCount << ", from " <<
-			// 	prev_faceCountIndex << " plus " <<
-			// 	curr_index - prev_faceCountIndex << endl;
+			// cout << "face (" << face_counts[ii] << "): " << ii << " ";
+			for( int jj=0; jj < face_counts[ii]; jj++ )
+			{
 
-			hg->addPrimitiveOsg(myType, prev_faceCountIndex, curr_index - prev_faceCountIndex, partIndex, geoIndex, objIndex);
+				int myIndex = curr_index + (face_counts[ii] - jj) % face_counts[ii];
+				// cout << "i: " << vertex_list[myIndex] << " ";
 
-			prev_faceCountIndex = curr_index;
-			prev_faceCount = face_counts[ii];
-		} else if ((ii > 0) && (prev_faceCount > 4)) {
-			// cout << "making primitive set for " << prev_faceCount << ", plus " <<
-			// 	prev_faceCountIndex << " to " <<
-			// 	curr_index - prev_faceCountIndex << endl;
-			hg->addPrimitiveOsg(osg::PrimitiveSet::TRIANGLE_FAN,
-				prev_faceCountIndex,
-			    curr_index - prev_faceCountIndex, partIndex, geoIndex, objIndex);
+				int lastIndex = hg->addVertex(points[vertex_list[ myIndex ]], partIndex, geoIndex, objIndex);
 
-			prev_faceCountIndex = curr_index;
-			prev_faceCount = face_counts[ii];
+				if (has_point_normals) {
+					hg->addNormal(normals[vertex_list[ myIndex ]], partIndex, geoIndex, objIndex);
+				} else if (has_vertex_normals) {
+					hg->addNormal(normals[myIndex], partIndex, geoIndex, objIndex);
+				}
+				if(has_point_colors) {
+					hg->addColor(Color(
+						colors[vertex_list[ myIndex ]][0],
+						colors[vertex_list[ myIndex ]][1],
+						colors[vertex_list[ myIndex ]][2],
+						has_point_alphas ? alphas[ myIndex ]: 1.0
+					), partIndex, geoIndex, objIndex);
+				} else if (has_primitive_colors) {
+					hg->addColor(Color(
+						colors[ii][0],
+						colors[ii][1],
+						colors[ii][2],
+						has_point_alphas ? alphas[ myIndex ]: 1.0
+					), partIndex, geoIndex, objIndex);
+				}
+				if (has_point_uvs) {
+					hg->addUV(uvs[vertex_list[ myIndex ]], partIndex, geoIndex, objIndex);
+					// cout << "(p)uvs: " << uvs[vertex_list[ myIndex ]][0] << ", " << uvs[vertex_list[ myIndex ]][1] << endl;
+				} else if (has_vertex_uvs) {
+					// hg->addUV(uvs[vertex_list[ myIndex ]], partIndex, geoIndex, objIndex);
+					hg->addUV(uvs[myIndex], partIndex, geoIndex, objIndex);
+					// cout << "(v)uvs: " << uvs[myIndex][0] << ", " << uvs[myIndex][1] << endl;
+				}
+
+				// cout << "v:" << myIndex << ", i: "
+				// 	<< hg->getVertex(lastIndex) << endl; //" ";
+			}
+
+			curr_index += face_counts[ii];
+
 		}
 
-		// cout << "face (" << face_counts[ii] << "): " << ii << " ";
-        for( int jj=0; jj < face_counts[ii]; jj++ )
-        {
+		if (prev_faceCount == 3) {
+			myType = osg::PrimitiveSet::TRIANGLES;
+		} else if (prev_faceCount == 4) {
+			myType = osg::PrimitiveSet::QUADS;
+		}
+		if (prev_faceCount > 4) {
+			myType = osg::PrimitiveSet::TRIANGLE_FAN;
+		}
 
-			int myIndex = curr_index + (face_counts[ii] - jj) % face_counts[ii];
-			// cout << "i: " << vertex_list[myIndex] << " ";
+		ofmsg("process_assets:   make primitive set face size %1%, from %2% plus %3%",
+			%prev_faceCount
+			%prev_faceCountIndex
+			%(curr_index - prev_faceCountIndex)
+		);
 
-			int lastIndex = hg->addVertex(points[vertex_list[ myIndex ]], partIndex, geoIndex, objIndex);
+		hg->addPrimitiveOsg(myType, prev_faceCountIndex, curr_index - prev_faceCountIndex, partIndex, geoIndex, objIndex);
 
-			if (has_point_normals) {
-				hg->addNormal(normals[vertex_list[ myIndex ]], partIndex, geoIndex, objIndex);
-			} else if (has_vertex_normals) {
-				hg->addNormal(normals[myIndex], partIndex, geoIndex, objIndex);
-			}
-			if(has_point_colors) {
-				hg->addColor(Color(
-					colors[vertex_list[ myIndex ]][0],
-					colors[vertex_list[ myIndex ]][1],
-					colors[vertex_list[ myIndex ]][2],
-					1.0
-				), partIndex, geoIndex, objIndex);
-			} else if (has_primitive_colors) {
-				hg->addColor(Color(
-					colors[ii][0],
-					colors[ii][1],
-					colors[ii][2],
-					1.0
-				), partIndex, geoIndex, objIndex);
-			}
-			if (has_point_uvs) {
-				hg->addUV(uvs[vertex_list[ myIndex ]], partIndex, geoIndex, objIndex);
-				// cout << "(p)uvs: " << uvs[vertex_list[ myIndex ]][0] << ", " << uvs[vertex_list[ myIndex ]][1] << endl;
-			} else if (has_vertex_uvs) {
-				// hg->addUV(uvs[vertex_list[ myIndex ]], partIndex, geoIndex, objIndex);
-				hg->addUV(uvs[myIndex], partIndex, geoIndex, objIndex);
-				// cout << "(v)uvs: " << uvs[myIndex][0] << ", " << uvs[myIndex][1] << endl;
-			}
+		hg->dirty();
 
-            // cout << "v:" << myIndex << ", i: "
-			// 	<< hg->getVertex(lastIndex) << endl; //" ";
-        }
-
-        curr_index += face_counts[ii];
-
-    }
-
-	if (prev_faceCount == 3) {
-		myType = osg::PrimitiveSet::TRIANGLES;
-	} else if (prev_faceCount == 4) {
-		myType = osg::PrimitiveSet::QUADS;
-	}
-	if (prev_faceCount > 4) {
-		myType = osg::PrimitiveSet::TRIANGLE_FAN;
+		delete[] face_counts;
+		delete[] vertex_list;
 	}
 
-	ofmsg("process_assets:   make primitive set face size %1%, from %2% plus %3%",
-		%prev_faceCount
-		%prev_faceCountIndex
-		%(curr_index - prev_faceCountIndex)
-	);
-
-	hg->addPrimitiveOsg(myType, prev_faceCountIndex, curr_index - prev_faceCountIndex, partIndex, geoIndex, objIndex);
-
-	hg->dirty();
-
-    delete[] face_counts;
-    delete[] vertex_list;
+	if (part.info().type == HAPI_PARTTYPE_VOLUME) {
+		omsg("process_assets:     Volume");
+	}
 
 }
 
@@ -851,6 +891,27 @@ void HoudiniEngine::process_float_attrib(
 		}
 		points[elem_index] = v;
 // 		cout << elem_index << ": " << v << endl;
+    }
+
+    delete [] attrib_data;
+}
+
+void HoudiniEngine::process_attrib(
+    const hapi::Part &part, HAPI_AttributeOwner attrib_owner,
+    const char *attrib_name, vector<float>& vals)
+{
+	// useHAPI_AttributeInfo::storage for the data type
+
+    // Get the attribute values.
+    HAPI_AttributeInfo attrib_info = part.attribInfo(attrib_owner, attrib_name);
+    float *attrib_data = part.getNewFloatAttribData(attrib_info, attrib_name);
+
+// 	cout << attrib_name << " (" << attrib_info.tupleSize << ")" << endl;
+
+	vals.clear();
+	vals.resize(attrib_info.count);
+    for (int elem_index=0; elem_index < attrib_info.count; ++elem_index) {
+		vals[elem_index] = attrib_data[elem_index];
     }
 
     delete [] attrib_data;

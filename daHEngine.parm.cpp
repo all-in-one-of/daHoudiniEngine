@@ -51,12 +51,8 @@ using namespace houdiniEngine;
 // a base assetCont container is created, and this is then pushed onto assetConts
 void HoudiniEngine::createMenu(const int asset_id)
 {
-	// load only the params in the DA Folder
-	// first find the index of the folder, then iterate through the list of params
-	// from there onwards
-	const char* daFolderName = "daFolder_0";
-
-	hapi::Asset* myAsset = instancedHEAssets[asset_id];
+    // shouldn't be cached, should fetch new each time
+	hapi::Asset* myAsset = new hapi::Asset(asset_id, session);
 	std::string asset_name = myAsset->name();
 
 	if (myAsset == NULL) {
@@ -86,6 +82,20 @@ void HoudiniEngine::createMenu(const int asset_id)
 	// cast to an int that is the same size as void*
 	assetButton->setUserData((void *)(intptr_t)assetContSize); // point to the container to use in assetConts
 
+    omsg("about to create Parms");
+    createParms(asset_id, assetCont);
+}
+
+void HoudiniEngine::createParms(const int asset_id, Container* assetCont)
+{
+
+	// load only the params in the DA Folder
+	// first find the index of the folder, then iterate through the list of params
+	// from there onwards
+	const char* daFolderName = "daFolder_0";
+
+    // shouldn't be cached, should fetch new each time
+	hapi::Asset* myAsset = new hapi::Asset(asset_id, session);
 	std::map<std::string, hapi::Parm> parmMap = myAsset->parmMap();
 	std::vector<hapi::Parm> parms = myAsset->parms();
 
@@ -120,12 +130,22 @@ void HoudiniEngine::createMenu(const int asset_id)
 
 	Widget* prevWidget = NULL;
 
-	// NOTE: folder types have parentId of -1 as well.. mistake?
+	// NOTE: HAPI_PARMTYPE_FOLDERLIST defines the parent for the following HAPI_PARMTYPE_FOLDER parms
+    int lastFolderListIndex = 0;
 	while (i < parms.size()) {
 		hapi::Parm* parm = &parms[i];
 		HoudiniUiParm* uip;
 
-		if (parm->info().parentId == -1) {
+        // make folders point to this folderlist
+        if (parm->info().type == HAPI_PARMTYPE_FOLDERLIST) {
+            lastFolderListIndex = i;
+        }
+
+        // find parent parameter
+        if (parm->info().type == HAPI_PARMTYPE_FOLDER) {
+            uip = (HoudiniUiParm*) uiParms[asset_id][lastFolderListIndex].get();
+            target = uip->getContents();
+        } else if (parm->info().parentId == -1) {
 			target = assetCont;
 		} else {
 			for (int j = 0; j < uiParms[asset_id].size(); ++j) {
@@ -133,7 +153,7 @@ void HoudiniEngine::createMenu(const int asset_id)
                 // workaround
                 uip = (HoudiniUiParm*) uiParms[asset_id][j].get();
 				if (uip->getParm().info().id == parm->info().parentId) {
-					target = uip->getContainer();
+					target = uip->getContents();
 					break;
 				}
 			}
@@ -141,7 +161,7 @@ void HoudiniEngine::createMenu(const int asset_id)
 
         // ui navigation
 		uip = HoudiniUiParm::create(*parm, target);
-        Widget* thisWidget = uip->getContainer()->getChildByIndex(uip->getContainer()->getNumChildren() - 1);
+        Widget* thisWidget = uip->getContents()->getChildByIndex(uip->getContents()->getNumChildren() - 1);
         if (thisWidget != NULL) {
             thisWidget->setVerticalPrevWidget(prevWidget);
         }
@@ -150,7 +170,7 @@ void HoudiniEngine::createMenu(const int asset_id)
         }
 
 		// this will not work on a HoudiniUiParm that isn't part of a folder?
-		uip->getContainer()->setUIEventHandler(uip);
+		uip->getContents()->setUIEventHandler(uip);
 		uiParms[asset_id].push_back(uip);
 
 		prevWidget = thisWidget;
@@ -163,9 +183,10 @@ HoudiniParameterList* HoudiniEngine::loadParameters(const String& asset_name)
 {
 
 	int asset_id = assetNameToIds[asset_name];
-    hapi::Asset* asset = instancedHEAssets[asset_id];
+    // shouldn't be cached, should fetch new each time
+	hapi::Asset* myAsset = new hapi::Asset(asset_id, session);
 
-    if (asset == NULL) {
+    if (myAsset == NULL) {
         ofwarn("No asset of name %1%", %asset_name);
         return NULL;
     }
@@ -182,7 +203,7 @@ HoudiniParameterList* HoudiniEngine::loadParameters(const String& asset_name)
         assetParamLists[asset_name] = parameters;
     }
 
-	std::vector<hapi::Parm> parms = asset->parms();
+	std::vector<hapi::Parm> parms = myAsset->parms();
 
     for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); ++i) {
         
@@ -206,14 +227,15 @@ HoudiniParameterList* HoudiniEngine::loadParameters(const String& asset_name)
 int HoudiniEngine::getIntegerParameterValue(const String& asset_name, int param_id, int sub_index)
 {
 	int asset_id = assetNameToIds[asset_name];
-    hapi::Asset* asset = instancedHEAssets[asset_id];
+    // shouldn't be cached, should fetch new each time
+	hapi::Asset* myAsset = new hapi::Asset(asset_id, session);
 
-    if (asset == NULL) {
+    if (myAsset == NULL) {
         ofwarn("No asset of name %1%", %asset_name);
         return 0;
 
     } else {
-        std::vector<hapi::Parm> parms = asset->parms();
+        std::vector<hapi::Parm> parms = myAsset->parms();
 
         for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); ++i) {
             
@@ -227,13 +249,14 @@ int HoudiniEngine::getIntegerParameterValue(const String& asset_name, int param_
 void HoudiniEngine::setIntegerParameterValue(const String& asset_name, int param_id, int sub_index, int value) 
 {
 	int asset_id = assetNameToIds[asset_name];
-    hapi::Asset* asset = instancedHEAssets[asset_id];
+    // shouldn't be cached, should fetch new each time
+	hapi::Asset* myAsset = new hapi::Asset(asset_id, session);
 
-    if (asset == NULL) {
+    if (myAsset == NULL) {
         ofwarn("No asset of name %1%", %asset_name);
 
     } else {
-        std::vector<hapi::Parm> parms = asset->parms();
+        std::vector<hapi::Parm> parms = myAsset->parms();
 
         for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); ++i) {
             
@@ -243,21 +266,22 @@ void HoudiniEngine::setIntegerParameterValue(const String& asset_name, int param
             }
         }
 
-        cook_one(asset);
+        cook_one(myAsset);
     }
 }
 
 float HoudiniEngine::getFloatParameterValue(const String& asset_name, int param_id, int sub_index)
 {
 	int asset_id = assetNameToIds[asset_name];
-    hapi::Asset* asset = instancedHEAssets[asset_id];
+    // shouldn't be cached, should fetch new each time
+	hapi::Asset* myAsset = new hapi::Asset(asset_id, session);
 
-    if (asset == NULL) {
+    if (myAsset == NULL) {
         ofwarn("No asset of name %1%", %asset_name);
         return 0;
 
     } else {
-        std::vector<hapi::Parm> parms = asset->parms();
+        std::vector<hapi::Parm> parms = myAsset->parms();
 
         for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); ++i) {
             
@@ -271,13 +295,14 @@ float HoudiniEngine::getFloatParameterValue(const String& asset_name, int param_
 void HoudiniEngine::setFloatParameterValue(const String& asset_name, int param_id, int sub_index, float value) 
 {
 	int asset_id = assetNameToIds[asset_name];
-    hapi::Asset* asset = instancedHEAssets[asset_id];
+    // shouldn't be cached, should fetch new each time
+	hapi::Asset* myAsset = new hapi::Asset(asset_id, session);
 
-    if (asset == NULL) {
+    if (myAsset == NULL) {
         ofwarn("No asset of name %1%", %asset_name);
 
     } else {
-        std::vector<hapi::Parm> parms = asset->parms();
+        std::vector<hapi::Parm> parms = myAsset->parms();
 
         for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); ++i) {
             
@@ -287,21 +312,22 @@ void HoudiniEngine::setFloatParameterValue(const String& asset_name, int param_i
             }
         }
 
-        cook_one(asset);
+        cook_one(myAsset);
     }
 }
 
 String HoudiniEngine::getStringParameterValue(const String& asset_name, int param_id, int sub_index)
 {
 	int asset_id = assetNameToIds[asset_name];
-    hapi::Asset* asset = instancedHEAssets[asset_id];
+    // shouldn't be cached, should fetch new each time
+	hapi::Asset* myAsset = new hapi::Asset(asset_id, session);
 
-    if (asset == NULL) {
+    if (myAsset == NULL) {
         ofwarn("No asset of name %1%", %asset_name);
         return "";
 
     } else {
-        std::vector<hapi::Parm> parms = asset->parms();
+        std::vector<hapi::Parm> parms = myAsset->parms();
 
         for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); ++i) {
             
@@ -315,13 +341,14 @@ String HoudiniEngine::getStringParameterValue(const String& asset_name, int para
 void HoudiniEngine::setStringParameterValue(const String& asset_name, int param_id, int sub_index, const String& value) 
 {
 	int asset_id = assetNameToIds[asset_name];
-    hapi::Asset* asset = instancedHEAssets[asset_id];
+    // shouldn't be cached, should fetch new each time
+	hapi::Asset* myAsset = new hapi::Asset(asset_id, session);
 
-    if (asset == NULL) {
+    if (myAsset == NULL) {
         ofwarn("No asset of name %1%", %asset_name);
 
     } else {
-        std::vector<hapi::Parm> parms = asset->parms();
+        std::vector<hapi::Parm> parms = myAsset->parms();
 
         for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); ++i) {
             
@@ -331,6 +358,190 @@ void HoudiniEngine::setStringParameterValue(const String& asset_name, int param_
             }
         }
 
-        cook_one(asset);
+        cook_one(myAsset);
+    }
+}
+
+Container* HoudiniEngine::getParmCont(int i, int asset_id) {
+    return ((HoudiniUiParm*) uiParms[asset_id][i].get())->getContents();
+}
+
+Container* HoudiniEngine::getParmBase(int i, int asset_id) {
+    return ((HoudiniUiParm*) uiParms[asset_id][i].get())->getContainer();
+}
+
+void HoudiniEngine::doIt(int asset_id) { 
+    Container* base = ((HoudiniUiParm*) uiParms[asset_id][uiParms[asset_id].size() - 1].get())->getContainer();
+    uiParms[asset_id].pop_back();
+    ofmsg("%1% refcount %2%", %base->getName() %base->refCount());
+    base = NULL;
+}
+
+void HoudiniEngine::printParms(int asset_id) {
+    hapi::Asset* asset = new hapi::Asset(asset_id, session);
+    if (asset == NULL) {
+        ofmsg("No asset with id %1%", %asset_id);
+    }
+    ofmsg("asset has %1% parms", %asset->nodeInfo().parmCount);
+    std::vector<hapi::Parm> parms = asset->parms();
+    foreach (hapi::Parm myParm, parms) {
+        String t = "";
+        switch (myParm.info().type) {
+            case HAPI_PARMTYPE_INT: t = "INT"; break;
+            case HAPI_PARMTYPE_MULTIPARMLIST: t = "MPL";  break;
+            case HAPI_PARMTYPE_TOGGLE: t = "TOG";  break;
+            case HAPI_PARMTYPE_BUTTON: t = "BUT";  break;
+            case HAPI_PARMTYPE_FLOAT: t = "FLT";  break;
+            case HAPI_PARMTYPE_COLOR: t = "COL";  break;
+            case HAPI_PARMTYPE_STRING: t = "STR";  break;
+            case HAPI_PARMTYPE_PATH_FILE: t = "FIL";  break;
+            case HAPI_PARMTYPE_PATH_FILE_GEO: t = "GEO";  break;
+            case HAPI_PARMTYPE_PATH_FILE_IMAGE: t = "IMG";  break;
+            case HAPI_PARMTYPE_PATH_NODE: t = "NOD";  break;
+            case HAPI_PARMTYPE_FOLDERLIST: t = "FLS";  break;
+            case HAPI_PARMTYPE_FOLDER: t = "FLD";  break;
+            case HAPI_PARMTYPE_LABEL: t = "LAB";  break;
+            case HAPI_PARMTYPE_SEPARATOR: t = "SEP";  break;
+        }
+        ofmsg("PARM %1% (%2%) %3%x%4% name: %5% (%6%)", 
+            %myParm.info().id
+            %myParm.info().parentId
+            %t 
+            %myParm.info().size
+            %myParm.name()
+            %myParm.label() 
+        );
+        for (int i = 0; i < myParm.info().size; ++i) {
+            if (myParm.info().type == HAPI_PARMTYPE_INT) {
+                int val = myParm.getIntValue(i);
+                if (myParm.info().choiceCount > 0) {
+                    switch (myParm.info().choiceListType) {
+                        case HAPI_CHOICELISTTYPE_NONE:
+                            omsg("choice list type is NONE");
+                            break;
+                        case HAPI_CHOICELISTTYPE_NORMAL:
+                            omsg("choice list type is NORMAL");
+                            break;
+                        case HAPI_CHOICELISTTYPE_MINI:
+                            omsg("choice list type is MINI");
+                            break;
+                        case HAPI_CHOICELISTTYPE_REPLACE:
+                            omsg("choice list type is REPLACE");
+                            break;
+                        case HAPI_CHOICELISTTYPE_TOGGLE:
+                            omsg("choice list type is TOGGLE");
+                            break;
+                        default:
+                            break;
+                    }
+                    ofmsg("  choiceindex: %1% count: %2%", %myParm.info().choiceIndex  %myParm.info().choiceCount);
+                    // display as a selection menu
+                    if (myParm.info().choiceListType == HAPI_CHOICELISTTYPE_NONE ||
+                        myParm.info().choiceListType == HAPI_CHOICELISTTYPE_NORMAL ||
+                        myParm.info().choiceListType == HAPI_CHOICELISTTYPE_MINI) {
+                        for (int j = 0; j < myParm.choices.size(); ++j) {
+                            ofmsg("  choice %1% (%2%): %3% (%4%)", 
+                                %j 
+                                %myParm.choices[j].info().parentParmId
+                                %myParm.choices[j].value()
+                                %myParm.choices[j].label() 
+                            );
+                        }
+                    } else {
+                        // display as a text box which can be filled in by preset selections
+                        // same as if there was no parmChoice count
+                        // TODO: add the menu as well..
+                        if (myParm.info().hasUIMin && myParm.info().hasUIMax) {
+                            ofmsg("  UImin %1% UImax %2%", %myParm.info().UIMin %myParm.info().UIMax);
+                        } else {
+                            if (myParm.info().hasMin) ofmsg("  min %1%", %myParm.info().min);
+                            if (myParm.info().hasMax) ofmsg("  max %1%", %myParm.info().max);
+                        }
+                    }
+                } else {
+                    if (myParm.info().hasUIMin && myParm.info().hasUIMax) {
+                        ofmsg("  UImin %1% UImax %2%", %myParm.info().UIMin %myParm.info().UIMax);
+                    } else {
+                        if (myParm.info().hasMin) ofmsg("  min %1%", %myParm.info().min);
+                        if (myParm.info().hasMax) ofmsg("  max %1%", %myParm.info().max);
+                    }
+                }
+
+            } else if (myParm.info().type == HAPI_PARMTYPE_TOGGLE) {
+                int val = myParm.getIntValue(i);
+
+            } else if (myParm.info().type == HAPI_PARMTYPE_BUTTON) {
+                int val = myParm.getIntValue(i);
+
+            } else if (myParm.info().type == HAPI_PARMTYPE_FLOAT ||
+                       myParm.info().type == HAPI_PARMTYPE_COLOR) {
+                float val = myParm.getFloatValue(i);
+                if (myParm.info().hasUIMin && myParm.info().hasUIMax) {
+                    ofmsg("  UImin %1% UImax %2%", %myParm.info().UIMin %myParm.info().UIMax);
+                } else {
+                    if (myParm.info().hasMin) ofmsg("  min %1%", %myParm.info().min);
+                    if (myParm.info().hasMax) ofmsg("  max %1%", %myParm.info().max);
+                }
+
+            } else if (myParm.info().type == HAPI_PARMTYPE_STRING ||
+                       myParm.info().type == HAPI_PARMTYPE_PATH_FILE ||
+                       myParm.info().type == HAPI_PARMTYPE_PATH_FILE_GEO	||
+                       myParm.info().type == HAPI_PARMTYPE_PATH_FILE_IMAGE) { // TODO: update with TextBox
+                std::string val = myParm.getStringValue(i);
+                if (myParm.info().choiceCount > 0) {
+                    switch (myParm.info().choiceListType) {
+                        case HAPI_CHOICELISTTYPE_NONE:
+                            omsg("choice list type is NONE");
+                            break;
+                        case HAPI_CHOICELISTTYPE_NORMAL:
+                            omsg("choice list type is NORMAL");
+                            break;
+                        case HAPI_CHOICELISTTYPE_MINI:
+                            omsg("choice list type is MINI");
+                            break;
+                        case HAPI_CHOICELISTTYPE_REPLACE:
+                            omsg("choice list type is REPLACE");
+                            break;
+                        case HAPI_CHOICELISTTYPE_TOGGLE:
+                            omsg("choice list type is TOGGLE");
+                            break;
+                        default:
+                            break;
+                    }
+                    ofmsg("  choiceindex: %1% count: %2%", 
+                        %myParm.info().choiceIndex  
+                        %myParm.info().choiceCount
+                    );
+                    // display as a selection menu
+                    if (myParm.info().choiceListType == HAPI_CHOICELISTTYPE_NONE ||
+                        myParm.info().choiceListType == HAPI_CHOICELISTTYPE_NORMAL ||
+                        myParm.info().choiceListType == HAPI_CHOICELISTTYPE_MINI) {
+                        for (int j = 0; j < myParm.choices.size(); ++j) {
+                            ofmsg("  choice %1% (%2%): %3% (%4%)", 
+                                %j 
+                                %myParm.choices[j].info().parentParmId
+                                %myParm.choices[j].value()
+                                %myParm.choices[j].label() 
+                            );
+                        }
+                    } else {// display as a text box which can be filled in by preset selections
+                        // same as if there was no parmChoice count
+                        // TODO: add the menu as well..
+                        omsg ("  skipped");
+                    }
+                } else {
+                    ofmsg("  textbox text: %1%", %val);
+                }
+            } else if (myParm.info().type == HAPI_PARMTYPE_SEPARATOR) {
+                omsg("----------");
+            } else if (myParm.info().type == HAPI_PARMTYPE_MULTIPARMLIST) {
+                ofmsg("multiparm, instance length %1%, instance count %2%, instance offset %3%",
+                    %myParm.info().instanceLength
+                    %myParm.info().instanceCount
+                    %myParm.info().instanceStartOffset
+                );
+            }
+        }
+    
     }
 }

@@ -126,7 +126,7 @@ namespace houdiniEngine {
 		~HoudiniEngine();
 
 #if DA_ENABLE_HENGINE > 0
-	        static HoudiniEngine* instance() { return myInstance; }
+		static HoudiniEngine* instance() { return myInstance; }
 
 		//! Convenience method to create the module, register and initialize it.
 		static HoudiniEngine* createAndInitialize();
@@ -147,7 +147,13 @@ namespace houdiniEngine {
 		);
 		void process_float_attrib(
 		    const hapi::Part &part, HAPI_AttributeOwner attrib_owner,
-		    const char *attrib_name, vector<Vector3f>& points);
+		    const char *attrib_name, vector<Vector3f>& points
+		);
+
+		void process_attrib(
+		    const hapi::Part &part, HAPI_AttributeOwner attrib_owner,
+		    const char *attrib_name, vector<float>& vals
+		);
 
 		virtual void handleEvent(const Event& evt);
 
@@ -166,7 +172,13 @@ namespace houdiniEngine {
 
 		Menu* getMenu(const String& asset) { return NULL; } // return this asset's parameter menu
 
+		Container* getParmCont(int i, int asset_id = 0);
+		Container* getParmBase(int i, int asset_id = 0);
+		void doIt(int asset_id = 0);
+		void test(int arg, int arg2);
+
 		void createMenu(const int asset_id);
+		void createParms(const int asset_id, Container* assetCont);
 		void initializeParameters(const String& asset_name);
 
         HoudiniParameterList* loadParameters(const String& asset_name);
@@ -192,6 +204,8 @@ namespace houdiniEngine {
 		void setLoggingEnabled(const bool toggle);
 
 		void showMappings();
+
+		void printParms(int asset_id);
 
 		Container* getContainerForAsset(int n);
 		Container* getHoudiniCont() { return houdiniCont; };
@@ -265,16 +279,6 @@ namespace houdiniEngine {
 		ui::Container* stagingCont; // the container to show the contents of the selected folder
 
 		Vector<Container*> assetConts; // keep refs to parameters for this asset
-		// Parm Ids to containers
-		Dictionary<String, Container* > baseConts; // keep refs to submenus
-		// Parm Ids to containers
-		Dictionary<String, Container* > folderLists; // keep ref to container for Folder selection
-		// Parm Ids to containers
-		Dictionary<String, Container* > folderListChoices; // buttons to refer to folder lists above
-		// Widget Ids to containers
-		Dictionary<int, Container* > folderListContents; // keep refs to folderList container to display child parms
-		// Parm names to Containers
-		Dictionary<String, Container* > multiParmConts; // keep refs for multiParms
 
 		// the link between widget and parmId
 		Dictionary < int, String > widgetIdToParmName; // UI Widget -> HAPI_Parm (asset.parmMap())
@@ -286,12 +290,7 @@ namespace houdiniEngine {
 
 		// asset name to id
 		Dictionary < String, int > assetNameToIds;
-
-		Menus assetParams;
-		ParmConts assetParamConts;
         Dictionary<String, HoudiniParameterList*> assetParamLists;
-		Dictionary<String, pair < Menu*, vector<MenuObject> > > assetParamsMenus;
-
 		// logging
 		bool myLogEnabled;
 

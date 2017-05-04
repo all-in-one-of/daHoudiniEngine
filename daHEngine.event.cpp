@@ -136,37 +136,37 @@ void HoudiniEngine::handleEvent(const Event& evt)
 			return;
 		} else
 
-		// folder toggling?
-		if (strlen(myWidget->getName().c_str()) > 12 &&
-			ostr("%1%", %myWidget->getName().substr(0, 12)) == "FolderButton") {
-			// NOTE: myFolderCont may not have a container parent
-			Container* myFolderCont = static_cast<Container*>(myWidget->getUserData());
-			if (myFolderCont != NULL) {
-				ofmsg("Target Folder of widget %1%: %2%", %myWidget->getName() %myFolderCont->getName());
-				if (myFolderCont->getContainer() != NULL) {
-					ofmsg("num children in folderCont: %1%", %myFolderCont->getContainer()->getNumChildren());
-				}
+		// // folder toggling?
+		// if (strlen(myWidget->getName().c_str()) > 12 &&
+		// 	ostr("%1%", %myWidget->getName().substr(0, 12)) == "FolderButton") {
+		// 	// NOTE: myFolderCont may not have a container parent
+		// 	Container* myFolderCont = static_cast<Container*>(myWidget->getUserData());
+		// 	if (myFolderCont != NULL) {
+		// 		ofmsg("Target Folder of widget %1%: %2%", %myWidget->getName() %myFolderCont->getName());
+		// 		if (myFolderCont->getContainer() != NULL) {
+		// 			ofmsg("num children in folderCont: %1%", %myFolderCont->getContainer()->getNumChildren());
+		// 		}
 
-				// stored by button id!
-				Container* folderCont = folderListContents[myWidget->getId()];
-				// Container* folderCont = myFolderCont->getContainer()->getContainer();
+		// 		// stored by button id!
+		// 		Container* folderCont = folderListContents[myWidget->getId()];
+		// 		// Container* folderCont = myFolderCont->getContainer()->getContainer();
 
-				for (int i = 0; i < folderCont->getNumChildren(); ++i) {
-					ofmsg("conts in folderCont: %1%: %2%", %folderCont->getNumChildren() %folderCont->getChildByIndex(0)->getName());
-					folderCont->getChildByIndex(folderCont->getNumChildren() - 1)->setVisible(false);
-					stagingCont->addChild(folderCont->getChildByIndex(folderCont->getNumChildren() - 1));
-					folderCont->removeChild(folderCont->getChildByIndex(folderCont->getNumChildren() - 1));
-				}
+		// 		for (int i = 0; i < folderCont->getNumChildren(); ++i) {
+		// 			ofmsg("conts in folderCont: %1%: %2%", %folderCont->getNumChildren() %folderCont->getChildByIndex(0)->getName());
+		// 			folderCont->getChildByIndex(folderCont->getNumChildren() - 1)->setVisible(false);
+		// 			stagingCont->addChild(folderCont->getChildByIndex(folderCont->getNumChildren() - 1));
+		// 			folderCont->removeChild(folderCont->getChildByIndex(folderCont->getNumChildren() - 1));
+		// 		}
 
-				myFolderCont->setVisible(true);
-				stagingCont->removeChild(myFolderCont);
-				folderCont->addChild(myFolderCont);
-			} else {
-				ofmsg("no parent container for %1%", %myWidget->getName());
-			}
-			evt.setProcessed();
-			return;
-		}
+		// 		myFolderCont->setVisible(true);
+		// 		stagingCont->removeChild(myFolderCont);
+		// 		folderCont->addChild(myFolderCont);
+		// 	} else {
+		// 		ofmsg("no parent container for %1%", %myWidget->getName());
+		// 	}
+		// 	evt.setProcessed();
+		// 	return;
+		// }
 
 
 		doUpdate = evt.getType() == Event::Toggle || evt.getType() == Event::Click;
@@ -199,11 +199,13 @@ void HoudiniEngine::handleEvent(const Event& evt)
 	// HAPI_GeoInfo::hasGeoChanged
 	// HAPI_GeoInfo::hasMaterialChanged
 
-	Ref <RefAsset> myAsset = instancedHEAssets[currentAsset];
+	// Ref <RefAsset> myAsset = instancedHEAssets[currentAsset];
+    // shouldn't be cached, should fetch new each time
+	hapi::Asset* myAsset = new hapi::Asset(currentAsset, session);
 	String asset_name = myAsset->name();
 
 	if (myAsset == NULL) {
-		ofwarn("No instanced asset %1%", %asset_name);
+		ofwarn("No asset %1%", %asset_name);
 		return;
 	} else {
 		ofmsg("Asset is %1%", %asset_name);
@@ -231,10 +233,6 @@ void HoudiniEngine::handleEvent(const Event& evt)
 	// need to recreate an asset object each time parameters change!
 	// this may mean shuffling around representations of things..
 	
-	Ref <RefAsset> myNewAsset = new RefAsset(myAsset->id, session);
-	instancedHEAssets[myAsset->id] = myNewAsset;
-	ofmsg("myNewAsset has %1% parms", %myNewAsset->nodeInfo().parmCount);
-	
 	String myParmName;
 	
 	if (StringUtils::endsWith(myWidget->getName(), "_add")) {
@@ -255,7 +253,7 @@ void HoudiniEngine::handleEvent(const Event& evt)
 	// therefore use absolute references for it
 	// Reason is that asset data changes under hapi::Assest!
 	// need to regenerate asset after getting/setting parms?
-	hapi::Parm* parm = &(myNewAsset->parmMap()[myParmName]);
+	hapi::Parm* parm = &(myAsset->parmMap()[myParmName]);
 
 	ofmsg("PARM %1%: %2% s-%3% name-%4% id-%5%",
 		  %parm->label()
@@ -359,125 +357,96 @@ void HoudiniEngine::handleEvent(const Event& evt)
 	} else if (parm->info().type == HAPI_PARMTYPE_MULTIPARMLIST) {
 		Label* label = static_cast<Label*>(myWidget->getContainer()->getChildByIndex(0));
 		if (StringUtils::endsWith(myWidget->getName(), "_add")) {
-			label->setText(parm->label() + " " + ostr("%1%", %(parm->info().instanceCount + 1)));
-			parm->insertMultiparmInstance(
-				(parm->info().instanceStartOffset ? 1 : 0 ) + 
-				parm->info().instanceCount
-			);
+			ofmsg ("ADD button clicked for %1%", %parm->label());
+		// 	label->setText(parm->label() + " " + ostr("%1%", %(parm->info().instanceCount + 1)));
+		// 	parm->insertMultiparmInstance(
+		// 		(parm->info().instanceStartOffset ? 1 : 0 ) + 
+		// 		parm->info().instanceCount
+		// 	);
 			
 		} else if (StringUtils::endsWith(myWidget->getName(), "_rem")) {
-			if (parm->info().instanceCount == 1) {
-				myWidget->setEnabled(false);
-			}
-			label->setText(parm->label() + " " + ostr("%1%", %(parm->info().instanceCount - 1)));
-			parm->removeMultiparmInstance(
-				(parm->info().instanceStartOffset ? 0 : -1 ) + 
-				parm->info().instanceCount
-			);
-			Container* parentCont = multiParmConts[parm->name()];
-			ofmsg("parent container: %1%", %parentCont->getName());
-			for (int i = 0; i < parentCont->getNumChildren(); ++i) {
-				ofmsg("container: %1% refCount: %2%", 
-					  %parentCont->getChildByIndex(i)->getName()
-					  %parentCont->getChildByIndex(i)->refCount()
-				);
-			}
+			ofmsg ("REM button clicked for %1%", %parm->label());
+// 			if (parm->info().instanceCount == 1) {
+// 				myWidget->setEnabled(false);
+// 			}
+// 			label->setText(parm->label() + " " + ostr("%1%", %(parm->info().instanceCount - 1)));
+// 			parm->removeMultiparmInstance(
+// 				(parm->info().instanceStartOffset ? 0 : -1 ) + 
+// 				parm->info().instanceCount
+// 			);
+// 			Container* parentCont = multiParmConts[parm->name()];
+// 			ofmsg("parent container: %1%", %parentCont->getName());
+// 			for (int i = 0; i < parentCont->getNumChildren(); ++i) {
+// 				ofmsg("container: %1% refCount: %2%", 
+// 					  %parentCont->getChildByIndex(i)->getName()
+// 					  %parentCont->getChildByIndex(i)->refCount()
+// 				);
+// 			}
 			
-			Widget* removeMe = parentCont->getChildByIndex(parentCont->getNumChildren() - 1);
+// 			Widget* removeMe = parentCont->getChildByIndex(parentCont->getNumChildren() - 1);
 			
-			// BUG with removing containers that container child containers
-			// need to recursively look through everything to remove them
-			ofmsg("removing container: %1%, refCount: %2%", 
-				  %removeMe->getName()
-				  %removeMe->refCount()
-			);
-//  			removeMe->setVisible(false);
-// 			removeMe->setEnabled(false);
-// 			UiModule::instance()->getUi()->addChild(removeMe);
-// 			parentCont->update();
-			ofmsg("removed container from %1%", 
-				  %parentCont->getName()
-			);
-			for (int i = 0; i < parentCont->getNumChildren(); ++i) {
-				ofmsg("container: %1%", %parentCont->getChildByIndex(i)->getName());
-			}
+// 			// BUG with removing containers that container child containers
+// 			// need to recursively look through everything to remove them
+// 			ofmsg("removing container: %1%, refCount: %2%", 
+// 				  %removeMe->getName()
+// 				  %removeMe->refCount()
+// 			);
+// //  			removeMe->setVisible(false);
+// // 			removeMe->setEnabled(false);
+// // 			UiModule::instance()->getUi()->addChild(removeMe);
+// // 			parentCont->update();
+// 			ofmsg("removed container from %1%", 
+// 				  %parentCont->getName()
+// 			);
+// 			for (int i = 0; i < parentCont->getNumChildren(); ++i) {
+// 				ofmsg("container: %1%", %parentCont->getChildByIndex(i)->getName());
+// 			}
 			
-			// recursive function
+// 			// recursive function
+// // 			Container* removeMeCont = (Container *) removeMe;
+// // 			if (removeMeCont != NULL) {
+// // 				removeConts(removeMeCont);
+// // 			}
+// // 			parentCont->removeChild(removeMe);
+
+// 			// specific removals
 // 			Container* removeMeCont = (Container *) removeMe;
-// 			if (removeMeCont != NULL) {
-// 				removeConts(removeMeCont);
+// 			Widget* blah = removeMeCont->getChildByIndex(4);
+// 			Container* blahCont = (Container*) blah;
+// 			if (blahCont != NULL) {
+// 				blahCont->getContainer()->removeChild(blahCont);
+// 				UiModule::instance()->getUi()->addChild(blahCont);
+// 			}
+// 			blah = removeMeCont->getChildByIndex(1);
+// 			blahCont = (Container*) blah;
+// 			if (blahCont != NULL) {
+// 				Widget* childBlah = blahCont->getChildByIndex(1);
+// 				Container* childBlahCont = (Container *) childBlah;
+// 				if (childBlahCont != NULL) {
+// 					childBlahCont->getContainer()->removeChild(childBlahCont);
+// 					Widget* w3 = childBlahCont->getChildByIndex(2);
+// 					w3->setEnabled(false);
+// 					w3->setVisible(false);
+// 					childBlahCont->removeChild(w3);
+// 					UiModule::instance()->getUi()->addChild(w3);
+// 					w3 = childBlahCont->getChildByIndex(1);
+// 					w3->setEnabled(false);
+// 					w3->setVisible(false);
+// 					childBlahCont->removeChild(w3);
+// 					UiModule::instance()->getUi()->addChild(w3);
+// 					w3 = childBlahCont->getChildByIndex(0);
+// 					w3->setEnabled(false);
+// 					w3->setVisible(false);
+// 					childBlahCont->removeChild(w3);
+// 					UiModule::instance()->getUi()->addChild(w3);
+// 					// 					childBlahCont->removeChild(childBlahCont->getChildByIndex(1));
+// 					UiModule::instance()->getUi()->addChild(childBlahCont);
+// 				}
+// 				blahCont->getContainer()->removeChild(blahCont);
 // 			}
 // 			parentCont->removeChild(removeMe);
-
-			// specific removals
-			Container* removeMeCont = (Container *) removeMe;
-			Widget* blah = removeMeCont->getChildByIndex(4);
-			Container* blahCont = (Container*) blah;
-			if (blahCont != NULL) {
-				blahCont->getContainer()->removeChild(blahCont);
-				UiModule::instance()->getUi()->addChild(blahCont);
-			}
-			blah = removeMeCont->getChildByIndex(1);
-			blahCont = (Container*) blah;
-			if (blahCont != NULL) {
-				Widget* childBlah = blahCont->getChildByIndex(1);
-				Container* childBlahCont = (Container *) childBlah;
-				if (childBlahCont != NULL) {
-					childBlahCont->getContainer()->removeChild(childBlahCont);
-					Widget* w3 = childBlahCont->getChildByIndex(2);
-					w3->setEnabled(false);
-					w3->setVisible(false);
-					childBlahCont->removeChild(w3);
-					UiModule::instance()->getUi()->addChild(w3);
-					w3 = childBlahCont->getChildByIndex(1);
-					w3->setEnabled(false);
-					w3->setVisible(false);
-					childBlahCont->removeChild(w3);
-					UiModule::instance()->getUi()->addChild(w3);
-					w3 = childBlahCont->getChildByIndex(0);
-					w3->setEnabled(false);
-					w3->setVisible(false);
-					childBlahCont->removeChild(w3);
-					UiModule::instance()->getUi()->addChild(w3);
-					// 					childBlahCont->removeChild(childBlahCont->getChildByIndex(1));
-					UiModule::instance()->getUi()->addChild(childBlahCont);
-				}
-				blahCont->getContainer()->removeChild(blahCont);
-			}
-			parentCont->removeChild(removeMe);
-			
-			// 			if (removeMeCont != NULL) {
-// // 				for (int i = 0; i < removeMeCont->getNumChildren(); ++i) {
-// // 					Widget* blah = removeMeCont->getChildByIndex(i);
-// // 					removeMeCont->removeChild(blah);
-// // 				}
-// 				Widget* blah = removeMeCont->getChildByIndex(4);
-// 				Container *blahCont = (Container*) blah;
-// 				if (blahCont != NULL) {
-// // 					for (int i = 0; i < blahCont->getNumChildren(); ++i) {
-// // 						Widget* blahChild = blahCont->getChildByIndex(i);
-// // 						blahCont->removeChild(blahChild);
-// // 					}
-// 					blahCont->getContainer()->removeChild(blahCont);
-// 					UiModule::instance()->getUi()->addChild(blahCont);
-// 				}
-// 				removeMeCont->removeChild(blah);
-// 				blah = removeMeCont->getChildByIndex(1);
-// 				blahCont = (Container*) blah;
-// 				if (blahCont != NULL) {
-// 					// 					for (int i = 0; i < blahCont->getNumChildren(); ++i) {
-// 					// 						Widget* blahChild = blahCont->getChildByIndex(i);
-// 					// 						blahCont->removeChild(blahChild);
-// 					// 					}
-// 					blahCont->getContainer()->removeChild(blahCont);
-// 					UiModule::instance()->getUi()->addChild(blahCont);
-// 				}
-// 				removeMeCont->removeChild(blah);
-// 			}
-
-// 			delete removeMe;
-// 			removeMe = NULL;
 		} else if (StringUtils::endsWith(myWidget->getName(), "_clr")) {
+			ofmsg ("CLR button clicked for %1%", %parm->label());
 // 			label->setText(parm->label() + " 0");
 // 			int i = parm->info().instanceCount - 1;
 // 			while (i >= 0) {
@@ -488,6 +457,8 @@ void HoudiniEngine::handleEvent(const Event& evt)
 	}
 
 	evt.setProcessed();
+
+	omsg("processed HE event");
 
 	myAsset->cook();
 	wait_for_cook();
@@ -522,7 +493,7 @@ void HoudiniEngine::handleEvent(const Event& evt)
 	int index = atoi(mi->getUserTag().substr(z + 1).c_str());
 
 	if (myAsset == NULL) {
-		ofwarn("No instanced asset %1%", %asset_name);
+		ofwarn("No asset %1%", %asset_name);
 		return;
 	}
 

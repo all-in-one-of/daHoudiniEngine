@@ -25,8 +25,10 @@ namespace houdiniEngine {
 
         static HoudiniUiParm* create(hapi::Parm parm, Container* cont);
 
-        Container* getContainer() { return myContainer; };
-        void setContainer(Container* cont ) { myContainer = cont; };
+        Container* getContainer() { return baseContainer; };
+        void setContainer(Container* cont ) { baseContainer = cont; };
+        Container* getContents() { return newCont; };
+        void setContents(Container* cont ) { newCont = cont; };
 
         Label* getLabel() { return myLabel; };
         Label* getParmLabel(const int i) { return parmLabels[i]; };
@@ -36,11 +38,17 @@ namespace houdiniEngine {
 
         private:
 
-        Container* myContainer;
+        Container* baseContainer;
         Vector<Label*> parmLabels;
         Label* myLabel;
         // store a copy of the parm
         hapi::Parm myParm;
+
+        // for choice parms
+        Container* newCont;
+        Container* choiceCont;
+        Container* multiParmButtonCont;
+
 
         static Dictionary<int,HoudiniUiParm* > myUiParms;
 

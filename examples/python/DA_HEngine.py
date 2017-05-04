@@ -16,6 +16,11 @@ baseDir = os.path.realpath('../../otl') + "/"
 
 hg = None
 
+ui = UiModule.createAndInitialize()
+wf = ui.getWidgetFactory()
+uiroot = ui.getUi()
+
+
 examples = [
 		# simple test of an asset param
         ("switch_asset.otl", "Object/switch_asset", "switch_asset1"),
@@ -30,6 +35,8 @@ examples = [
         ("texture.otl", "Object/texture", "texture1"),
         # has custom ui elements
         ("Additional/WheelAsset.otl", "Object/WheelAsset", "WheelAsset1"),
+        # Points
+        ("points.otl", "Object/points1", "points11"),
         # Text
         ("text.otl", "Object/text", "text1"),
         # curves
@@ -57,9 +64,13 @@ def createHGId(otl, assetIndex, geoName):
 
 #asset = createHG(*examples[3]) # multi-geo parts
 
-#asset = createHG("axisA1.otl", "Object/axisA1", "axisA11")
-#asset.setPosition(0, 2, -5)
-#hg = he.getHG("axisA11")
+#asset = createHG("empty.otl", "Object/empty", "empty1") # empty example
+#asset.setPosition(-1, 2, -5)
+#hg = he.getHG("empty1")
+
+#asset = createHG(*examples[-5]) # points example
+#asset.setPosition(-1, 2, -5)
+#hg = he.getHG("points1")
 
 #asset = createHG(*examples[-4]) # text example
 #asset.setPosition(-1, 2, -5)
@@ -73,9 +84,9 @@ asset = createHG(*examples[-2]) # cluster example
 asset.setPosition(-1, 2, -5)
 hg = he.getHG("cluster1")
 
-##asset = createHG(*examples[5]) # spaceship
-##asset.setPosition(0, 2, -5)
-##hg = he.getHG("spaceship1")
+#asset = createHG(*examples[5]) # spaceship
+#asset.setPosition(0, 2, -5)
+#hg = he.getHG("spaceship1")
 
 #asset = createHG(*examples[8]) # wheel (not totally working)
 
@@ -104,3 +115,6 @@ def onEvent():
 		print e
 
 print "loaded everything, running.."
+# he.loadParameters("cluster1")
+# he.setStringParameterValue("cluster1", 37, 0, "/da/proj/dpiWater/data/clustering.csv")
+
