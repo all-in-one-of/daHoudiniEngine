@@ -42,6 +42,7 @@ daHEngine
 #include <daHoudiniEngine/daHEngine.h>
 #include <daHoudiniEngine/houdiniGeometry.h>
 #include <daHoudiniEngine/houdiniParameter.h>
+#include <daHoudiniEngine/UI/houdiniUiParm.h>
 
 using namespace houdiniEngine;
 
@@ -89,7 +90,7 @@ void HoudiniEngine::createParm(const String& asset_name, Container* cont, hapi::
 	label->setText(parm->label());
 	label->setHorizontalAlign(Label::AlignRight);
 
-	assetParamConts[asset_name].push_back(cont);
+// 	assetParamConts[asset_name].push_back(cont);
 
 	for (int i = 0; i < parm->info().size; ++i) {
 		if (parm->info().type == HAPI_PARMTYPE_INT) {
@@ -132,13 +133,13 @@ void HoudiniEngine::createParm(const String& asset_name, Container* cont, hapi::
 						);
 						button->setUIEventHandler(this);
 						button->setUserData(label);
-						widgetIdToParmId[button->getId()] = parm->info().id;
+						widgetIdToParmName[button->getId()] = parm->name();
 					}
 				} else {// display as a text box which can be filled in by preset selections
 					// same as if there was no parmChoice count
 					// TODO: add the menu as well..
 					label->setText(parm->label() + " " + ostr("%1%", %val));
-					assetParamConts[asset_name].push_back(cont);
+// 					assetParamConts[asset_name].push_back(cont);
 					Slider* slider = Slider::create(cont);
 					if (parm->info().hasUIMin && parm->info().hasUIMax) {
 						ofmsg("min %1% max %2%", %parm->info().UIMin %parm->info().UIMax);
@@ -155,11 +156,11 @@ void HoudiniEngine::createParm(const String& asset_name, Container* cont, hapi::
 					// TODO refactor setUserData to refer to parms and label?
 					slider->setUserData(label); // reference to the label for this widget item
 					
-					widgetIdToParmId[slider->getId()] = parm->info().id;
+					widgetIdToParmName[slider->getId()] = parm->name();
 				}
 			} else {
 				label->setText(parm->label() + " " + ostr("%1%", %val));
-				assetParamConts[asset_name].push_back(cont);
+// 				assetParamConts[asset_name].push_back(cont);
 				Slider* slider = Slider::create(cont);
 				if (parm->info().hasUIMin && parm->info().hasUIMax) {
 					ofmsg("min %1% max %2%", %parm->info().UIMin %parm->info().UIMax);
@@ -176,11 +177,11 @@ void HoudiniEngine::createParm(const String& asset_name, Container* cont, hapi::
 				// TODO refactor setUserData to refer to parms and label?
 				slider->setUserData(label); // reference to the label for this widget item
 
-				widgetIdToParmId[slider->getId()] = parm->info().id;
+				widgetIdToParmName[slider->getId()] = parm->name();
 			}
 		} else if (parm->info().type == HAPI_PARMTYPE_TOGGLE) {
 			int val = parm->getIntValue(i);
-			assetParamConts[asset_name].push_back(cont);
+// 			assetParamConts[asset_name].push_back(cont);
 			Button* button = Button::create(cont);
 			button->setText("X");
 			button->setCheckable(true);
@@ -188,22 +189,22 @@ void HoudiniEngine::createParm(const String& asset_name, Container* cont, hapi::
 			button->setUIEventHandler(this);
 			button->setUserData(label);
 
-			widgetIdToParmId[button->getId()] = parm->info().id;
+			widgetIdToParmName[button->getId()] = parm->name();
 		} else if (parm->info().type == HAPI_PARMTYPE_BUTTON) {
 			int val = parm->getIntValue(i);
-			assetParamConts[asset_name].push_back(cont);
+// 			assetParamConts[asset_name].push_back(cont);
 			Button* button = Button::create(cont);
 			button->setText("X");
 			button->setChecked(val);
 			button->setUIEventHandler(this);
 			button->setUserData(label);
 
-			widgetIdToParmId[button->getId()] = parm->info().id;
+			widgetIdToParmName[button->getId()] = parm->name();
 		} else if (parm->info().type == HAPI_PARMTYPE_FLOAT ||
 				   parm->info().type == HAPI_PARMTYPE_COLOR) {
 			float val = parm->getFloatValue(i);
 			label->setText(parm->label() + " " + ostr("%1%", %val));
-			assetParamConts[asset_name].push_back(cont);
+// 			assetParamConts[asset_name].push_back(cont);
 			Slider* slider = Slider::create(cont);
 			if (parm->info().hasUIMin && parm->info().hasUIMax) {
 				ofmsg("min %1% max %2%", %parm->info().UIMin %parm->info().UIMax);
@@ -219,7 +220,7 @@ void HoudiniEngine::createParm(const String& asset_name, Container* cont, hapi::
 			slider->setUIEventHandler(this);
 			slider->setUserData(label);
 
-			widgetIdToParmId[slider->getId()] = parm->info().id;
+			widgetIdToParmName[slider->getId()] = parm->name();
 		} else if (parm->info().type == HAPI_PARMTYPE_STRING ||
 				   parm->info().type == HAPI_PARMTYPE_PATH_FILE ||
 				   parm->info().type == HAPI_PARMTYPE_PATH_FILE_GEO	||
@@ -253,7 +254,7 @@ void HoudiniEngine::createParm(const String& asset_name, Container* cont, hapi::
 				if (parm->info().choiceListType == HAPI_CHOICELISTTYPE_NONE ||
 					parm->info().choiceListType == HAPI_CHOICELISTTYPE_NORMAL ||
 					parm->info().choiceListType == HAPI_CHOICELISTTYPE_MINI) {
-					assetParamConts[asset_name].push_back(cont);
+// 					assetParamConts[asset_name].push_back(cont);
 					Container* choiceCont = Container::create(Container::LayoutVertical, cont);
 					for (int j = 0; j < parm->choices.size(); ++j) {
 						Button* button = Button::create(choiceCont);
@@ -266,29 +267,29 @@ void HoudiniEngine::createParm(const String& asset_name, Container* cont, hapi::
 						);
 						button->setUIEventHandler(this);
 						button->setUserData(label);
-						widgetIdToParmId[button->getId()] = parm->info().id;
+						widgetIdToParmName[button->getId()] = parm->name();
 					}
 				} else {// display as a text box which can be filled in by preset selections
 					// same as if there was no parmChoice count
 					// TODO: add the menu as well..
-					assetParamConts[asset_name].push_back(cont);
+// 					assetParamConts[asset_name].push_back(cont);
 					TextBox* box = TextBox::create(cont);
 					box->setFont("fonts/segoeuimod.ttf 14");
 					box->setText(val);
 					box->setUIEventHandler(this);
 					box->setUserData(label);
 					
-					widgetIdToParmId[box->getId()] = parm->info().id;
+					widgetIdToParmName[box->getId()] = parm->name();
 				}
 			} else {
-				assetParamConts[asset_name].push_back(cont);
+// 				assetParamConts[asset_name].push_back(cont);
 				TextBox* box = TextBox::create(cont);
 				box->setFont("fonts/segoeuimod.ttf 14");
 				box->setText(val);
 				box->setUIEventHandler(this);
 				box->setUserData(label);
 
-				widgetIdToParmId[box->getId()] = parm->info().id;
+				widgetIdToParmName[box->getId()] = parm->name();
 			}
 		} else if (parm->info().type == HAPI_PARMTYPE_SEPARATOR) {
 			label->setText("----------");
@@ -300,42 +301,46 @@ void HoudiniEngine::createParm(const String& asset_name, Container* cont, hapi::
 			);
 			label->setText(parm->label() + " " + ostr("%1%", %parm->info().instanceCount));
 			// TODO: Add/Remove buttons, number of items, clear button?
-			multiParmConts[parm->info().id] = cont;
+			multiParmConts[parm->name()] = cont;
 			// add another container to contain label and buttons
 			Container* multiParmButtonCont = Container::create(Container::LayoutVertical, cont);
+			ofmsg("Multiparm cont %1%: id-%2%",
+				  %multiParmButtonCont->getName()
+				  %multiParmButtonCont->getId()
+			);
 			cont->removeChild(label);
 			multiParmButtonCont->addChild(label);
-			cont->addChild(multiParmButtonCont);
 			Button* addButton = Button::create(multiParmButtonCont);
-			addButton->setName(ostr("%1%_add", %parm->info().id));
+			addButton->setName(ostr("%1%_add", %parm->name()));
 			addButton->setText("+");
 			addButton->setUIEventHandler(this);
 			Button* remButton = Button::create(multiParmButtonCont);
-			remButton->setName(ostr("%1%_rem", %parm->info().id));
+			remButton->setName(ostr("%1%_rem", %parm->name()));
 			remButton->setText("-");
 			remButton->setUIEventHandler(this);
 			Button* clrButton = Button::create(multiParmButtonCont);
-			clrButton->setName(ostr("%1%_clr", %parm->info().id));
+			clrButton->setName(ostr("%1%_clr", %parm->name()));
 			clrButton->setText("Clear");
 			clrButton->setUIEventHandler(this);
 
 		}
 
-		assetParamConts[asset_name].push_back(cont);
+// 		assetParamConts[asset_name].push_back(cont);
 	}
 }
 
 // only run on master
 // identical-looking menus get created on slaves
 // a base assetCont container is created, and this is then pushed onto assetConts
-void HoudiniEngine::createMenu(const String& asset_name)
+void HoudiniEngine::createMenu(const int asset_id)
 {
 	// load only the params in the DA Folder
 	// first find the index of the folder, then iterate through the list of params
 	// from there onwards
 	const char* daFolderName = "daFolder_0";
 
-	hapi::Asset* myAsset = instancedHEAssetsByName[asset_name];
+	hapi::Asset* myAsset = instancedHEAssets[asset_id];
+	std::string asset_name = myAsset->name();
 
 	if (myAsset == NULL) {
 		ofwarn("No asset of name %1%", %asset_name);
@@ -350,7 +355,10 @@ void HoudiniEngine::createMenu(const String& asset_name)
 	assetButton->setUIEventHandler(this);
 
 	// all params go on an assetCont container
-	Container* assetCont = Container::create(Container::LayoutVertical, stagingCont);
+	// layout should be justified somehow
+	Container* assetCont = Container::create(Container::LayoutHorizontal, stagingCont);
+	assetCont->setHorizontalAlign(Container::AlignCenter);
+	assetCont->setVerticalAlign(Container::AlignTop);
 	assetCont->setFillColor(Color("#806040"));
 	assetCont->setPosition(Vector2f(50, 50));
 	Label* assetLabel = Label::create(assetCont);
@@ -378,8 +386,6 @@ void HoudiniEngine::createMenu(const String& asset_name)
 		}
 	}
 
-	ui::Menu* menu = houdiniMenu;
-
 // 	int i = daFolderIndex; // skipping this for now
 	int i = 0;
 
@@ -393,111 +399,29 @@ void HoudiniEngine::createMenu(const String& asset_name)
 	// 3 - When a HAPI_PARMTYPE_FOLDERLIST is encountered, we should dive into its
 	// 	contents immediately, while everything else is traversed in a breadth first manner.
 
+	Container* target = assetCont;
+
+	// NOTE: folder types have parentId of -1 as well.. mistake?
 	while (i < parms.size()) {
 		hapi::Parm* parm = &parms[i];
-		ofmsg("PARM %1%: %2% %3% %4% %5%", %parm->label()
-		                                   %parm->info().id
-		                                   %parm->info().type
-		                                   %parm->info().size
-		                                   %parm->info().parentId
-		);
-		if (parm->info().parentId >= 0) {
-			ofmsg("  Parent PARM %1%: %2% ", %(&parms[parm->info().parentId])->label()
-			                                 %(&parms[parm->info().parentId])->info().id
-			);
+		if (parm->info().parentId == -1) {
+			target = assetCont;
+		} else {
+			for (int j = 0; j < uiParms[asset_id].size(); ++j) {
+				if (uiParms[asset_id][j]->getParm().info().id == parm->info().parentId) {
+					target = uiParms[asset_id][j]->getContainer();
+					break;
+				}
+			}
 		}
 
-		if (parm->info().type == HAPI_PARMTYPE_FOLDERLIST) { // only contains folders
-			// add at asset container level
-			Container* myFolderListCont = Container::create(Container::LayoutVertical, assetCont);
-			Container* myChoiceCont = Container::create(Container::LayoutHorizontal, myFolderListCont);
-			Container* myFolderListContents = Container::create(Container::LayoutVertical, myFolderListCont);
-			myFolderListCont->setVerticalAlign(Container::AlignTop);
-			// move container to be child of relevant parent parm
-			if (parm->info().parentId >= 0) {
-				assetCont->removeChild(myFolderListCont);
-				baseConts[parm->info().parentId]->addChild(myFolderListCont);
-			}
-			Label* label = Label::create(myFolderListCont);
-			label->setName(ostr("%1%_label", %parm->name()));
-			label->setText(parm->label());
-			baseConts[parm->info().id] = myFolderListCont;
-			folderLists[parm->info().id] = myFolderListCont;
-			folderListChoices[parm->info().id] = myChoiceCont;
-			myFolderListCont->setFillColor(Color("#404040"));
-			myFolderListCont->setFillEnabled(true);
+		HoudiniUiParm* uip;
 
-			i++;
+		uip = HoudiniUiParm::create(*parm, target);
 
-			for (int j = 0; j < parm->info().size; ++j) {
-				hapi::Parm* parm = &parms[i + j];
-				// this is redundant, should always be folder type
-				if (parm->info().type == HAPI_PARMTYPE_FOLDER) { // can contain folderLists and parms
-					// this will get swapped in/out based on linked folderButton
-					Container* myFolderCont = Container::create(Container::LayoutVertical, stagingCont);
-					myFolderCont->setName(ostr("C_%1%", %parm->name()));
-					baseConts[parm->info().id] = myFolderCont;
-
-					Button* button = Button::create(myChoiceCont);
-					button->setName(ostr("FolderButton %1%", %parm->name()));
-					button->setText(parm->label());
-					button->setRadio(true);
-					button->setCheckable(true);
-					button->setUIEventHandler(this);
-					button->setUserData(myFolderCont);
-
-					myFolderCont->setFillColor(Color("#808080"));
-					myFolderCont->setFillEnabled(true);
-
-					// use widget id??
-					folderListContents[button->getId()] = myFolderListContents;
-				}
-			}
-
-			i += parm->info().size;
-
-		} else { // its a parm
-			Container* myCont = Container::create(Container::LayoutHorizontal, assetCont);
-			if (parm->info().isChildOfMultiParm) {
-				hapi::Parm* parentParm = &parms[parm->info().parentId];
-				ofmsg("i am child %1% of a multiParm %2%", 
-					  %parm->info().instanceNum
-					  %parentParm->name()
-				);
-				// move container to be child of relevant parent parm
-				assetCont->removeChild(myCont);
-				String childName = ostr("%1%_%2%", 
-					%multiParmConts[parentParm->info().id]->getName()
-					%parm->info().instanceNum
-				);
-				
-				Widget* myParmContWidget = multiParmConts[parentParm->info().id]->getChildByName(childName);
-				Container* myParmCont = NULL;
-
-				if (myParmContWidget == NULL) {
-					myParmCont = Container::create(
-						Container::LayoutVertical, 
-						multiParmConts[parentParm->info().id]
-					);
-					myParmCont->setName(childName);
-					myParmCont->setFillColor(Color("#40B0B0"));
-					myParmCont->setFillEnabled(true);
-				} else {
-					myParmCont = static_cast<Container*>(myParmContWidget);
-				}
-				myParmCont->addChild(myCont);
-			} else {
-				// move container to be child of relevant parent parm
-				if (parm->info().parentId >= 0) {
-					assetCont->removeChild(myCont);
-					baseConts[parm->info().parentId]->addChild(myCont);
-				}
-			}
-			myCont->setFillColor(Color("#B0B040"));
-			myCont->setFillEnabled(true);
-
-			createParm(asset_name, myCont, parm);
-		}
+		// this will not work on a HoudiniUiParm that isn't part of a folder?
+		uip->getContainer()->setUIEventHandler(uip);
+		uiParms[asset_id].push_back(uip);
 
 		i++;
 	}
@@ -505,7 +429,9 @@ void HoudiniEngine::createMenu(const String& asset_name)
 
 HoudiniParameterList* HoudiniEngine::loadParameters(const String& asset_name)
 {
-    hapi::Asset* asset = instancedHEAssetsByName[asset_name];
+
+	int asset_id = assetNameToIds[asset_name];
+    hapi::Asset* asset = instancedHEAssets[asset_id];
 
     if (asset == NULL) {
         ofwarn("No asset of name %1%", %asset_name);
@@ -547,7 +473,8 @@ HoudiniParameterList* HoudiniEngine::loadParameters(const String& asset_name)
 
 int HoudiniEngine::getIntegerParameterValue(const String& asset_name, int param_id, int sub_index)
 {
-    hapi::Asset* asset = instancedHEAssetsByName[asset_name];
+	int asset_id = assetNameToIds[asset_name];
+    hapi::Asset* asset = instancedHEAssets[asset_id];
 
     if (asset == NULL) {
         ofwarn("No asset of name %1%", %asset_name);
@@ -567,7 +494,8 @@ int HoudiniEngine::getIntegerParameterValue(const String& asset_name, int param_
 
 void HoudiniEngine::setIntegerParameterValue(const String& asset_name, int param_id, int sub_index, int value) 
 {
-    hapi::Asset* asset = instancedHEAssetsByName[asset_name];
+	int asset_id = assetNameToIds[asset_name];
+    hapi::Asset* asset = instancedHEAssets[asset_id];
 
     if (asset == NULL) {
         ofwarn("No asset of name %1%", %asset_name);
@@ -589,7 +517,8 @@ void HoudiniEngine::setIntegerParameterValue(const String& asset_name, int param
 
 float HoudiniEngine::getFloatParameterValue(const String& asset_name, int param_id, int sub_index)
 {
-    hapi::Asset* asset = instancedHEAssetsByName[asset_name];
+	int asset_id = assetNameToIds[asset_name];
+    hapi::Asset* asset = instancedHEAssets[asset_id];
 
     if (asset == NULL) {
         ofwarn("No asset of name %1%", %asset_name);
@@ -609,7 +538,8 @@ float HoudiniEngine::getFloatParameterValue(const String& asset_name, int param_
 
 void HoudiniEngine::setFloatParameterValue(const String& asset_name, int param_id, int sub_index, float value) 
 {
-    hapi::Asset* asset = instancedHEAssetsByName[asset_name];
+	int asset_id = assetNameToIds[asset_name];
+    hapi::Asset* asset = instancedHEAssets[asset_id];
 
     if (asset == NULL) {
         ofwarn("No asset of name %1%", %asset_name);
@@ -631,7 +561,8 @@ void HoudiniEngine::setFloatParameterValue(const String& asset_name, int param_i
 
 String HoudiniEngine::getStringParameterValue(const String& asset_name, int param_id, int sub_index)
 {
-    hapi::Asset* asset = instancedHEAssetsByName[asset_name];
+	int asset_id = assetNameToIds[asset_name];
+    hapi::Asset* asset = instancedHEAssets[asset_id];
 
     if (asset == NULL) {
         ofwarn("No asset of name %1%", %asset_name);
@@ -651,7 +582,8 @@ String HoudiniEngine::getStringParameterValue(const String& asset_name, int para
 
 void HoudiniEngine::setStringParameterValue(const String& asset_name, int param_id, int sub_index, const String& value) 
 {
-    hapi::Asset* asset = instancedHEAssetsByName[asset_name];
+	int asset_id = assetNameToIds[asset_name];
+    hapi::Asset* asset = instancedHEAssets[asset_id];
 
     if (asset == NULL) {
         ofwarn("No asset of name %1%", %asset_name);

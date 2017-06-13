@@ -113,7 +113,8 @@ namespace houdiniEngine {
 #endif
 	//forward references
 	class HE_API HoudiniGeometry;
-    class HE_API HoudiniParameterList;
+	class HE_API HoudiniParameterList;
+	class HE_API HoudiniUiParm;
 
 	class BillboardCallback;
 
@@ -125,6 +126,8 @@ namespace houdiniEngine {
 		~HoudiniEngine();
 
 #if DA_ENABLE_HENGINE > 0
+	        static HoudiniEngine* instance() { return myInstance; }
+
 		//! Convenience method to create the module, register and initialize it.
 		static HoudiniEngine* createAndInitialize();
 
@@ -157,11 +160,13 @@ namespace houdiniEngine {
 		int instantiateAssetById(int asset_id);
 		StaticObject* instantiateGeometry(const String& asset);
 
+		Ref< RefAsset > getAsset(int asset_id) { return instancedHEAssets[asset_id]; }
+
 		HoudiniGeometry* getHG(const String& asset) { return myHoudiniGeometrys[asset]; };
 
 		Menu* getMenu(const String& asset) { return NULL; } // return this asset's parameter menu
 
-		void createMenu(const String& asset_name);
+		void createMenu(const int asset_id);
 		void initializeParameters(const String& asset_name);
 
         HoudiniParameterList* loadParameters(const String& asset_name);
@@ -196,6 +201,9 @@ namespace houdiniEngine {
 		void createMenuItem(const String& asset_name, ui::Menu* menu, hapi::Parm* parm);
 		void createParm(const String& asset_name, Container* cont, hapi::Parm* parm);
 
+		//helper function
+		void removeConts(Container* cont);
+		
 		SceneManager* mySceneManager;
 
 		// Scene editor. This will be used to manipulate the object.
@@ -215,7 +223,7 @@ namespace houdiniEngine {
 		// I change the verts, faces, normals, etc in this and StaticObjects
 		// in the scene get updated accordingly
 		typedef Dictionary<String, Ref<HoudiniGeometry> > HGDictionary;
-		typedef Dictionary<String, Ref<RefAsset> > Mapping;
+		typedef Dictionary<int, Ref<RefAsset> > Mapping;
 
 		// geometries
 		HGDictionary myHoudiniGeometrys;
@@ -224,8 +232,7 @@ namespace houdiniEngine {
 		vector <Ref<PixelData> > pds;
 
 		// this is only maintained on the master
-		Mapping instancedHEAssetsByName;
-		vector<Ref <RefAsset> > instancedHEAssetsById;
+		Mapping instancedHEAssets;
 
 		//parameters
 		// make it look like this:
@@ -258,14 +265,25 @@ namespace houdiniEngine {
 		ui::Container* stagingCont; // the container to show the contents of the selected folder
 
 		Vector<Container*> assetConts; // keep refs to parameters for this asset
-		Dictionary<int, Container* > baseConts; // keep refs to submenus
-		Dictionary<int, Container* > folderLists; // keep ref to container for Folder selection
-		Dictionary<int, Container* > folderListChoices; // buttons to refer to folder lists above
+		// Parm Ids to containers
+		Dictionary<String, Container* > baseConts; // keep refs to submenus
+		// Parm Ids to containers
+		Dictionary<String, Container* > folderLists; // keep ref to container for Folder selection
+		// Parm Ids to containers
+		Dictionary<String, Container* > folderListChoices; // buttons to refer to folder lists above
+		// Widget Ids to containers
 		Dictionary<int, Container* > folderListContents; // keep refs to folderList container to display child parms
-		Dictionary<int, Container* > multiParmConts; // keep refs for multiParms
+		// Parm names to Containers
+		Dictionary<String, Container* > multiParmConts; // keep refs for multiParms
 
 		// the link between widget and parmId
-		Dictionary < int, int > widgetIdToParmId; // UI Widget -> HAPI_Parm id
+		Dictionary < int, String > widgetIdToParmName; // UI Widget -> HAPI_Parm (asset.parmMap())
+
+		// houdiniUiParms by asset_ID
+		Dictionary < int, Vector<HoudiniUiParm*> > uiParms;
+
+		// asset name to id
+		Dictionary < String, int > assetNameToIds;
 
 		Menus assetParams;
 		ParmConts assetParamConts;
@@ -281,6 +299,12 @@ namespace houdiniEngine {
 		int myAssetCount;
 		int currentAsset;
 		String currentAssetName;
+		
+		// build a list of widgets to remove
+		Vector<Widget* > removeTheseWidgets;
+		
+		static HoudiniEngine* myInstance;
+
 #endif
 	};
 };

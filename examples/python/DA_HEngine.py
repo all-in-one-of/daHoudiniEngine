@@ -30,8 +30,12 @@ examples = [
         ("texture.otl", "Object/texture", "texture1"),
         # has custom ui elements
         ("Additional/WheelAsset.otl", "Object/WheelAsset", "WheelAsset1"),
+        # Text
+        ("text.otl", "Object/text", "text1"),
         # curves
         ("curve_object.otl", "Object/curve_object", "curve_object1"),
+        # cluster otl example
+        ("cluster.otl", "Object/cluster", "cluster1"),
         # multiple assets in library
         ("axisA1.otl", "Object/axis3D", "axis3D1")
 ]
@@ -57,9 +61,17 @@ def createHGId(otl, assetIndex, geoName):
 #asset.setPosition(0, 2, -5)
 #hg = he.getHG("axisA11")
 
-asset = createHG(*examples[-1]) # 3d graph example
+#asset = createHG(*examples[-4]) # text example
+#asset.setPosition(-1, 2, -5)
+#hg = he.getHG("text1")
+
+#asset = createHG(*examples[-1]) # 3d graph example
+#asset.setPosition(-1, 2, -5)
+#hg = he.getHG("axis3D1")
+
+asset = createHG(*examples[-2]) # cluster example
 asset.setPosition(-1, 2, -5)
-hg = he.getHG("axis3D1")
+hg = he.getHG("cluster1")
 
 ##asset = createHG(*examples[5]) # spaceship
 ##asset.setPosition(0, 2, -5)
