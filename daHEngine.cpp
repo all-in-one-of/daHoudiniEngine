@@ -95,7 +95,17 @@ BOOST_PYTHON_MODULE(daHEngine)
 
 	// HoudiniGeometry
 	PYAPI_REF_BASE_CLASS(HoudiniGeometry)
-		PYAPI_METHOD(HoudiniGeometry, getObjectCount)
+        PYAPI_STATIC_REF_GETTER(HoudiniGeometry, create)
+        PYAPI_METHOD(HoudiniGeometry, addVertex)
+        PYAPI_METHOD(HoudiniGeometry, setVertex)
+        PYAPI_GETTER(HoudiniGeometry, getVertex)
+        PYAPI_METHOD(HoudiniGeometry, addColor)
+        PYAPI_METHOD(HoudiniGeometry, setColor)
+        PYAPI_GETTER(HoudiniGeometry, getColor)
+        PYAPI_METHOD(HoudiniGeometry, clear)
+        PYAPI_METHOD(HoudiniGeometry, addPrimitive)
+        PYAPI_GETTER(HoudiniGeometry, getName)
+        PYAPI_METHOD(HoudiniGeometry, getObjectCount)
 		PYAPI_METHOD(HoudiniGeometry, getGeodeCount)
 		PYAPI_METHOD(HoudiniGeometry, getDrawableCount);
 
