@@ -234,23 +234,23 @@ void HoudiniGeometry::addPrimitiveOsg(osg::PrimitiveSet::Mode type, int startInd
 void HoudiniGeometry::clear()
 {
 	for (int obj = 0; obj < hobjs.size(); ++obj) {
-		clear(obj);
+		clearObj(obj);
 	}
 }
 
-void HoudiniGeometry::clear(const int objIndex)
+void HoudiniGeometry::clearObj(const int objIndex)
 {
 	for (int g = 0; g < hobjs[objIndex].hgeoms.size(); ++g) {
-		clear(g, objIndex);
+		clearGeode(g, objIndex);
 	}
 }
-void HoudiniGeometry::clear(const int geodeIndex, const int objIndex)
+void HoudiniGeometry::clearGeode(const int geodeIndex, const int objIndex)
 {
 	for (int i = 0; i < hobjs[objIndex].hgeoms[geodeIndex].hparts.size(); ++i) {
-		clear(i, geodeIndex, objIndex);
+		clearDrawable(i, geodeIndex, objIndex);
 	}
 }
-void HoudiniGeometry::clear(const int drawableIndex, const int geodeIndex, const int objIndex)
+void HoudiniGeometry::clearDrawable(const int drawableIndex, const int geodeIndex, const int objIndex)
 {
 	HPart* hpart = &hobjs[objIndex].hgeoms[geodeIndex].hparts[drawableIndex];
 	oassert(hpart != NULL);

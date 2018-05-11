@@ -309,7 +309,7 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 					hg->addDrawable(drawableCount - hg->getDrawableCount(g, obj), g, obj);
 				}
 
-				hg->clear(g, obj);
+				hg->clearGeode(g, obj);
 
 				for (int d = 0; d < drawableCount; ++d) {
 

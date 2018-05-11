@@ -122,7 +122,7 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 						%(geos[geo_index].info().isTemplated == 1 ? "Template" : "-")
 					);
 
-					hg->clear(geo_index, object_index);
+					hg->clearGeode(geo_index, object_index);
 					if (hg->getGeoChanged(geo_index, object_index)) {
 					    for (int part_index=0; part_index < int(parts.size()); ++part_index)
 						{
@@ -282,6 +282,9 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 		if (point_attrib_names[attrib_index] == "Alpha") {
 			has_point_alphas = true;
 		    process_attrib(part, HAPI_ATTROWNER_POINT, "Alpha", alphas);
+			for (int i = 0; i < alphas.size(); ++i) {
+				ofmsg("alpha %1%: %2% ", %i %alphas[i]);
+			}
 		}
 		if (point_attrib_names[attrib_index] == "uv") {
 			has_point_uvs = true;
@@ -805,11 +808,12 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 					hg->addNormal(normals[myIndex], partIndex, geoIndex, objIndex);
 				}
 				if(has_point_colors) {
+					ofmsg("alpha for %1%: %2% ", %myIndex %(has_point_alphas ? alphas[ myIndex ]: 1.0));
 					hg->addColor(Color(
 						colors[vertex_list[ myIndex ]][0],
 						colors[vertex_list[ myIndex ]][1],
 						colors[vertex_list[ myIndex ]][2],
-						has_point_alphas ? alphas[ myIndex ]: 1.0
+						has_point_alphas ? alphas[vertex_list[ myIndex ]]: 1.0
 					), partIndex, geoIndex, objIndex);
 				} else if (has_primitive_colors) {
 					hg->addColor(Color(
