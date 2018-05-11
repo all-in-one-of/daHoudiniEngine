@@ -49,6 +49,7 @@ namespace houdiniEngine {
         Container* choiceCont;
         Container* multiParmButtonCont;
 
+        Slider* mySlider;
 
         static Dictionary<int,HoudiniUiParm* > myUiParms;
 

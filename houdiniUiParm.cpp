@@ -59,7 +59,8 @@ HoudiniUiParm::HoudiniUiParm(hapi::Parm parm, Container* cont):
 	myParm(parm),
 	newCont(NULL),
 	choiceCont(NULL),
-	multiParmButtonCont(NULL)
+	multiParmButtonCont(NULL),
+	mySlider(NULL)
 {
 	// ofmsg("Constructing uiParm %1%", %myParm.info().id);
 	Container::Layout 			layout = Container::LayoutHorizontal;
@@ -123,6 +124,17 @@ HoudiniUiParm::HoudiniUiParm(hapi::Parm parm, Container* cont):
 		case HAPI_PARMTYPE_FOLDER:
 			myLabel->setText(ostr("F:'%1%'/%2%", %myParm.label() %myParm.info().size));
 			baseContainer->setFillColor(Color("#606060"));
+			// start to add windows for containers to reduce screen space
+			if (false) {
+			mySlider = Slider::create(baseContainer);
+			mySlider->setName(ostr("%1%_Slider", %myParm.name()));
+			mySlider->setTicks(101);
+			baseContainer->setMinimumSize(Vector2f(600, 20));
+			baseContainer->setMaximumSize(Vector2f(900, 900));
+			baseContainer->setSize(Vector2f(900, 600));
+			baseContainer->setClippingEnabled(true);
+			baseContainer->setAutosize(false);
+			}
 			break;
 		default:
 			myLabel->setText(ostr("%1%", %myParm.label()));
@@ -142,6 +154,10 @@ HoudiniUiParm::HoudiniUiParm(hapi::Parm parm, Container* cont):
 		vAlign = Container::AlignTop;
 	}
 	newCont = Container::create(layout, baseContainer);
+
+	// newCont->setSizeAnchor(Vector2f(0, -1)); // -1 to disable
+	// newCont->setSizeAnchorEnabled(true);
+
 	newCont->setHorizontalAlign(hAlign);
 	newCont->setVerticalAlign(vAlign);
 	// newCont->setHorizontalAlign(hAlign);
@@ -186,10 +202,13 @@ HoudiniUiParm::HoudiniUiParm(hapi::Parm parm, Container* cont):
 				}
 				ofmsg("  choiceindex: %1% count: %2%", %myParm.info().choiceIndex  %myParm.info().choiceCount);
 				// display as a selection menu
+				// display button of currently selected item, then when pressed, a menu of
+				// selectable items is shown
+				// then when chosen, original button is updated
 				if (myParm.info().choiceListType == HAPI_CHOICELISTTYPE_NONE ||
 					myParm.info().choiceListType == HAPI_CHOICELISTTYPE_NORMAL ||
 					myParm.info().choiceListType == HAPI_CHOICELISTTYPE_MINI) {
-					choiceCont = Container::create(Container::LayoutVertical, myContainer);
+					choiceCont = Container::create(Container::LayoutHorizontal, myContainer);
 					choiceCont->setStyleValue("border", "1 #00ff00");
 					choiceCont->setHorizontalAlign(Container::AlignLeft);
 					for (int j = 0; j < myParm.choices.size(); ++j) {
@@ -494,6 +513,12 @@ void HoudiniUiParm::handleEvent(const Event& evt) {
 		}
 
 		ofmsg("Parm type %1%: %2%", %myParm.label() %myParm.info().type);
+
+		if (slider != NULL && StringUtils::endsWith(myWidget->getName(), "_slider")) {
+			ofmsg("slider val: %1%", %slider->getValue());
+			evt.setProcessed();
+			return;
+		}
 
 		if (myParm.info().type == HAPI_PARMTYPE_INT) {
 			if (myParm.info().choiceCount > 0) {
