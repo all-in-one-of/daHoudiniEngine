@@ -808,7 +808,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 					hg->addNormal(normals[myIndex], partIndex, geoIndex, objIndex);
 				}
 				if(has_point_colors) {
-					ofmsg("alpha for %1%: %2% ", %myIndex %(has_point_alphas ? alphas[ myIndex ]: 1.0));
+					// ofmsg("alpha for %1%: %2% ", %myIndex %(has_point_alphas ? alphas[ myIndex ]: 1.0));
 					hg->addColor(Color(
 						colors[vertex_list[ myIndex ]][0],
 						colors[vertex_list[ myIndex ]][1],

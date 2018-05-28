@@ -50,7 +50,7 @@ daHEngine
 
 using namespace houdiniEngine;
 
-#ifdef DA_ENABLE_HENGINE
+#if DA_ENABLE_HENGINE > 0
 HoudiniEngine* HoudiniEngine::myInstance = NULL;
 #endif
 
