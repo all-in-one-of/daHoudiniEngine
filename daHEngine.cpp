@@ -58,9 +58,28 @@ HoudiniEngine* HoudiniEngine::myInstance = NULL;
 // Python wrapper code.
 #ifdef OMEGA_USE_PYTHON
 #include "omega/PythonInterpreterWrapper.h"
+
+#include <boost/python/suite/indexing/vector_indexing_suite.hpp>
+
+boost::python::list getListFrom(const vector< String > &vec) {
+	boost::python::list ret;
+	foreach(String s, vec) {
+		ret.append(s);
+	}
+
+	return ret;
+}
+
+
 BOOST_PYTHON_MODULE(daHEngine)
 {
 #if DA_ENABLE_HENGINE > 0
+
+	// Helper
+	// class_< MyList >("MyList")
+	// 	.def(vector_indexing_suite< MyList >())
+	// 	;
+
 	// HoudiniEngine
 	PYAPI_REF_BASE_CLASS(HoudiniEngine)
 		PYAPI_STATIC_REF_GETTER(HoudiniEngine, createAndInitialize)
@@ -87,6 +106,12 @@ BOOST_PYTHON_MODULE(daHEngine)
         PYAPI_METHOD(HoudiniEngine, setFloatParameterValue)
         PYAPI_METHOD(HoudiniEngine, getStringParameterValue)
         PYAPI_METHOD(HoudiniEngine, setStringParameterValue)
+
+		// Assets
+ 		PYAPI_METHOD(HoudiniEngine, getAvailableAssets)
+		 // can I make this converted to a List like this ? No, not yet..
+ 		// .def("getAvailableAssets", getListFrom(getAvailableAssets())
+		
 		// extras
         PYAPI_METHOD(HoudiniEngine, doIt)
         PYAPI_METHOD(HoudiniEngine, test)
@@ -122,6 +147,7 @@ BOOST_PYTHON_MODULE(daHEngine)
     PYAPI_REF_BASE_CLASS(HoudiniParameterList)
         PYAPI_METHOD(HoudiniParameterList, size)
         PYAPI_REF_GETTER(HoudiniParameterList, getParameter);
+
 #endif
 	// tools for generic models exported from houdini
 	PYAPI_REF_BASE_CLASS(LoaderTools)
@@ -223,6 +249,23 @@ HoudiniEngine::~HoudiniEngine()
 
 #if DA_ENABLE_HENGINE > 0
 
+MyList HoudiniEngine::getAvailableAssets(int library_id) {
+	int assetCount = -1;
+	ENSURE_SUCCESS(session,  HAPI_GetAvailableAssetCount( session, library_id, &assetCount ) );
+
+	MyList myAssetNames;
+
+	HAPI_StringHandle* asset_name_sh = new HAPI_StringHandle[assetCount];
+	ENSURE_SUCCESS(session,  HAPI_GetAvailableAssets( session, library_id, asset_name_sh, assetCount ) );
+
+	for (int i =0; i < assetCount; ++i) {
+		// std::string asset_name = get_string( session, asset_name_sh[i] );
+		myAssetNames.push_back(get_string( session, asset_name_sh[i] ));
+	}
+	delete[] asset_name_sh;
+
+	return myAssetNames;
+};
 
 int HoudiniEngine::loadAssetLibraryFromFile(const String& otlFile)
 {

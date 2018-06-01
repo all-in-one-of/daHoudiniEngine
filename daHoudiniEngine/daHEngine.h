@@ -78,6 +78,8 @@ namespace houdiniEngine {
 	using namespace omegaToolkit;
 	using namespace omegaToolkit::ui;
 
+	typedef vector<String> MyList;
+
 #if DA_ENABLE_HENGINE > 0
 	#define ENSURE_SUCCESS(session, result) \
 	    if ((result) != HAPI_RESULT_SUCCESS) \
@@ -159,6 +161,9 @@ namespace houdiniEngine {
 
 		virtual void commitSharedData(SharedOStream& out);
 		virtual void updateSharedData(SharedIStream& in);
+ 		// GetAvailableAssets (const HAPI_Session *session, HAPI_AssetLibraryId library_id, HAPI_StringHandle *asset_names_array, int asset_count);
+		MyList getAvailableAssets(int library_id);
+
 
 		int loadAssetLibraryFromFile(const String& otlFile);
 		int getAvailableAssetCount() { return myAssetCount; };
