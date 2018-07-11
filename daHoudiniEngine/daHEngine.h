@@ -128,6 +128,7 @@ namespace houdiniEngine {
 #if DA_ENABLE_HENGINE > 0
 		static HoudiniEngine* instance() { return myInstance; }
 
+		// >>>> subclassed modules
 		//! Convenience method to create the module, register and initialize it.
 		static HoudiniEngine* createAndInitialize();
 
@@ -137,6 +138,15 @@ namespace houdiniEngine {
 		virtual void onMenuItemEvent(MenuItem* mi);
 		virtual void onSelectedChanged(SceneNode* source, bool value);
 
+
+		virtual void handleEvent(const Event& evt);
+
+		virtual void commitSharedData(SharedOStream& out);
+		virtual void updateSharedData(SharedIStream& in);
+
+		// <<<<<< subclassed modules
+
+		// helper functions
 		void process_assets(const hapi::Asset &asset);
 		void process_geo_part(
 			const hapi::Part &part,
@@ -155,10 +165,195 @@ namespace houdiniEngine {
 		    const char *attrib_name, vector<float>& vals
 		);
 
-		virtual void handleEvent(const Event& evt);
+		// from HAPI
 
-		virtual void commitSharedData(SharedOStream& out);
-		virtual void updateSharedData(SharedIStream& in);
+// 		CreateInProcessSession (HAPI_Session *session);
+// 		StartThriftSocketServer (const HAPI_ThriftServerOptions *options, int port, HAPI_ProcessId *process_id);
+// 		CreateThriftSocketSession (HAPI_Session *session, const char *host_name, int port);
+// 		StartThriftNamedPipeServer (const HAPI_ThriftServerOptions *options, const char *pipe_name, HAPI_ProcessId *process_id);
+// 		CreateThriftNamedPipeSession (HAPI_Session *session, const char *pipe_name);
+// 		BindCustomImplementation (HAPI_SessionType session_type, const char *dll_path);
+// 		CreateCustomSession (HAPI_SessionType session_type, void *session_info, HAPI_Session *session);
+// 		IsSessionValid (const HAPI_Session *session);
+// 		CloseSession (const HAPI_Session *session);
+// 		IsInitialized (const HAPI_Session *session);
+// 		Initialize (const HAPI_Session *session, const HAPI_CookOptions *cook_options, HAPI_Bool use_cooking_thread, int cooking_thread_stack_size, const char *houdini_environment_files, const char *otl_search_path, const char *dso_search_path, const char *image_dso_search_path, const char *audio_dso_search_path);
+// 		Cleanup (const HAPI_Session *session);
+// 		GetEnvInt (HAPI_EnvIntType int_type, int *value);
+// 		GetSessionEnvInt (const HAPI_Session *session, HAPI_SessionEnvIntType int_type, int *value);
+// 		GetServerEnvInt (const HAPI_Session *session, const char *variable_name, int *value);
+// 		GetServerEnvString (const HAPI_Session *session, const char *variable_name, HAPI_StringHandle *value);
+// 		SetServerEnvInt (const HAPI_Session *session, const char *variable_name, int value);
+// 		SetServerEnvString (const HAPI_Session *session, const char *variable_name, const char *value);
+// 		GetStatus (const HAPI_Session *session, HAPI_StatusType status_type, int *status);
+// 		GetStatusStringBufLength (const HAPI_Session *session, HAPI_StatusType status_type, HAPI_StatusVerbosity verbosity, int *buffer_length);
+// 		GetStatusString (const HAPI_Session *session, HAPI_StatusType status_type, char *string_value, int length);
+// 		ComposeNodeCookResult (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_StatusVerbosity verbosity, int *buffer_length);
+// 		GetComposedNodeCookResult (const HAPI_Session *session, char *string_value, int length);
+// 		CheckForSpecificErrors (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_ErrorCodeBits errors_to_look_for, HAPI_ErrorCodeBits *errors_found);
+// 		GetCookingTotalCount (const HAPI_Session *session, int *count);
+// 		GetCookingCurrentCount (const HAPI_Session *session, int *count);
+// 		ConvertTransform (const HAPI_Session *session, const HAPI_TransformEuler *transform_in, HAPI_RSTOrder rst_order, HAPI_XYZOrder rot_order, HAPI_TransformEuler *transform_out);
+// 		ConvertMatrixToQuat (const HAPI_Session *session, const float *matrix, HAPI_RSTOrder rst_order, HAPI_Transform *transform_out);
+// 		ConvertMatrixToEuler (const HAPI_Session *session, const float *matrix, HAPI_RSTOrder rst_order, HAPI_XYZOrder rot_order, HAPI_TransformEuler *transform_out);
+// 		ConvertTransformQuatToMatrix (const HAPI_Session *session, const HAPI_Transform *transform, float *matrix);
+// 		ConvertTransformEulerToMatrix (const HAPI_Session *session, const HAPI_TransformEuler *transform, float *matrix);
+// 		PythonThreadInterpreterLock (const HAPI_Session *session, HAPI_Bool locked);
+// 		GetStringBufLength (const HAPI_Session *session, HAPI_StringHandle string_handle, int *buffer_length);
+// 		GetString (const HAPI_Session *session, HAPI_StringHandle string_handle, char *string_value, int length);
+// 		GetTime (const HAPI_Session *session, float *time);
+// 		SetTime (const HAPI_Session *session, float time);
+// 		GetTimelineOptions (const HAPI_Session *session, HAPI_TimelineOptions *timeline_options);
+// 		SetTimelineOptions (const HAPI_Session *session, const HAPI_TimelineOptions *timeline_options);
+// 		LoadAssetLibraryFromFile (const HAPI_Session *session, const char *file_path, HAPI_Bool allow_overwrite, HAPI_AssetLibraryId *library_id);
+// 		LoadAssetLibraryFromMemory (const HAPI_Session *session, const char *library_buffer, int library_buffer_length, HAPI_Bool allow_overwrite, HAPI_AssetLibraryId *library_id);
+// 		GetAvailableAssetCount (const HAPI_Session *session, HAPI_AssetLibraryId library_id, int *asset_count);
+// 		GetAvailableAssets (const HAPI_Session *session, HAPI_AssetLibraryId library_id, HAPI_StringHandle *asset_names_array, int asset_count);
+// 		GetAssetInfo (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_AssetInfo *asset_info);
+// 		Interrupt (const HAPI_Session *session);
+// 		LoadHIPFile (const HAPI_Session *session, const char *file_name, HAPI_Bool cook_on_load);
+// 		SaveHIPFile (const HAPI_Session *session, const char *file_path, HAPI_Bool lock_nodes);
+// 		IsNodeValid (const HAPI_Session *session, HAPI_NodeId node_id, int unique_node_id, HAPI_Bool *answer);
+// 		GetNodeInfo (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_NodeInfo *node_info);
+// 		GetNodePath (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_NodeId relative_to_node_id, HAPI_StringHandle *path);
+// 		GetManagerNodeId (const HAPI_Session *session, HAPI_NodeType node_type, HAPI_NodeId *node_id);
+// 		ComposeChildNodeList (const HAPI_Session *session, HAPI_NodeId parent_node_id, HAPI_NodeTypeBits node_type_filter, HAPI_NodeFlagsBits node_flags_filter, HAPI_Bool recursive, int *count);
+// 		GetComposedChildNodeList (const HAPI_Session *session, HAPI_NodeId parent_node_id, HAPI_NodeId *child_node_ids_array, int count);
+// 		CreateNode (const HAPI_Session *session, HAPI_NodeId parent_node_id, const char *operator_name, const char *node_label, HAPI_Bool cook_on_creation, HAPI_NodeId *new_node_id);
+// 		CreateInputNode (const HAPI_Session *session, HAPI_NodeId *node_id, const char *name);
+// 		CookNode (const HAPI_Session *session, HAPI_NodeId node_id, const HAPI_CookOptions *cook_options);
+// 		DeleteNode (const HAPI_Session *session, HAPI_NodeId node_id);
+// 		RenameNode (const HAPI_Session *session, HAPI_NodeId node_id, const char *new_name);
+// 		ConnectNodeInput (const HAPI_Session *session, HAPI_NodeId node_id, int input_index, HAPI_NodeId node_id_to_connect);
+// 		DisconnectNodeInput (const HAPI_Session *session, HAPI_NodeId node_id, int input_index);
+// 		QueryNodeInput (const HAPI_Session *session, HAPI_NodeId node_to_query, int input_index, HAPI_NodeId *connected_node_id);
+// 		GetNodeInputName (const HAPI_Session *session, HAPI_NodeId node_id, int input_idx, HAPI_StringHandle *name);
+// 		GetParameters (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_ParmInfo *parm_infos_array, int start, int length);
+// 		GetParmInfo (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_ParmId parm_id, HAPI_ParmInfo *parm_info);
+// 		GetParmIdFromName (const HAPI_Session *session, HAPI_NodeId node_id, const char *parm_name, HAPI_ParmId *parm_id);
+// 		GetParmInfoFromName (const HAPI_Session *session, HAPI_NodeId node_id, const char *parm_name, HAPI_ParmInfo *parm_info);
+// 		GetParmTagName (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_ParmId parm_id, int tag_index, HAPI_StringHandle *tag_name);
+// 		GetParmTagValue (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_ParmId parm_id, const char *tag_name, HAPI_StringHandle *tag_value);
+// 		ParmHasTag (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_ParmId parm_id, const char *tag_name, HAPI_Bool *has_tag);
+// 		ParmHasExpression (const HAPI_Session *session, HAPI_NodeId node_id, const char *parm_name, int index, HAPI_Bool *has_expression);
+// 		GetParmWithTag (const HAPI_Session *session, HAPI_NodeId node_id, const char *tag_name, HAPI_ParmId *parm_id);
+// 		GetParmExpression (const HAPI_Session *session, HAPI_NodeId node_id, const char *parm_name, int index, HAPI_StringHandle *value);
+// 		RevertParmToDefault (const HAPI_Session *session, HAPI_NodeId node_id, const char *parm_name, int index);
+// 		RevertParmToDefaults (const HAPI_Session *session, HAPI_NodeId node_id, const char *parm_name);
+// 		SetParmExpression (const HAPI_Session *session, HAPI_NodeId node_id, const char *value, HAPI_ParmId parm_id, int index);
+// 		RemoveParmExpression (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_ParmId parm_id, int index);
+// 		GetParmIntValue (const HAPI_Session *session, HAPI_NodeId node_id, const char *parm_name, int index, int *value);
+// 		GetParmIntValues (const HAPI_Session *session, HAPI_NodeId node_id, int *values_array, int start, int length);
+// 		GetParmFloatValue (const HAPI_Session *session, HAPI_NodeId node_id, const char *parm_name, int index, float *value);
+// 		GetParmFloatValues (const HAPI_Session *session, HAPI_NodeId node_id, float *values_array, int start, int length);
+// 		GetParmStringValue (const HAPI_Session *session, HAPI_NodeId node_id, const char *parm_name, int index, HAPI_Bool evaluate, HAPI_StringHandle *value);
+// 		GetParmStringValues (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_Bool evaluate, HAPI_StringHandle *values_array, int start, int length);
+// 		GetParmNodeValue (const HAPI_Session *session, HAPI_NodeId node_id, const char *parm_name, HAPI_NodeId *value);
+// 		GetParmFile (const HAPI_Session *session, HAPI_NodeId node_id, const char *parm_name, const char *destination_directory, const char *destination_file_name);
+// 		GetParmChoiceLists (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_ParmChoiceInfo *parm_choices_array, int start, int length);
+// 		SetParmIntValue (const HAPI_Session *session, HAPI_NodeId node_id, const char *parm_name, int index, int value);
+// 		SetParmIntValues (const HAPI_Session *session, HAPI_NodeId node_id, const int *values_array, int start, int length);
+// 		SetParmFloatValue (const HAPI_Session *session, HAPI_NodeId node_id, const char *parm_name, int index, float value);
+// 		SetParmFloatValues (const HAPI_Session *session, HAPI_NodeId node_id, const float *values_array, int start, int length);
+// 		SetParmStringValue (const HAPI_Session *session, HAPI_NodeId node_id, const char *value, HAPI_ParmId parm_id, int index);
+// 		SetParmNodeValue (const HAPI_Session *session, HAPI_NodeId node_id, const char *parm_name, HAPI_NodeId value);
+// 		InsertMultiparmInstance (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_ParmId parm_id, int instance_position);
+// 		RemoveMultiparmInstance (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_ParmId parm_id, int instance_position);
+// 		GetHandleInfo (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_HandleInfo *handle_infos_array, int start, int length);
+// 		GetHandleBindingInfo (const HAPI_Session *session, HAPI_NodeId node_id, int handle_index, HAPI_HandleBindingInfo *handle_binding_infos_array, int start, int length);
+// 		GetPresetBufLength (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PresetType preset_type, const char *preset_name, int *buffer_length);
+// 		GetPreset (const HAPI_Session *session, HAPI_NodeId node_id, char *buffer, int buffer_length);
+// 		SetPreset (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PresetType preset_type, const char *preset_name, const char *buffer, int buffer_length);
+// 		GetObjectInfo (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_ObjectInfo *object_info);
+// 		GetObjectTransform (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_NodeId relative_to_node_id, HAPI_RSTOrder rst_order, HAPI_Transform *transform);
+// 		ComposeObjectList (const HAPI_Session *session, HAPI_NodeId parent_node_id, const char *categories, int *object_count);
+// 		GetComposedObjectList (const HAPI_Session *session, HAPI_NodeId parent_node_id, HAPI_ObjectInfo *object_infos_array, int start, int length);
+// 		GetComposedObjectTransforms (const HAPI_Session *session, HAPI_NodeId parent_node_id, HAPI_RSTOrder rst_order, HAPI_Transform *transform_array, int start, int length);
+// 		GetInstancedObjectIds (const HAPI_Session *session, HAPI_NodeId object_node_id, HAPI_NodeId *instanced_node_id_array, int start, int length);
+// 		GetInstanceTransforms (const HAPI_Session *session, HAPI_NodeId object_node_id, HAPI_RSTOrder rst_order, HAPI_Transform *transforms_array, int start, int length);
+// 		SetObjectTransform (const HAPI_Session *session, HAPI_NodeId node_id, const HAPI_TransformEuler *trans);
+// 		GetDisplayGeoInfo (const HAPI_Session *session, HAPI_NodeId object_node_id, HAPI_GeoInfo *geo_info);
+// 		GetGeoInfo (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_GeoInfo *geo_info);
+// 		GetPartInfo (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, HAPI_PartInfo *part_info);
+// 		GetFaceCounts (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, int *face_counts_array, int start, int length);
+// 		GetVertexList (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, int *vertex_list_array, int start, int length);
+// 		GetAttributeInfo (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, const char *name, HAPI_AttributeOwner owner, HAPI_AttributeInfo *attr_info);
+// 		GetAttributeNames (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, HAPI_AttributeOwner owner, HAPI_StringHandle *attribute_names_array, int count);
+// 		GetAttributeIntData (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, const char *name, HAPI_AttributeInfo *attr_info, int stride, int *data_array, int start, int length);
+// 		GetAttributeInt64Data (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, const char *name, HAPI_AttributeInfo *attr_info, int stride, HAPI_Int64 *data_array, int start, int length);
+// 		GetAttributeFloatData (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, const char *name, HAPI_AttributeInfo *attr_info, int stride, float *data_array, int start, int length);
+// 		GetAttributeFloat64Data (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, const char *name, HAPI_AttributeInfo *attr_info, int stride, double *data_array, int start, int length);
+// 		GetAttributeStringData (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, const char *name, HAPI_AttributeInfo *attr_info, HAPI_StringHandle *data_array, int start, int length);
+// 		GetGroupNames (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_GroupType group_type, HAPI_StringHandle *group_names_array, int group_count);
+// 		GetGroupMembership (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, HAPI_GroupType group_type, const char *group_name, HAPI_Bool *membership_array_all_equal, int *membership_array, int start, int length);
+// 		GetInstancedPartIds (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, HAPI_PartId *instanced_parts_array, int start, int length);
+// 		GetInstancerPartTransforms (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, HAPI_RSTOrder rst_order, HAPI_Transform *transforms_array, int start, int length);
+// 		SetPartInfo (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, const HAPI_PartInfo *part_info);
+// 		SetFaceCounts (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, const int *face_counts_array, int start, int length);
+// 		SetVertexList (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, const int *vertex_list_array, int start, int length);
+// 		AddAttribute (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, const char *name, const HAPI_AttributeInfo *attr_info);
+// 		SetAttributeIntData (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, const char *name, const HAPI_AttributeInfo *attr_info, const int *data_array, int start, int length);
+// 		SetAttributeInt64Data (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, const char *name, const HAPI_AttributeInfo *attr_info, const HAPI_Int64 *data_array, int start, int length);
+// 		SetAttributeFloatData (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, const char *name, const HAPI_AttributeInfo *attr_info, const float *data_array, int start, int length);
+// 		SetAttributeFloat64Data (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, const char *name, const HAPI_AttributeInfo *attr_info, const double *data_array, int start, int length);
+// 		SetAttributeStringData (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, const char *name, const HAPI_AttributeInfo *attr_info, const char **data_array, int start, int length);
+// 		AddGroup (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, HAPI_GroupType group_type, const char *group_name);
+// 		SetGroupMembership (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, HAPI_GroupType group_type, const char *group_name, const int *membership_array, int start, int length);
+// 		CommitGeo (const HAPI_Session *session, HAPI_NodeId node_id);
+// 		RevertGeo (const HAPI_Session *session, HAPI_NodeId node_id);
+// 		GetMaterialNodeIdsOnFaces (const HAPI_Session *session, HAPI_NodeId geometry_node_id, HAPI_PartId part_id, HAPI_Bool *are_all_the_same, HAPI_NodeId *material_ids_array, int start, int length);
+// 		GetMaterialInfo (const HAPI_Session *session, HAPI_NodeId material_node_id, HAPI_MaterialInfo *material_info);
+// 		RenderCOPToImage (const HAPI_Session *session, HAPI_NodeId cop_node_id);
+// 		RenderTextureToImage (const HAPI_Session *session, HAPI_NodeId material_node_id, HAPI_ParmId parm_id);
+// 		GetImageInfo (const HAPI_Session *session, HAPI_NodeId material_node_id, HAPI_ImageInfo *image_info);
+// 		SetImageInfo (const HAPI_Session *session, HAPI_NodeId material_node_id, const HAPI_ImageInfo *image_info);
+// 		GetImagePlaneCount (const HAPI_Session *session, HAPI_NodeId material_node_id, int *image_plane_count);
+// 		GetImagePlanes (const HAPI_Session *session, HAPI_NodeId material_node_id, HAPI_StringHandle *image_planes_array, int image_plane_count);
+// 		ExtractImageToFile (const HAPI_Session *session, HAPI_NodeId material_node_id, const char *image_file_format_name, const char *image_planes, const char *destination_folder_path, const char *destination_file_name, int *destination_file_path);
+// 		ExtractImageToMemory (const HAPI_Session *session, HAPI_NodeId material_node_id, const char *image_file_format_name, const char *image_planes, int *buffer_size);
+// 		GetImageMemoryBuffer (const HAPI_Session *session, HAPI_NodeId material_node_id, char *buffer, int length);
+// 		GetSupportedImageFileFormatCount (const HAPI_Session *session, int *file_format_count);
+// 		GetSupportedImageFileFormats (const HAPI_Session *session, HAPI_ImageFileFormat *formats_array, int file_format_count);
+// 		SetAnimCurve (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_ParmId parm_id, int parm_index, const HAPI_Keyframe *curve_keyframes_array, int keyframe_count);
+// 		SetTransformAnimCurve (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_TransformComponent trans_comp, const HAPI_Keyframe *curve_keyframes_array, int keyframe_count);
+// 		ResetSimulation (const HAPI_Session *session, HAPI_NodeId node_id);
+// 		GetVolumeInfo (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, HAPI_VolumeInfo *volume_info);
+// 		GetFirstVolumeTile (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, HAPI_VolumeTileInfo *tile);
+// 		GetNextVolumeTile (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, HAPI_VolumeTileInfo *tile);
+// 		GetVolumeVoxelFloatData (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, int x_index, int y_index, int z_index, float *values_array, int value_count);
+// 		GetVolumeTileFloatData (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, float fill_value, const HAPI_VolumeTileInfo *tile, float *values_array, int length);
+// 		GetVolumeVoxelIntData (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, int x_index, int y_index, int z_index, int *values_array, int value_count);
+// 		GetVolumeTileIntData (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, int fill_value, const HAPI_VolumeTileInfo *tile, int *values_array, int length);
+// 		GetHeightFieldData (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, float *values_array, int start, int length);
+// 		SetVolumeInfo (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, const HAPI_VolumeInfo *volume_info);
+// 		SetVolumeTileFloatData (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, const HAPI_VolumeTileInfo *tile, const float *values_array, int length);
+// 		SetVolumeTileIntData (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, const HAPI_VolumeTileInfo *tile, const int *values_array, int length);
+// 		SetVolumeVoxelFloatData (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, int x_index, int y_index, int z_index, const float *values_array, int value_count);
+// 		SetVolumeVoxelIntData (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, int x_index, int y_index, int z_index, const int *values_array, int value_count);
+// 		GetVolumeBounds (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, float *x_min, float *y_min, float *z_min, float *x_max, float *y_max, float *z_max, float *x_center, float *y_center, float *z_center);
+// 		SetHeightFieldData (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, const char *name, const float *values_array, int start, int length);
+// 		GetCurveInfo (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, HAPI_CurveInfo *info);
+// 		GetCurveCounts (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, int *counts_array, int start, int length);
+// 		GetCurveOrders (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, int *orders_array, int start, int length);
+// 		GetCurveKnots (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, float *knots_array, int start, int length);
+// 		SetCurveInfo (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, const HAPI_CurveInfo *info);
+// 		SetCurveCounts (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, const int *counts_array, int start, int length);
+// 		SetCurveOrders (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, const int *orders_array, int start, int length);
+// 		SetCurveKnots (const HAPI_Session *session, HAPI_NodeId node_id, HAPI_PartId part_id, const float *knots_array, int start, int length);
+// 		GetBoxInfo (const HAPI_Session *session, HAPI_NodeId geo_node_id, HAPI_PartId part_id, HAPI_BoxInfo *box_info);
+// 		GetSphereInfo (const HAPI_Session *session, HAPI_NodeId geo_node_id, HAPI_PartId part_id, HAPI_SphereInfo *sphere_info);
+// 		GetActiveCacheCount (const HAPI_Session *session, int *active_cache_count);
+// 		GetActiveCacheNames (const HAPI_Session *session, HAPI_StringHandle *cache_names_array, int active_cache_count);
+// 		GetCacheProperty (const HAPI_Session *session, const char *cache_name, HAPI_CacheProperty cache_property, int *property_value);
+// 		SetCacheProperty (const HAPI_Session *session, const char *cache_name, HAPI_CacheProperty cache_property, int property_value);
+// 		SaveGeoToFile (const HAPI_Session *session, HAPI_NodeId node_id, const char *file_name);
+// 		LoadGeoFromFile (const HAPI_Session *session, HAPI_NodeId node_id, const char *file_name);
+// 		GetGeoSize (const HAPI_Session *session, HAPI_NodeId node_id, const char *format, int *size);
+// 		SaveGeoToMemory (const HAPI_Session *session, HAPI_NodeId node_id, char *buffer, int length);
+// 		LoadGeoFromMemory (const HAPI_Session *session, HAPI_NodeId node_id, const char *format, const char *buffer, int length);
+
+
+		// * old stuff
 
 		int loadAssetLibraryFromFile(const String& otlFile);
 		int getAvailableAssetCount() { return myAssetCount; };
@@ -210,11 +405,15 @@ namespace houdiniEngine {
 		Container* getContainerForAsset(int n);
 		Container* getHoudiniCont() { return houdiniCont; };
 		Container* getStagingCont() { return stagingCont; };
+		
 
 	private:
+
 		void createMenuItem(const String& asset_name, ui::Menu* menu, hapi::Parm* parm);
 		void createParm(const String& asset_name, Container* cont, hapi::Parm* parm);
+		// */
 
+	private:
 		//helper function
 		void removeConts(Container* cont);
 		
