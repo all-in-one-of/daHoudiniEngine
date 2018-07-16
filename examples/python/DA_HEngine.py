@@ -1,5 +1,5 @@
-from daHEngine import *
 from cyclops import *
+from daHEngine import *
 from omegaToolkit import *
 
 # init stuff
