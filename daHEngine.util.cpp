@@ -119,7 +119,7 @@ void HoudiniEngine::cook_one(hapi::Asset* asset)
 		// omsg("parms cleared, or they should be");
 		// createParms(asset->id, assetConts[0]);
 		// omsg("Parms re-created");
-
+		/*
 		int asset_id = asset->nodeid;
 		while (uiParms[asset_id].size() > 0) {
 			if (((HoudiniUiParm*) uiParms[asset_id][uiParms[asset_id].size() - 1].get()) != NULL) {
@@ -129,8 +129,10 @@ void HoudiniEngine::cook_one(hapi::Asset* asset)
 			uiParms[asset_id].pop_back();
 		}
 		omsg("parms cleared, or they should be");
-		createParms(asset_id, assetConts[0]);
+		// let's take parm ui stuff out for now..
+		// createParms(asset_id, assetConts[0]);
 		omsg("Parms re-created");
+		*/
         updateGeos = true;
     }
 }

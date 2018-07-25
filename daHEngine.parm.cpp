@@ -82,8 +82,8 @@ void HoudiniEngine::createMenu(const int asset_id)
 	// cast to an int that is the same size as void*
 	assetButton->setUserData((void *)(intptr_t)assetContSize); // point to the container to use in assetConts
 
-    omsg("about to create Parms");
-    createParms(asset_id, assetCont);
+    omsg("about to create Parms, but removed for now..");
+    // createParms(asset_id, assetCont);
 }
 
 void HoudiniEngine::createParms(const int asset_id, Container* assetCont)

@@ -299,6 +299,7 @@ public:
 	if (!this->_info)
 	{
 		std::cout << "Object: No info, fetching.." << std::endl;
+		std::cout << "  with id: " << this->asset.nodeid << std::endl;
         _info = new HAPI_ObjectInfo();
 		// this doesn't work!!
 // 		throwOnFailure(HAPI_GetObjectInfo(
@@ -306,6 +307,17 @@ public:
 // 			this->asset.nodeid,
 // 			_info));
 		// this works..
+        // issues here: object_id is actually the start index
+        // when this object gets cooked the first time, there is a crash (i think)
+        // on the getComposedObjectList, as the id for this object has changed for a
+        // particular object.. originally with id 0, then with id 1.. where did it
+        // come from?
+        std::cout << "Object: about to try GetComposedObjectList with " << std::endl <<
+            "session: " << session << std::endl <<
+            "nodeid: " << this->asset.nodeid << std::endl <<
+            "info: " << _info << std::endl <<
+            "object_id: " << this->id << std::endl <<
+            "object count:" << 1 << std::endl;
 		throwOnFailure(HAPI_GetComposedObjectList( 
 		session, 
 		this->asset.nodeid, 
@@ -646,6 +658,7 @@ inline Parm::Parm(int node_id, const HAPI_ParmInfo &info,
 
 inline std::vector<Object> Asset::objects() const
 {
+    std::cout << "Asset: getting objects for asset with id " << this->nodeid << std::endl;
     std::vector<Object> result;
 
     int objectCount;
@@ -653,6 +666,7 @@ inline std::vector<Object> Asset::objects() const
         session, nodeid, NULL, &objectCount ));
 
     for (int object_id=0; object_id < objectCount; ++object_id) {
+        std::cout << "Asset: adding object " << object_id << " to list to return" << std::endl;
 	    result.push_back(Object(*this, object_id));
     }
     return result;
