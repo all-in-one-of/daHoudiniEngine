@@ -11,4 +11,4 @@
 /orun.spaceship.otl.valgrind.txt
 /.vscode/*
 **/*.old.*
-workspace.code-workspace
+/workspace.code-workspace
