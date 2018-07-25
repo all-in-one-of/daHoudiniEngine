@@ -76,13 +76,13 @@ def createHGId(otl, assetIndex, geoName):
 #asset.setPosition(-1, 2, -5)
 #hg = he.getHG("text1")
 
-#asset = createHG(*examples[-1]) # 3d graph example
-#asset.setPosition(-1, 2, -5)
-#hg = he.getHG("axis3D1")
-
-asset = createHG(*examples[-2]) # cluster example
+asset = createHG(*examples[-1]) # 3d graph example
 asset.setPosition(-1, 2, -5)
-hg = he.getHG("cluster1")
+hg = he.getHG("axis3D1")
+
+# asset = createHG(*examples[-2]) # cluster example
+# asset.setPosition(-1, 2, -5)
+# hg = he.getHG("cluster1")
 
 #asset = createHG(*examples[5]) # spaceship
 #asset.setPosition(0, 2, -5)
@@ -113,8 +113,10 @@ def onEvent():
 	if getEvent().getType() == EventType.Down:
 		e = getEvent()
 		print e
-
+        if getEvent().isKeyUp(ord('x')) or getEvent().isKeyUp(ord('X')):
+                he.setStringParameterValue("cluster1", 37, 0, "/local/examples/hsdh/HSDH_example.csv")
 print "loaded everything, running.."
+setEventFunction(onEvent)
 # he.loadParameters("cluster1")
 # he.setStringParameterValue("cluster1", 37, 0, "/da/proj/dpiWater/data/clustering.csv")
 
