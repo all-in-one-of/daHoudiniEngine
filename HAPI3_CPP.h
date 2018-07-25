@@ -312,6 +312,10 @@ public:
         // on the getComposedObjectList, as the id for this object has changed for a
         // particular object.. originally with id 0, then with id 1.. where did it
         // come from?
+        // todo
+        // hang on, i'm supposed to composeobjectlist before doing this..
+        // things may change from a cook between the operations, so do some checking
+        // on the object_count and object_id
         std::cout << "Object: about to try GetComposedObjectList with " << std::endl <<
             "session: " << session << std::endl <<
             "nodeid: " << this->asset.nodeid << std::endl <<
