@@ -82,8 +82,8 @@ set ( LIBS
 )
 
 if (DA_ENABLE_HENGINE)
-	add_subdirectory(examples/daOsgHEngine)
-	add_subdirectory(examples/daHoudiniEngine)
+	# add_subdirectory(examples/daOsgHEngine)
+	# add_subdirectory(examples/daHoudiniEngine)
 	set (SRCS 
 		${SRCS}
 		houdiniUiParm.cpp
