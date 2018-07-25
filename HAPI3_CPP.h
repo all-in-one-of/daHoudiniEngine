@@ -45,6 +45,8 @@ Based on example file from SideFX
 #include <vector>
 #include <map>
 #include <stdexcept>
+// for cout
+#include <iostream>
 
 namespace hapi
 {
@@ -97,11 +99,15 @@ public:
     HAPI_Result result;
 };
 
-// This helper function is used internally by the classes below.
+// This helper functions is used internally by the classes below.
+static bool hasCallFailed(HAPI_Result result)
+{
+    return (result != HAPI_RESULT_SUCCESS);
+}
 static void throwOnFailure(HAPI_Result result)
 {
-    if (result != HAPI_RESULT_SUCCESS)
-	throw Failure(result);
+    if (hasCallFailed(result))
+	    throw Failure(result);
 }
 
 //----------------------------------------------------------------------------
@@ -189,6 +195,7 @@ public:
     }
 
     std::vector<Object> objects() const;
+    std::vector<HAPI_Transform> transforms() const;
     std::vector<Parm> parms() const;
     std::map<std::string, Parm> parmMap() const;
 
@@ -291,7 +298,7 @@ public:
     {
 	if (!this->_info)
 	{
-		cout << "Object: No info, fetching.." << endl;
+		std::cout << "Object: No info, fetching.." << std::endl;
         _info = new HAPI_ObjectInfo();
 		// this doesn't work!!
 // 		throwOnFailure(HAPI_GetObjectInfo(
@@ -370,8 +377,8 @@ public:
     {
 	if (!this->_info)
 	{
-		cout << "Geo: no info, fetching.." << endl;
-		cout << "    with id " << this->object.info().nodeId << endl;
+		std::cout << "Geo: no info, fetching.." << std::endl;
+		std::cout << "    with id " << this->object.info().nodeId << std::endl;
 	    this->_info = new HAPI_GeoInfo();
 	    throwOnFailure(HAPI_GetDisplayGeoInfo(
 		session,
@@ -431,9 +438,13 @@ public:
 	if (!this->_info)
 	{
 	    this->_info = new HAPI_PartInfo();
+		std::cout << "Part: no info, fetching.." << std::endl;
+		std::cout << "    with geo's nodeid " << this->geo.info().nodeId << std::endl;
 	    throwOnFailure(HAPI_GetPartInfo(
-		session,
-		this->geo.object.asset.nodeid, this->id, this->_info));
+		    session,
+		    this->geo.info().nodeId, 
+            this->id, 
+            this->_info ));
 	}
 	return *this->_info;
     }
@@ -460,7 +471,7 @@ public:
 
 	throwOnFailure(HAPI_GetAttributeNames(
 		session,
-	    this->geo.object.asset.nodeid, 
+	    this->geo.info().nodeId, 
 	    this->id, attrib_owner, &attrib_names_sh[0], num_attribs));
 
 	for (int attrib_index=0; attrib_index < int(attrib_names_sh.size());
@@ -475,7 +486,7 @@ public:
 	HAPI_AttributeInfo result;
 	throwOnFailure(HAPI_GetAttributeInfo(
 		session,
-	    this->geo.object.asset.nodeid,
+	    this->geo.info().nodeId,
 	    this->id, attrib_name, attrib_owner, &result));
 	return result;
     }
@@ -490,7 +501,7 @@ public:
 	float *result = new float[attrib_info.count * attrib_info.tupleSize];
 	throwOnFailure(HAPI_GetAttributeFloatData(
 		session,
-	    this->geo.object.asset.nodeid, 
+	    this->geo.info().nodeId, 
 	    this->id, attrib_name, &attrib_info, /*stride=*/-1,
         result, /*start=*/0, attrib_info.count));
 	return result;
@@ -647,6 +658,38 @@ inline std::vector<Object> Asset::objects() const
     return result;
 }
 
+inline std::vector< HAPI_Transform > Asset::transforms() const
+{
+    std::cout << "let's get transforms for asset " << this->nodeid << std::endl;
+    int object_count = 0;
+    std::cout << "composing objectList" << std::endl;
+    throwOnFailure(HAPI_ComposeObjectList( 
+        this->session,
+        this->nodeid,
+        NULL,
+        &object_count ));
+    std::vector< HAPI_ObjectInfo > object_infos( object_count );
+    std::cout << "objectList is " << object_count << " objects long. getting composed objectList" << std::endl;
+    throwOnFailure(HAPI_GetComposedObjectList(
+        this->session, 
+        this->nodeid, 
+        object_infos.data(), 
+        0, 
+        object_count ));
+    std::cout << "got them, now get transforms" << std::endl;
+    std::vector< HAPI_Transform > result( object_count );
+    throwOnFailure(HAPI_GetComposedObjectTransforms(
+        this->session, 
+        this->nodeid, 
+        HAPI_RSTORDER_DEFAULT, 
+        result.data(), 
+        0, 
+        object_count ));
+    std::cout << "got them, there were " <<  object_count << ". now return them" << std::endl;
+
+    return result;
+}
+
 inline std::vector<Parm> Asset::parms() const
 {
     // Get all the parm infos.
@@ -685,10 +728,11 @@ inline std::map<std::string, Parm> Asset::parmMap() const
 
 inline std::vector<Geo> Object::geos() const
 {
+    int geoCount = 1;
     std::vector<Geo> result;
 
-    for (int geo_id=0; geo_id < info().geoCount; ++geo_id)
-	result.push_back(Geo(*this, geo_id));
+    result.push_back(this->displayGeo());
+
     return result;
 
     // old way
@@ -701,7 +745,7 @@ inline std::vector<Geo> Object::geos() const
 }
 inline Geo Object::displayGeo() const
 {
-    std::cout << "Object: fetching display geo" << endl;
+    std::cout << "Object: fetching display geo" << std::endl;
     return Geo(*this, 0);
 
 }
@@ -709,7 +753,7 @@ inline Geo Object::displayGeo() const
 inline std::vector<Part> Geo::parts() const
 {
     std::vector<Part> result;
-    std::cout << "Geo: part count is " << info().partCount << endl;
+    std::cout << "Geo: getting parts for geo with id " << this->id << " part count is " << info().partCount << std::endl;
     for (int part_id=0; part_id < info().partCount; ++part_id)
 	result.push_back(Part(*this, part_id));
     return result;

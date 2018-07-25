@@ -36,7 +36,7 @@ Dictionary<int, HoudiniUiParm* > HoudiniUiParm::myUiParms;
 // HAPI_PARMTYPE_PATH_FILE,			= 7
 // HAPI_PARMTYPE_PATH_FILE_GEO,		= 8
 // HAPI_PARMTYPE_PATH_FILE_IMAGE,	= 9
-// HAPI_PARMTYPE_PATH_NODE,			= 10
+// HAPI_PARMTYPE_NODE,			= 10
 //
 // HAPI_PARMTYPE_FOLDERLIST,		= 11
 //
@@ -96,7 +96,7 @@ HoudiniUiParm::HoudiniUiParm(hapi::Parm parm, Container* cont):
 		case HAPI_PARMTYPE_PATH_FILE: t = "FIL";  break;
 		case HAPI_PARMTYPE_PATH_FILE_GEO: t = "GEO";  break;
 		case HAPI_PARMTYPE_PATH_FILE_IMAGE: t = "IMG";  break;
-		case HAPI_PARMTYPE_PATH_NODE: t = "NOD";  break;
+		case HAPI_PARMTYPE_NODE: t = "NOD";  break;
 		case HAPI_PARMTYPE_FOLDERLIST: t = "FLS";  break;
 		case HAPI_PARMTYPE_FOLDER: t = "FLD";  break;
 		case HAPI_PARMTYPE_LABEL: t = "LAB";  break;

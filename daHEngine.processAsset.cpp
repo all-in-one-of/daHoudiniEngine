@@ -48,11 +48,12 @@ using namespace houdiniEngine;
 // put houdini engine asset data into a houdiniGeometry
 void HoudiniEngine::process_assets(const hapi::Asset &asset)
 {
-    vector<hapi::Object> objects = asset.objects();
 
 	String s = ostr("%1%", %asset.name());
 
 	HoudiniGeometry* hg;
+
+	ofmsg("processing asset %1%", %s);
 
 	if (myHoudiniGeometrys.count(s) > 0) {
 		hg = myHoudiniGeometrys[s];
@@ -61,6 +62,16 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 		myHoudiniGeometrys[s] = hg;
 
 	}
+
+	omsg("got a houdiniGeometry, doing stuff with it now..");
+
+    vector<hapi::Object> objects = asset.objects();
+
+	omsg("got objects of asset, getting transforms");
+
+	vector<HAPI_Transform> objTransforms = asset.transforms();
+
+	ofmsg("process_assets: %1%: %2% objects %3% transforms", %asset.name() %objects.size() %objTransforms.size());
 
 	hg->objectsChanged = asset.info().haveObjectsChanged;
 	ofmsg("process_assets: %1%: %2% objects %3%", %asset.name() %objects.size() %(hg->objectsChanged == 1 ? "Changed" : ""));
@@ -73,7 +84,9 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
         }
 	}
 
-	if (hg->objectsChanged) {
+	// if (hg->objectsChanged) {
+	if (true) {
+		omsg("process_assets: let's look at objects");
 		for (int object_index=0; object_index < int(objects.size()); ++object_index)
 	    {
 			HAPI_ObjectInfo objInfo = objects[object_index].info();
@@ -83,7 +96,8 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 				ofmsg("instance path: %1%: %2%", %objects[object_index].name() %objects[object_index].objectInstancePath());
 				ofmsg("%1%: %2%", %objects[object_index].id %objInfo.objectToInstanceId);
 			}
-
+			// don't use vector, as there should be only one geo
+			// unless we are exposing editable nodes (not yet)
 			vector<hapi::Geo> geos = objects[object_index].geos();
 
 			if (hg->getGeodeCount(object_index) < geos.size()) {
@@ -102,7 +116,9 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 				%(hg->getGeosChanged(object_index) == 1 ? "Changed" : "")
 			);
 
-			if (hg->getGeosChanged(object_index)) {
+			// if (hg->getGeosChanged(object_index)) {
+			if (true) {
+				omsg("process_assets:   let's look at geos");
 
 				for (int geo_index=0; geo_index < int(geos.size()); ++geo_index)
 				{
@@ -123,11 +139,13 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 					);
 
 					hg->clearGeode(geo_index, object_index);
-					if (hg->getGeoChanged(geo_index, object_index)) {
+					// if (hg->getGeoChanged(geo_index, object_index)) {
+					if (true) {
+						ofmsg("process_assets:     let's look at parts, should be %1% of them", %parts.size());
 					    for (int part_index=0; part_index < int(parts.size()); ++part_index)
 						{
-							ofmsg("process_assets:     processing %1% %2%", %s %parts[part_index].name());
-							if (geos[geo_index].info().isDisplayGeo == 1) {
+							if (geos[geo_index].info().isDisplayGeo) {
+								ofmsg("process_assets:     processing %1% %2%", %s %parts[part_index].name());
 								process_geo_part(parts[part_index], object_index, geo_index, part_index, hg);
 							}
 						}
@@ -139,13 +157,10 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 			ofmsg("process_assets:   Transform changed: %2%", %object_index %(hg->getTransformChanged(object_index) == 1 ? "Yes" : "No"));
 		}
 
-		HAPI_Transform* objTransforms = new HAPI_Transform[objects.size()];
-		// NB: this resets all ObjectInfo::hasTransformChanged flags to false
-		ENSURE_SUCCESS(session, HAPI_GetObjectTransforms( session, asset.id, HAPI_RSTORDER_DEFAULT, objTransforms, 0, objects.size()));
-
 		for (int object_index=0; object_index < int(objects.size()); ++object_index)
 	    {
-			if (hg->getTransformChanged(object_index)) {
+			// if (hg->getTransformChanged(object_index)) {
+			if (true) {
 				hg->getOsgNode()->asGroup()->getChild(object_index)->asTransform()->
 					asPositionAttitudeTransform()->setPosition(osg::Vec3d(
 						objTransforms[object_index].position[0],
@@ -172,33 +187,32 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 				);
 			}
 	    }
-	    delete[] objTransforms;
 	}
 
 	// do asset matrix transforms
-	HAPI_TransformEuler assetTransformEuler;
+	HAPI_Transform assetTransform;
 	ENSURE_SUCCESS(session,
-		HAPI_GetAssetTransform(
+		HAPI_GetObjectTransform(
 			session,
-			asset.id,
+			asset.nodeid,
+			-1,
 			HAPI_RSTORDER_DEFAULT,
-			HAPI_XYZORDER_DEFAULT,
-			&assetTransformEuler
+			&assetTransform
 		)
 	);
 
 	// should have the matrix here.. check it out.
-	ofmsg("process_assets:   matrix pos   %1% %2% %3%", %assetTransformEuler.position[0]
-		                              %assetTransformEuler.position[1]
-		                              %assetTransformEuler.position[2]);
+	// ofmsg("process_assets:   matrix pos   %1% %2% %3%", %assetTransformEuler.position[0]
+	// 	                              %assetTransformEuler.position[1]
+	// 	                              %assetTransformEuler.position[2]);
 
-	ofmsg("process_assets:   matrix rot   %1% %2% %3%", %assetTransformEuler.rotationEuler[0]
-		                              %assetTransformEuler.rotationEuler[1]
-		                              %assetTransformEuler.rotationEuler[2]);
+	// ofmsg("process_assets:   matrix rot   %1% %2% %3%", %assetTransformEuler.rotationEuler[0]
+	// 	                              %assetTransformEuler.rotationEuler[1]
+	// 	                              %assetTransformEuler.rotationEuler[2]);
 
-	ofmsg("process_assets:   matrix scale %1% %2% %3%", %assetTransformEuler.scale[0]
-		                              %assetTransformEuler.scale[1]
-		                              %assetTransformEuler.scale[2]);
+	// ofmsg("process_assets:   matrix scale %1% %2% %3%", %assetTransformEuler.scale[0]
+	// 	                              %assetTransformEuler.scale[1]
+	// 	                              %assetTransformEuler.scale[2]);
 
 	if (mySceneManager->getModel(s) == NULL) {
 		mySceneManager->addModel(hg);
@@ -218,6 +232,7 @@ Vector3f bez(float t, Vector3f a, Vector3f b) {
 // send a new version, and still have the old version?
 void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex, const int geoIndex, const int partIndex, HoudiniGeometry* hg)
 {
+	omsg("process_geo_part: entered");
 	vector<Vector3f> points;
 	vector<Vector3f> normals;
 	vector<Vector3f> colors;
@@ -369,9 +384,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 		HAPI_CurveInfo curve_info;
 		ENSURE_SUCCESS(session, HAPI_GetCurveInfo(
 			session,
-			part.geo.object.asset.id,
-			part.geo.object.id,
-			part.geo.id,
+			part.geo.info().nodeId,
 	        part.id,
 			&curve_info
 		) );
@@ -396,9 +409,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 			int num_vertices;
 			HAPI_GetCurveCounts(
 				session,
-				part.geo.object.asset.id,
-				part.geo.object.id,
-				part.geo.id,
+				part.geo.info().nodeId,
 		        part.id,
 				&num_vertices,
 				i,
@@ -413,9 +424,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 			else
 				HAPI_GetCurveOrders(
 					session,
-					part.geo.object.asset.id,
-					part.geo.object.id,
-					part.geo.id,
+					part.geo.info().nodeId,
 			        part.id,
 					&order,
 					i,
@@ -489,7 +498,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 			// 	knots.resize( num_vertices + order );
 			// 	HAPI_GetCurveKnots(
 			// 		session,
-			// 		part.geo.object.asset.id,
+			// 		part.geo.info().nodeId,
 			// 		part.geo.object.id,
 			// 		part.geo.id,
 			//         part.id,
@@ -530,14 +539,12 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 			return;
 		}
 
-		int *face_counts = new int[ part.info().faceCount ];
+		std::vector< int > face_counts ( part.info().faceCount );
 		ENSURE_SUCCESS(session,  HAPI_GetFaceCounts(
 			session,
-			part.geo.object.asset.id,
-			part.geo.object.id,
-			part.geo.id,
+			part.geo.info().nodeId,
 			part.id,
-			face_counts,
+			face_counts.data(),
 			0,
 			part.info().faceCount
 		) );
@@ -545,36 +552,43 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 		// Material handling (WIP)
 
 		bool all_same = true;
-		HAPI_MaterialId* mat_ids = new HAPI_MaterialId[ part.info().faceCount ];
 
-		ENSURE_SUCCESS(session,  HAPI_GetMaterialIdsOnFaces(
+		// NEW WAY
+		// HAPI_GetMaterialNodeIdsOnFaces(
+		// 	nullptr, sop_node_id, part_info.nodeId, &are_all_the_same,
+		// 	materials.data(), 0, part_info.faceCount );
+		// HAPI_MaterialInfo material_info;
+		// HAPI_GetMaterialInfo( nullptr, materials[ 0 ], &material_info );
+		// All other materials getters and setters take just the material node id as the sole identifier.
+
+		std::vector< HAPI_NodeId > mat_ids( part.info().faceCount );
+
+		ENSURE_SUCCESS(session,  HAPI_GetMaterialNodeIdsOnFaces(
 			session,
-			part.geo.object.asset.id,
-			part.geo.object.id,
-			part.geo.id,
+			part.geo.info().nodeId,
 			part.id,
 			&all_same /* are_all_the_same*/,
-			mat_ids, 0, part.info().faceCount ));
+			mat_ids.data(), 
+			0, part.info().faceCount ));
 
 		HAPI_MaterialInfo mat_info;
 
 		ENSURE_SUCCESS(session,  HAPI_GetMaterialInfo (
 			session,
-			part.geo.object.asset.id,
 			mat_ids[0],
 			&mat_info));
 
 		if (mat_info.exists) {
-			ofmsg("process_assets:   Material info for %1%: matId: %2% assetId: %3% nodeId: %4%",
-				%hg->getName() %mat_info.id %mat_info.assetId %mat_info.nodeId
+			ofmsg("process_assets:   Material info for %1%: nodeId: %2% hasChanged: %3%",
+				%hg->getName() %mat_info.nodeId %mat_info.hasChanged
 			);
 
 			HAPI_NodeInfo node_info;
 			ENSURE_SUCCESS(session,  HAPI_GetNodeInfo(
 				session,
 				mat_info.nodeId, &node_info ));
-			ofmsg("process_assets:   Node info for %1%: id: %2% assetId: %3% internal path: %4%",
-				%get_string( session, node_info.nameSH) %node_info.id %node_info.assetId
+			ofmsg("process_assets:   Node info for %1%: id: %2% parentId: %3% internal path: %4%",
+				%get_string( session, node_info.nameSH) %node_info.id %node_info.parentId
 				%get_string( session, node_info.internalNodePathSH)
 			);
 
@@ -638,8 +652,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 				// NOTE this works if the image is a png
 				ENSURE_SUCCESS(session,  HAPI_RenderTextureToImage(
 					session,
-					mat_info.assetId,
-					mat_info.id,
+					mat_info.nodeId,
 					parm_infos[mapIndex].id /* parmIndex for "map" */));
 
 
@@ -653,8 +666,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 				HAPI_ImageInfo image_info;
 				ENSURE_SUCCESS(session,  HAPI_GetImageInfo(
 					session,
-					mat_info.assetId,
-					mat_info.id,
+					mat_info.nodeId,
 					&image_info));
 
 				ofmsg("process_assets:   width %1% height: %2% format: %3% dataFormat: %4% packing %5%",
@@ -670,8 +682,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 
 				ENSURE_SUCCESS(session,  HAPI_GetImagePlanes(
 					session,
-					mat_info.assetId,
-					mat_info.id,
+					mat_info.nodeId,
 					&imageSH,
 					1
 				));
@@ -684,8 +695,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 				// get image planes into a buffer (default is png.. change to RGBA?)
 				ENSURE_SUCCESS(session,  HAPI_ExtractImageToMemory(
 					session,
-					mat_info.assetId,
-					mat_info.id,
+					mat_info.nodeId,
 					HAPI_PNG_FORMAT_NAME,
 					// NULL /* HAPI_DEFAULT_IMAGE_FORMAT_NAME */,
 					"C A", /* image planes */
@@ -697,8 +707,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 				// put into a buffer
 				ENSURE_SUCCESS(session,  HAPI_GetImageMemoryBuffer(
 					session,
-					mat_info.assetId,
-					mat_info.id,
+					mat_info.nodeId,
 					myBuffer /* tried (char *)pd->map() */,
 					imgBufSize
 				));
@@ -733,14 +742,14 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 
 		// end materials
 
-		int * vertex_list = new int[ part.info().vertexCount ];
+		std::vector< int > vertex_list ( part.info().vertexCount );
 		ENSURE_SUCCESS(session,  HAPI_GetVertexList(
 			session,
-			part.geo.object.asset.id,
-			part.geo.object.id,
-			part.geo.id,
+			part.geo.info().nodeId,
 			part.id,
-			vertex_list, 0, part.info().vertexCount ) );
+			vertex_list.data(), 
+			0, 
+			part.info().vertexCount ) );
 		int curr_index = 0;
 
 		int prev_faceCount = face_counts[0];
@@ -859,8 +868,6 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 
 		hg->dirty();
 
-		delete[] face_counts;
-		delete[] vertex_list;
 	}
 
 	if (part.info().type == HAPI_PARTTYPE_VOLUME) {

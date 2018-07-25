@@ -58,7 +58,7 @@ either expressed or implied, of the Data Arena Project.
 
 #include <cyclops/cyclops.h>
 #if DA_ENABLE_HENGINE > 0
-#include "HAPI_CPP.h"
+#include "HAPI3_CPP.h"
 #endif
 
 #define OMEGA_NO_GL_HEADERS
@@ -102,13 +102,13 @@ namespace houdiniEngine {
 	class HE_API RefAsset: public hapi::Asset, public ReferenceType
 	{
 	public:
-		RefAsset(int id, HAPI_Session* mySession) : Asset(id, mySession)
-		{ ofmsg("Constructing refAsset of id %1%", %id); }
+		RefAsset(int nodeid, HAPI_Session* mySession) : Asset(nodeid, mySession)
+		{ ofmsg("Constructing refAsset of id %1%", %nodeid); }
 		RefAsset(const hapi::Asset &asset) : hapi::Asset(asset)
 		{ ofmsg("Constructing refAsset from asset %1%", %asset.name()); }
 
 		~RefAsset()
-		{ ofmsg("Destructing refAsset of id %1%", %id); }
+		{ ofmsg("Destructing refAsset of id %1%", %nodeid); }
 
 	};
 

@@ -327,10 +327,12 @@ int HoudiniEngine::instantiateAsset(const String& asset_name)
 
  	ofmsg("about to instantiate %1%", %asset_name);
 
-    ENSURE_SUCCESS(session, HAPI_InstantiateAsset(
+    ENSURE_SUCCESS(session, HAPI_CreateNode(
 			session,
+			/*parent_node_id=*/-1,
             asset_name.c_str(),
-            /* cook_on_load */ true,
+			/*node_label (optional)=*/NULL,
+            /* cook_on_creation */ true,
             &asset_id ));
 
 	if (asset_id < 0) {
@@ -349,9 +351,12 @@ int HoudiniEngine::instantiateAsset(const String& asset_name)
 	Ref <RefAsset> myAsset = new RefAsset(asset_id, session);
 	// TODO: this isn't the right way to do this.. remove
 	instancedHEAssets[asset_id] = myAsset;
+	omsg("about to process assets");
     process_assets(*myAsset.get());
+	omsg("processed assets, about to create menu");
 
 	createMenu(asset_id);
+	omsg("created menu");
 	updateGeos = true;
 
 	} catch (hapi::Failure &failure)
@@ -387,10 +392,12 @@ int HoudiniEngine::instantiateAssetById(int asset_id)
 
 	asset_name = get_string( session, asset_name_sh[asset_id]);
 
-    ENSURE_SUCCESS(session, HAPI_InstantiateAsset(
+    ENSURE_SUCCESS(session, HAPI_CreateNode(
 			session,
+			/*parent_node_id=*/-1,
             asset_name.c_str(),
-            /* cook_on_load */ true,
+			/*node_label (optional)=*/NULL,
+            /* cook_on_creation */ true,
             &asset_id ));
 
 	if (asset_id < 0) {
@@ -473,10 +480,14 @@ void HoudiniEngine::initialize()
 
 			if (session != NULL) {
 
+				HAPI_ThriftServerOptions thrift_server_options;
+				thrift_server_options.autoClose = true;
+				thrift_server_options.timeoutMs = 5000;
+				
 				int port = env_port ? atoi(env_port) : 7788;
-                
+
 				if (!env_host) {
-					HAPI_StartThriftSocketServer(true, port, 5000, NULL);
+					HAPI_StartThriftSocketServer( &thrift_server_options, port, /*&process_id*/ NULL );
 					env_host = "localhost";
 				}
 
@@ -491,11 +502,11 @@ void HoudiniEngine::initialize()
 
 
 			ENSURE_SUCCESS(session, HAPI_Initialize(
-// 				/* session */ NULL,
 				session,
 				&cook_options,
 				/*use_cooking_thread=*/true,
-				/*cooking_thread_max_size=*/-1,
+				/*cooking_thread_stack_size=*/-1,
+				/*houdini_environment_files=*/NULL,
 				/*otl search path*/ getenv("$HOME"),
 				/*dso_search_path=*/ NULL,
 				/*image_dso_search_path=*/ NULL,

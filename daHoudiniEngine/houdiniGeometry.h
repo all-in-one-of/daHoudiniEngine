@@ -108,6 +108,7 @@ namespace houdiniEngine {
 	} HGeom;
 
 	typedef struct {
+		// there should be only one hgeom, as it is the display node
 		vector < HGeom > hgeoms;
 		Ref<osg::Transform> trans;
 		bool transformChanged;
