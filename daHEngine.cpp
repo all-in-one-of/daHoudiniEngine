@@ -107,6 +107,11 @@ BOOST_PYTHON_MODULE(daHEngine)
         PYAPI_METHOD(HoudiniEngine, getStringParameterValue)
         PYAPI_METHOD(HoudiniEngine, setStringParameterValue)
 
+		// dict of parameter names:types for a given asset?
+        PYAPI_METHOD(HoudiniEngine, getParameters)
+        PYAPI_METHOD(HoudiniEngine, getParameterValue)
+        PYAPI_METHOD(HoudiniEngine, setParameterValue)
+
 		// Assets
  		PYAPI_METHOD(HoudiniEngine, getAvailableAssets)
 		 // can I make this converted to a List like this ? No, not yet..

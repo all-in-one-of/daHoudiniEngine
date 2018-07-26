@@ -224,6 +224,133 @@ HoudiniParameterList* HoudiniEngine::loadParameters(const String& asset_name)
     return parameters;
 }
 
+// fetches parameters in a dict of name:value
+boost::python::dict HoudiniEngine::getParameters(const String& asset_name) 
+{
+	int asset_id = assetNameToIds[asset_name];
+
+    boost::python::dict d;
+
+	hapi::Asset* myAsset = new hapi::Asset(asset_id, session);
+
+    if (myAsset == NULL) {
+        ofwarn("No asset of name %1%", %asset_name);
+        return d;
+
+    }
+    std::vector<hapi::Parm> parms = myAsset->parms();
+
+    for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); ++i) {
+        switch (i->info().type) {
+        case HAPI_PARMTYPE_INT:
+        case HAPI_PARMTYPE_TOGGLE:
+            d[i->name()] = i->getIntValue(0);
+            break;
+        case HAPI_PARMTYPE_STRING:
+            d[i->name()] = i->getStringValue(0);
+            break;
+        default:
+            d[i->name()] = i->info().type;
+            break;
+        }
+    }   
+
+    return d;
+}
+
+boost::python::object HoudiniEngine::getParameterValue(const String& asset_name, const String& parm_name)
+{
+    int asset_id = assetNameToIds[asset_name];
+
+    // shouldn't be cached, should fetch new each time
+	hapi::Asset* myAsset = new hapi::Asset(asset_id, session);
+
+    if (myAsset == NULL) {
+        ofwarn("No asset of name %1%", %asset_name);
+        return boost::python::object();
+
+    }
+
+    std::vector<hapi::Parm> parms = myAsset->parms();
+    
+    for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); ++i) {
+        if (i->name() == parm_name) {
+            omsg("match");
+
+            switch (i->info().type) {
+            case HAPI_PARMTYPE_INT:
+            case HAPI_PARMTYPE_TOGGLE:
+                return boost::python::object(i->getIntValue(0));
+                break;
+            case HAPI_PARMTYPE_STRING:
+            case HAPI_PARMTYPE_PATH_FILE: 
+                return boost::python::object(i->getStringValue(0).c_str());
+                break;
+            default:
+                break;
+            }
+        }
+    }
+
+    return boost::python::object();
+}
+
+void HoudiniEngine::setParameterValue(const String& asset_name, const String& parm_name, boost::python::object value)
+{
+    int asset_id = assetNameToIds[asset_name];
+    // shouldn't be cached, should fetch new each time
+	hapi::Asset* myAsset = new hapi::Asset(asset_id, session);
+
+    if (myAsset == NULL) {
+        ofwarn("No asset of name %1%", %asset_name);
+        return;
+
+    }    
+
+    std::vector<hapi::Parm> parms = myAsset->parms();
+
+    for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); ++i) {
+        if (i->name() == parm_name) {
+            omsg("match");
+
+            bool doCook = true;
+
+            switch (i->info().type) {
+            case HAPI_PARMTYPE_INT:
+            case HAPI_PARMTYPE_TOGGLE: {
+                boost::python::extract<int> intVal(value);
+                if (intVal.check()) {
+                    i->setIntValue(0, intVal);
+                } else {
+                    ofwarn("'%1%' not an integer value", %value);
+                }
+            }
+                break;
+            case HAPI_PARMTYPE_STRING:
+            case HAPI_PARMTYPE_PATH_FILE: {
+                boost::python::extract<const char* > stringVal(value);
+                if (stringVal.check()) {
+                    i->setStringValue(0, stringVal);
+                } else {
+                    ofwarn("'%1%' not an string value", %value);
+                }
+            }
+                break;
+            default:
+                doCook = false;
+                break;
+            }
+
+            if (doCook) {
+                cook_one(myAsset);
+            }
+
+            return;
+        }
+    }
+
+}
+
 int HoudiniEngine::getIntegerParameterValue(const String& asset_name, int param_id, int sub_index)
 {
 	int asset_id = assetNameToIds[asset_name];

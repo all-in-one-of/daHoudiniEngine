@@ -383,6 +383,11 @@ namespace houdiniEngine {
 
         HoudiniParameterList* loadParameters(const String& asset_name);
 
+		// python methods for HAPI Parameters
+		boost::python::dict getParameters(const String& asset_name);
+		void setParameterValue(const String& asset_name, const String& parm_name, boost::python::object value);
+		boost::python::object getParameterValue(const String& asset_name, const String& parm_name);
+
         int getIntegerParameterValue(const String& asset_name, int param_id, int sub_index);
         void setIntegerParameterValue(const String& asset_name, int param_id, int sub_index, int value);
 
