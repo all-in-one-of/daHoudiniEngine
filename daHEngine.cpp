@@ -148,6 +148,33 @@ BOOST_PYTHON_MODULE(daHEngine)
         PYAPI_METHOD(HoudiniParameterList, size)
         PYAPI_REF_GETTER(HoudiniParameterList, getParameter);
 
+	// HAPI_ParmTypes
+	enum_<HAPI_ParmType>("ParmType")
+		.value("Int", HAPI_ParmType::HAPI_PARMTYPE_INT)
+		.value("Multiparmlist", HAPI_PARMTYPE_MULTIPARMLIST)
+		.value("Toggle", HAPI_PARMTYPE_TOGGLE)
+		.value("Button", HAPI_PARMTYPE_BUTTON)
+
+		.value("Float", HAPI_ParmType::HAPI_PARMTYPE_FLOAT)
+		.value("Color", HAPI_ParmType::HAPI_PARMTYPE_COLOR)
+
+		.value("String", HAPI_ParmType::HAPI_PARMTYPE_STRING)
+		.value("PathFile", HAPI_ParmType::HAPI_PARMTYPE_PATH_FILE)
+		.value("PathFileGeo", HAPI_ParmType::HAPI_PARMTYPE_PATH_FILE_GEO)
+		.value("PathFileImage", HAPI_ParmType::HAPI_PARMTYPE_PATH_FILE_IMAGE)
+
+		.value("Node", HAPI_ParmType::HAPI_PARMTYPE_NODE)
+
+		.value("Folderlist", HAPI_ParmType::HAPI_PARMTYPE_FOLDERLIST)
+		.value("FolderlistRadio", HAPI_ParmType::HAPI_PARMTYPE_FOLDERLIST_RADIO)
+
+		.value("Folder", HAPI_ParmType::HAPI_PARMTYPE_FOLDER)
+		.value("Label", HAPI_ParmType::HAPI_PARMTYPE_LABEL)
+		.value("Separator", HAPI_ParmType::HAPI_PARMTYPE_SEPARATOR)
+
+		.value("Max", HAPI_ParmType::HAPI_PARMTYPE_MAX)
+	;
+
 #endif
 	// tools for generic models exported from houdini
 	PYAPI_REF_BASE_CLASS(LoaderTools)
