@@ -307,15 +307,10 @@ public:
 // 			this->asset.nodeid,
 // 			_info));
 		// this works..
-        // issues here: object_id is actually the start index
-        // when this object gets cooked the first time, there is a crash (i think)
-        // on the getComposedObjectList, as the id for this object has changed for a
-        // particular object.. originally with id 0, then with id 1.. where did it
-        // come from?
-        // todo
-        // hang on, i'm supposed to composeobjectlist before doing this..
-        // things may change from a cook between the operations, so do some checking
-        // on the object_count and object_id
+        int objectCount;
+        throwOnFailure(HAPI_ComposeObjectList( 
+            session, this->asset.nodeid, NULL, &objectCount ));
+
         std::cout << "Object: about to try GetComposedObjectList with " << std::endl <<
             "session: " << session << std::endl <<
             "nodeid: " << this->asset.nodeid << std::endl <<
@@ -394,7 +389,7 @@ public:
 	if (!this->_info)
 	{
 		std::cout << "Geo: no info, fetching.." << std::endl;
-		std::cout << "    with id " << this->object.info().nodeId << std::endl;
+		std::cout << "    with object id " << this->object.info().nodeId << std::endl;
 	    this->_info = new HAPI_GeoInfo();
 	    throwOnFailure(HAPI_GetDisplayGeoInfo(
 		session,
