@@ -97,25 +97,26 @@ BOOST_PYTHON_MODULE(daHEngine)
  		PYAPI_REF_GETTER(HoudiniEngine, getHoudiniCont)
  		PYAPI_REF_GETTER(HoudiniEngine, getStagingCont)
  		PYAPI_REF_GETTER(HoudiniEngine, getHG)
-        PYAPI_REF_GETTER(HoudiniEngine, loadParameters)
  		PYAPI_REF_GETTER(HoudiniEngine, getParmCont)
  		PYAPI_REF_GETTER(HoudiniEngine, getParmBase)
-        PYAPI_METHOD(HoudiniEngine, getIntegerParameterValue)
-        PYAPI_METHOD(HoudiniEngine, setIntegerParameterValue)
-        PYAPI_METHOD(HoudiniEngine, getFloatParameterValue)
-        PYAPI_METHOD(HoudiniEngine, setFloatParameterValue)
-        PYAPI_METHOD(HoudiniEngine, getStringParameterValue)
-        PYAPI_METHOD(HoudiniEngine, setStringParameterValue)
 
-		// dict of parameter names:types for a given asset?
-        PYAPI_METHOD(HoudiniEngine, getParameters)
-        PYAPI_METHOD(HoudiniEngine, getParameterValue)
-        PYAPI_METHOD(HoudiniEngine, setParameterValue)
+		// dict of parameter names:types for a given asset
+		// get/set parms by name (and by index?)
+		// TODO: multiple set parms for a given cook
+		// TODO: insert/remove multiparm instance..
+		// this should only return parameter names
+		PYAPI_METHOD(HoudiniEngine, getParameters)
+		// TODO
+		// PYAPI_METHOD(HoudiniEngine, getParameterValues)
+		PYAPI_METHOD(HoudiniEngine, getParameterValue)
+		PYAPI_METHOD(HoudiniEngine, setParameterValue)
+		PYAPI_METHOD(HoudiniEngine, insertMultiparmInstance)
+		PYAPI_METHOD(HoudiniEngine, removeMultiparmInstance)
+		PYAPI_METHOD(HoudiniEngine, getParameterChoices)
 
 		// Assets
+		// list of available assets
  		PYAPI_METHOD(HoudiniEngine, getAvailableAssets)
-		 // can I make this converted to a List like this ? No, not yet..
- 		// .def("getAvailableAssets", getListFrom(getAvailableAssets())
 		
 		// extras
         PYAPI_METHOD(HoudiniEngine, doIt)
@@ -281,18 +282,18 @@ HoudiniEngine::~HoudiniEngine()
 
 #if DA_ENABLE_HENGINE > 0
 
-MyList HoudiniEngine::getAvailableAssets(int library_id) {
+boost::python::list HoudiniEngine::getAvailableAssets(int library_id) {
 	int assetCount = -1;
 	ENSURE_SUCCESS(session,  HAPI_GetAvailableAssetCount( session, library_id, &assetCount ) );
 
-	MyList myAssetNames;
+	boost::python::list myAssetNames;
 
 	HAPI_StringHandle* asset_name_sh = new HAPI_StringHandle[assetCount];
 	ENSURE_SUCCESS(session,  HAPI_GetAvailableAssets( session, library_id, asset_name_sh, assetCount ) );
 
 	for (int i =0; i < assetCount; ++i) {
 		// std::string asset_name = get_string( session, asset_name_sh[i] );
-		myAssetNames.push_back(get_string( session, asset_name_sh[i] ));
+		myAssetNames.append(get_string( session, asset_name_sh[i] ));
 	}
 	delete[] asset_name_sh;
 

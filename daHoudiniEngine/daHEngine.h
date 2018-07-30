@@ -357,7 +357,9 @@ namespace houdiniEngine {
 
 		// * old stuff
  		// GetAvailableAssets (const HAPI_Session *session, HAPI_AssetLibraryId library_id, HAPI_StringHandle *asset_names_array, int asset_count);
-		MyList getAvailableAssets(int library_id);
+		// returns a list of the available assets for the given library_id
+		// TODO: make this for all libraries and return a dict?
+		boost::python::list getAvailableAssets(int library_id);
 
 
 		int loadAssetLibraryFromFile(const String& otlFile);
@@ -384,9 +386,15 @@ namespace houdiniEngine {
         HoudiniParameterList* loadParameters(const String& asset_name);
 
 		// python methods for HAPI Parameters
+		// TODO: make get/set parameter values take either int or string arguments
+		// do that here or in the boost::python method exposing
 		boost::python::dict getParameters(const String& asset_name);
 		void setParameterValue(const String& asset_name, const String& parm_name, boost::python::object value);
 		boost::python::object getParameterValue(const String& asset_name, const String& parm_name);
+		void insertMultiparmInstance(const String& asset_name, const String& parm_name, int pos);
+		void removeMultiparmInstance(const String& asset_name, const String& parm_name, int pos);
+
+		boost::python::list getParameterChoices(const String& asset_name, const String& parm_name);
 
         int getIntegerParameterValue(const String& asset_name, int param_id, int sub_index);
         void setIntegerParameterValue(const String& asset_name, int param_id, int sub_index, int value);

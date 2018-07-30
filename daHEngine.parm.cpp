@@ -240,19 +240,63 @@ boost::python::dict HoudiniEngine::getParameters(const String& asset_name)
     }
     std::vector<hapi::Parm> parms = myAsset->parms();
 
-    for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); ++i) {
-        switch (i->info().type) {
-        case HAPI_PARMTYPE_INT:
-        case HAPI_PARMTYPE_TOGGLE:
-            d[i->name()] = i->getIntValue(0);
-            break;
-        case HAPI_PARMTYPE_STRING:
-            d[i->name()] = i->getStringValue(0);
-            break;
-        default:
-            d[i->name()] = i->info().type;
-            break;
-        }
+    for (vector<hapi::Parm>::iterator it = parms.begin(); it < parms.end(); ++it) {
+            switch (it->info().type) {
+            case HAPI_PARMTYPE_INT:
+            case HAPI_PARMTYPE_MULTIPARMLIST:
+            case HAPI_PARMTYPE_TOGGLE:
+            case HAPI_PARMTYPE_BUTTON:
+                if (it->info().size > 1) {
+                    boost::python::list list;
+                    for (int i =0; i < it->info().size; ++i) {
+                        list.append(it->getIntValue(i));
+                    }
+                    d[it->name()] = list;
+                } else {
+                    d[it->name()] = it->getIntValue(0);
+                }
+                break;
+            case HAPI_PARMTYPE_FLOAT:
+            case HAPI_PARMTYPE_COLOR:
+                if (it->info().size > 1) {
+                    boost::python::list list;
+                    for (int i =0; i < it->info().size; ++i) {
+                        list.append(it->getFloatValue(i));
+                    }
+                    d[it->name()] = list;
+                } else {
+                    d[it->name()] = it->getFloatValue(0);
+                }
+                break;
+            case HAPI_PARMTYPE_STRING:
+            case HAPI_PARMTYPE_PATH_FILE: 
+            case HAPI_PARMTYPE_PATH_FILE_GEO:
+            case HAPI_PARMTYPE_PATH_FILE_IMAGE:
+            case HAPI_PARMTYPE_NODE:
+                if (it->info().size > 1) {
+                    boost::python::list list;
+                    for (int i =0; i < it->info().size; ++i) {
+                        list.append(it->getStringValue(i).c_str());
+                    }
+                    d[it->name()] = list;
+                } else {
+                    d[it->name()] = it->getStringValue(0).c_str();
+                }
+
+                break;
+            case HAPI_PARMTYPE_FOLDERLIST:
+                // show folders in the list
+            case HAPI_PARMTYPE_FOLDERLIST_RADIO:
+                // show selected folder from list
+            case HAPI_PARMTYPE_FOLDER:
+                // show vars in folder
+            case HAPI_PARMTYPE_LABEL:
+                // show label contents
+            case HAPI_PARMTYPE_SEPARATOR:
+            default:
+                d[it->name()] = it->info().type;
+                break;
+            }
     }   
 
     return d;
@@ -273,19 +317,67 @@ boost::python::object HoudiniEngine::getParameterValue(const String& asset_name,
 
     std::vector<hapi::Parm> parms = myAsset->parms();
     
-    for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); ++i) {
-        if (i->name() == parm_name) {
-            omsg("match");
+    for (vector<hapi::Parm>::iterator it = parms.begin(); it < parms.end(); ++it) {
+        if (it->name() == parm_name) {
 
-            switch (i->info().type) {
+            switch (it->info().type) {
             case HAPI_PARMTYPE_INT:
+                if (it->info().choiceCount != 0) {
+                    return boost::python::object(it->choices[it->getIntValue(0)].label());
+                    break;
+                }
+                // continue through, it's ok!
+            case HAPI_PARMTYPE_MULTIPARMLIST:
             case HAPI_PARMTYPE_TOGGLE:
-                return boost::python::object(i->getIntValue(0));
+            case HAPI_PARMTYPE_BUTTON:
+                if (it->info().size > 1) {
+                    boost::python::list list;
+                    for (int i =0; i < it->info().size; ++i) {
+                        list.append(it->getIntValue(i));
+                    }
+                    return boost::python::object(list);
+                } else {
+                    return boost::python::object(it->getIntValue(0));
+                }
+                break;
+            case HAPI_PARMTYPE_FLOAT:
+            case HAPI_PARMTYPE_COLOR:
+                if (it->info().size > 1) {
+                    boost::python::list list;
+                    for (int i =0; i < it->info().size; ++i) {
+                        list.append(it->getFloatValue(i));
+                    }
+                    return boost::python::object(list);
+                } else {
+                    return boost::python::object(it->getFloatValue(0));
+                }
                 break;
             case HAPI_PARMTYPE_STRING:
+                if (it->info().choiceCount != 0) {
+                    return boost::python::object(it->choices[it->getIntValue(0)].label());
+                    break;
+                }
+                // continue through, it's ok!
             case HAPI_PARMTYPE_PATH_FILE: 
-                return boost::python::object(i->getStringValue(0).c_str());
+            case HAPI_PARMTYPE_PATH_FILE_GEO:
+            case HAPI_PARMTYPE_PATH_FILE_IMAGE:
+            case HAPI_PARMTYPE_NODE:
+                if (it->info().size > 1) {
+                    boost::python::list list;
+                    for (int i =0; i < it->info().size; ++i) {
+                        list.append(it->getStringValue(i).c_str());
+                    }
+                    return boost::python::object(list);
+                } else {
+                    return boost::python::object(it->getStringValue(0).c_str());
+                }
+
                 break;
+            case HAPI_PARMTYPE_FOLDERLIST:
+            case HAPI_PARMTYPE_FOLDERLIST_RADIO:
+            case HAPI_PARMTYPE_FOLDER:
+            case HAPI_PARMTYPE_LABEL:
+            case HAPI_PARMTYPE_SEPARATOR:
             default:
                 break;
             }
@@ -309,33 +401,127 @@ void HoudiniEngine::setParameterValue(const String& asset_name, const String& pa
 
     std::vector<hapi::Parm> parms = myAsset->parms();
 
-    for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); ++i) {
-        if (i->name() == parm_name) {
+    for (vector<hapi::Parm>::iterator it = parms.begin(); it < parms.end(); ++it) {
+        if (it->name() == parm_name) {
             omsg("match");
 
             bool doCook = true;
 
-            switch (i->info().type) {
+            switch (it->info().type) {
             case HAPI_PARMTYPE_INT:
-            case HAPI_PARMTYPE_TOGGLE: {
-                boost::python::extract<int> intVal(value);
-                if (intVal.check()) {
-                    i->setIntValue(0, intVal);
+                if (it->info().choiceCount != 0) {
+                    boost::python::extract<const char*> stringVal(value);
+                    if (stringVal.check()) {
+                        boost::python::list myChoices = getParameterChoices(asset_name, parm_name);
+                        for (int i = 0; i < boost::python::len(myChoices); ++i) {
+                            boost::python::extract<const char *> myVal(myChoices[i]);
+                            if (strcmp(stringVal, myVal) == 0) {
+                                it->setIntValue(0, i);
+                                return;
+                            }
+                        }
+                    } // otherwise, fall through and try the int way of doing it
+                }
+                // continue through, it's ok!
+            case HAPI_PARMTYPE_MULTIPARMLIST:
+            case HAPI_PARMTYPE_TOGGLE:
+            case HAPI_PARMTYPE_BUTTON:
+            {
+                if (it->info().size > 1) {
+                    boost::python::list myList = (boost::python::list) value;
+                    if (boost::python::len(myList) != it->info().size) {
+                        ofwarn("incorrect number of args, got %1%, expected %2%",
+                            %boost::python::len(myList)
+                            %it->info().size
+                        );
+                        return;
+                    }
+                    for (int i =0; i < it->info().size; ++i) {
+                        boost::python::extract<int> myVal(myList[i]);
+                        it->setIntValue(i, myVal);
+                    }
+                    break;
                 } else {
-                    ofwarn("'%1%' not an integer value", %value);
+                    boost::python::extract<int> intVal(value);
+                    if (intVal.check()) {
+                        it->setIntValue(0, intVal);
+                    } else {
+                        ofwarn("'%1%' not an integer value", %value);
+                    }
+                    break;
                 }
             }
-                break;
+            case HAPI_PARMTYPE_FLOAT:
+            case HAPI_PARMTYPE_COLOR:
+            {
+                if (it->info().size > 1) {
+                    boost::python::list myList = (boost::python::list) value;
+                    if (boost::python::len(myList) != it->info().size) {
+                        ofwarn("incorrect number of args, got %1%, expected %2%",
+                            %boost::python::len(myList)
+                            %it->info().size
+                        );
+                        return;
+                    }
+                    for (int i =0; i < it->info().size; ++i) {
+                        boost::python::extract<float> myVal(myList[i]);
+                        it->setFloatValue(i, myVal);
+                    }
+                    break;
+                } else {
+                    boost::python::extract<float> floatVal(value);
+                    if (floatVal.check()) {
+                        it->setFloatValue(0, floatVal);
+                    } else {
+                        ofwarn("'%1%' not a float value", %value);
+                    }
+                    break;
+                }
+            }
             case HAPI_PARMTYPE_STRING:
-            case HAPI_PARMTYPE_PATH_FILE: {
-                boost::python::extract<const char* > stringVal(value);
-                if (stringVal.check()) {
-                    i->setStringValue(0, stringVal);
+            case HAPI_PARMTYPE_PATH_FILE: 
+            case HAPI_PARMTYPE_PATH_FILE_GEO:
+            case HAPI_PARMTYPE_PATH_FILE_IMAGE:
+            case HAPI_PARMTYPE_NODE:
+            {
+                if (it->info().size > 1) {
+                    boost::python::list myList = (boost::python::list) value;
+                    if (boost::python::len(myList) != it->info().size) {
+                        ofwarn("incorrect number of args, got %1%, expected %2%",
+                            %boost::python::len(myList)
+                            %it->info().size
+                        );
+                        return;
+                    }
+                    for (int i =0; i < it->info().size; ++i) {
+                        boost::python::extract<const char*> myVal(myList[i]);
+                        it->setStringValue(i, myVal);
+                    }
+                    break;
                 } else {
-                    ofwarn("'%1%' not an string value", %value);
+                    boost::python::extract<const char*> stringVal(value);
+                    if (stringVal.check()) {
+                        it->setStringValue(0, stringVal);
+                    } else {
+                        ofwarn("'%1%' not a string value", %value);
+                    }
+                    break;
                 }
             }
-                break;
+            // {
+            //     boost::python::extract<const char* > stringVal(value);
+            //     if (stringVal.check()) {
+            //         it->setStringValue(0, stringVal);
+            //     } else {
+            //         ofwarn("'%1%' not an string value", %value);
+            //     }
+            //     break;
+            // }
+            case HAPI_PARMTYPE_FOLDERLIST:
+            case HAPI_PARMTYPE_FOLDERLIST_RADIO:
+            case HAPI_PARMTYPE_FOLDER:
+            case HAPI_PARMTYPE_LABEL:
+            case HAPI_PARMTYPE_SEPARATOR:
             default:
                 doCook = false;
                 break;
@@ -351,6 +537,75 @@ void HoudiniEngine::setParameterValue(const String& asset_name, const String& pa
 
 }
 
+void HoudiniEngine::insertMultiparmInstance(const String& asset_name, const String& parm_name, int pos) {
+    int asset_id = assetNameToIds[asset_name];
+    // shouldn't be cached, should fetch new each time
+	hapi::Asset* myAsset = new hapi::Asset(asset_id, session);
+
+    if (myAsset == NULL) {
+        ofwarn("No asset of name %1%", %asset_name);
+        return;
+
+    }    
+
+    std::vector<hapi::Parm> parms = myAsset->parms();
+    for (vector<hapi::Parm>::iterator it = parms.begin(); it < parms.end(); ++it) {
+        if (it->name() == parm_name) {
+            it->insertMultiparmInstance(pos);
+            cook_one(myAsset);
+            return;
+        }
+    }
+}
+void HoudiniEngine::removeMultiparmInstance(const String& asset_name, const String& parm_name, int pos) {
+    int asset_id = assetNameToIds[asset_name];
+    // shouldn't be cached, should fetch new each time
+	hapi::Asset* myAsset = new hapi::Asset(asset_id, session);
+
+    if (myAsset == NULL) {
+        ofwarn("No asset of name %1%", %asset_name);
+        return;
+
+    }    
+
+    std::vector<hapi::Parm> parms = myAsset->parms();
+    for (vector<hapi::Parm>::iterator it = parms.begin(); it < parms.end(); ++it) {
+        if (it->name() == parm_name) {
+            it->removeMultiparmInstance(pos);
+            cook_one(myAsset);
+            return;
+        }
+    }
+
+}
+
+boost::python::list HoudiniEngine::getParameterChoices(const String& asset_name, const String& parm_name) {
+    boost::python::list myList;
+
+    int asset_id = assetNameToIds[asset_name];
+    // shouldn't be cached, should fetch new each time
+	hapi::Asset* myAsset = new hapi::Asset(asset_id, session);
+
+    if (myAsset == NULL) {
+        ofwarn("No asset of name %1%", %asset_name);
+        return myList;
+
+    }    
+
+    std::vector<hapi::Parm> parms = myAsset->parms();
+    for (vector<hapi::Parm>::iterator it = parms.begin(); it < parms.end(); ++it) {
+        if (it->name() == parm_name) {
+            for (int i=0; i < it->choices.size(); ++i) {
+                myList.append(it->choices[i].label());
+            }
+            break;
+        }
+    }
+
+    return myList;
+}
+
+
 int HoudiniEngine::getIntegerParameterValue(const String& asset_name, int param_id, int sub_index)
 {
 	int asset_id = assetNameToIds[asset_name];
@@ -364,10 +619,10 @@ int HoudiniEngine::getIntegerParameterValue(const String& asset_name, int param_
     } else {
         std::vector<hapi::Parm> parms = myAsset->parms();
 
-        for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); ++i) {
+        for (vector<hapi::Parm>::iterator it = parms.begin(); it < parms.end(); ++it) {
             
-            if (i->info().id == param_id) {
-                return i->getIntValue(sub_index);
+            if (it->info().id == param_id) {
+                return it->getIntValue(sub_index);
             }
         }
     }
@@ -385,10 +640,10 @@ void HoudiniEngine::setIntegerParameterValue(const String& asset_name, int param
     } else {
         std::vector<hapi::Parm> parms = myAsset->parms();
 
-        for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); ++i) {
+        for (vector<hapi::Parm>::iterator it = parms.begin(); it < parms.end(); ++it) {
             
-            if (i->info().id == param_id) {
-                i->setIntValue(sub_index, value);
+            if (it->info().id == param_id) {
+                it->setIntValue(sub_index, value);
                 break;
             }
         }
@@ -410,10 +665,10 @@ float HoudiniEngine::getFloatParameterValue(const String& asset_name, int param_
     } else {
         std::vector<hapi::Parm> parms = myAsset->parms();
 
-        for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); ++i) {
+        for (vector<hapi::Parm>::iterator it = parms.begin(); it < parms.end(); ++it) {
             
-            if (i->info().id == param_id) {
-                return i->getFloatValue(sub_index);
+            if (it->info().id == param_id) {
+                return it->getFloatValue(sub_index);
             }
         }
     }
@@ -431,10 +686,10 @@ void HoudiniEngine::setFloatParameterValue(const String& asset_name, int param_i
     } else {
         std::vector<hapi::Parm> parms = myAsset->parms();
 
-        for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); ++i) {
+        for (vector<hapi::Parm>::iterator it = parms.begin(); it < parms.end(); ++it) {
             
-            if (i->info().id == param_id) {
-                i->setFloatValue(sub_index, value);
+            if (it->info().id == param_id) {
+                it->setFloatValue(sub_index, value);
                 break;
             }
         }
@@ -456,10 +711,10 @@ String HoudiniEngine::getStringParameterValue(const String& asset_name, int para
     } else {
         std::vector<hapi::Parm> parms = myAsset->parms();
 
-        for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); ++i) {
+        for (vector<hapi::Parm>::iterator it = parms.begin(); it < parms.end(); ++it) {
             
-            if (i->info().id == param_id) {
-                return i->getStringValue(sub_index);
+            if (it->info().id == param_id) {
+                return it->getStringValue(sub_index);
             }
         }
     }
@@ -477,10 +732,10 @@ void HoudiniEngine::setStringParameterValue(const String& asset_name, int param_
     } else {
         std::vector<hapi::Parm> parms = myAsset->parms();
 
-        for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); ++i) {
+        for (vector<hapi::Parm>::iterator it = parms.begin(); it < parms.end(); ++it) {
             
-            if (i->info().id == param_id) {
-                i->setStringValue(sub_index, value.c_str());
+            if (it->info().id == param_id) {
+                it->setStringValue(sub_index, value.c_str());
                 break;
             }
         }
