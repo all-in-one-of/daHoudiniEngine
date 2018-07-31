@@ -41,6 +41,8 @@ daHEngine
 
 #include <daHoudiniEngine/daHEngine.h>
 #include <daHoudiniEngine/houdiniGeometry.h>
+#include <daHoudiniEngine/houdiniParameter.h>
+#include <daHoudiniEngine/UI/houdiniUiParm.h>
 
 using namespace houdiniEngine;
 
@@ -100,8 +102,37 @@ void HoudiniEngine::cook_one(hapi::Asset* asset)
         asset->cook();
         wait_for_cook();
 
+		// old way of refreshing parms
+		// foreach(Ref <ReferenceType> ref, uiParms[asset->id]) {
+		// 	HoudiniUiParm* uip = (HoudiniUiParm *) ref.get();
+		// 	if (uip != NULL) uip->refreshParm();
+		// }
+
         process_assets(*asset);
 
+		// TODO: need to regenerate ui for different assets, as ui parms can change
+		// from a cook!
+		// while(!(uiParms[asset->id].empty())) {
+		// 	uiParms[asset->id].pop_back();
+		// }
+		// // uiParms[asset->id].clear();
+		// omsg("parms cleared, or they should be");
+		// createParms(asset->id, assetConts[0]);
+		// omsg("Parms re-created");
+		/*
+		int asset_id = asset->nodeid;
+		while (uiParms[asset_id].size() > 0) {
+			if (((HoudiniUiParm*) uiParms[asset_id][uiParms[asset_id].size() - 1].get()) != NULL) {
+				Container* base = ((HoudiniUiParm*) uiParms[asset_id][uiParms[asset_id].size() - 1].get())->getContainer();
+				// ofmsg("%1% refcount %2%", %base->getName() %base->refCount());
+			}
+			uiParms[asset_id].pop_back();
+		}
+		omsg("parms cleared, or they should be");
+		// let's take parm ui stuff out for now..
+		// createParms(asset_id, assetConts[0]);
+		omsg("Parms re-created");
+		*/
         updateGeos = true;
     }
 }
@@ -123,4 +154,40 @@ Container* HoudiniEngine::getContainerForAsset(int n){
 		return assetConts[n];
 	}
 	return NULL;
+}
+
+void HoudiniEngine::test(int arg, int arg2) {
+	Container* cont = UiModule::instance()->getUi();
+	// cont = stagingCont;
+	if (arg == 0) {
+		Button* button;
+		Label* label;
+		Slider* slider;
+		switch (arg2) {
+			case (0):
+				button = Button::create(cont);
+				button->setCheckable(true);
+				button->setChecked(true);
+				button->setText("myTestButton");
+				break;
+			case (1):
+				label = Label::create(cont);
+				label->setText("myTestLabel");
+				break;
+			case (2):
+				slider = Slider::create(cont);
+				slider->setTicks(11);
+				slider->setValue(7);
+				break;
+			default:
+				break;
+		}
+	}
+	if (arg == 1) {
+		Widget* w = cont->getChildByIndex(cont->getNumChildren() - 1);
+		if (w != NULL) {
+			cont->removeChild(w);
+		}
+	}
+
 }

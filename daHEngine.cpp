@@ -58,9 +58,28 @@ HoudiniEngine* HoudiniEngine::myInstance = NULL;
 // Python wrapper code.
 #ifdef OMEGA_USE_PYTHON
 #include "omega/PythonInterpreterWrapper.h"
+
+#include <boost/python/suite/indexing/vector_indexing_suite.hpp>
+
+boost::python::list getListFrom(const vector< String > &vec) {
+	boost::python::list ret;
+	foreach(String s, vec) {
+		ret.append(s);
+	}
+
+	return ret;
+}
+
+
 BOOST_PYTHON_MODULE(daHEngine)
 {
 #if DA_ENABLE_HENGINE > 0
+
+	// Helper
+	// class_< MyList >("MyList")
+	// 	.def(vector_indexing_suite< MyList >())
+	// 	;
+
 	// HoudiniEngine
 	PYAPI_REF_BASE_CLASS(HoudiniEngine)
 		PYAPI_STATIC_REF_GETTER(HoudiniEngine, createAndInitialize)
@@ -78,17 +97,46 @@ BOOST_PYTHON_MODULE(daHEngine)
  		PYAPI_REF_GETTER(HoudiniEngine, getHoudiniCont)
  		PYAPI_REF_GETTER(HoudiniEngine, getStagingCont)
  		PYAPI_REF_GETTER(HoudiniEngine, getHG)
-        PYAPI_REF_GETTER(HoudiniEngine, loadParameters)
-        PYAPI_METHOD(HoudiniEngine, getIntegerParameterValue)
-        PYAPI_METHOD(HoudiniEngine, setIntegerParameterValue)
-        PYAPI_METHOD(HoudiniEngine, getFloatParameterValue)
-        PYAPI_METHOD(HoudiniEngine, setFloatParameterValue)
-        PYAPI_METHOD(HoudiniEngine, getStringParameterValue)
-        PYAPI_METHOD(HoudiniEngine, setStringParameterValue);
+ 		PYAPI_REF_GETTER(HoudiniEngine, getParmCont)
+ 		PYAPI_REF_GETTER(HoudiniEngine, getParmBase)
+
+		// dict of parameter names:types for a given asset
+		// get/set parms by name (and by index?)
+		// TODO: multiple set parms for a given cook
+		// TODO: insert/remove multiparm instance..
+		// this should only return parameter names
+		PYAPI_METHOD(HoudiniEngine, getParameters)
+		// TODO
+		// PYAPI_METHOD(HoudiniEngine, getParameterValues)
+		PYAPI_METHOD(HoudiniEngine, getParameterValue)
+		PYAPI_METHOD(HoudiniEngine, setParameterValue)
+		PYAPI_METHOD(HoudiniEngine, insertMultiparmInstance)
+		PYAPI_METHOD(HoudiniEngine, removeMultiparmInstance)
+		PYAPI_METHOD(HoudiniEngine, getParameterChoices)
+
+		// Assets
+		// list of available assets
+ 		PYAPI_METHOD(HoudiniEngine, getAvailableAssets)
+		
+		// extras
+        PYAPI_METHOD(HoudiniEngine, doIt)
+        PYAPI_METHOD(HoudiniEngine, test)
+        PYAPI_METHOD(HoudiniEngine, printParms)
+		;
 
 	// HoudiniGeometry
 	PYAPI_REF_BASE_CLASS(HoudiniGeometry)
-		PYAPI_METHOD(HoudiniGeometry, getObjectCount)
+        PYAPI_STATIC_REF_GETTER(HoudiniGeometry, create)
+        PYAPI_METHOD(HoudiniGeometry, addVertex)
+        PYAPI_METHOD(HoudiniGeometry, setVertex)
+        PYAPI_GETTER(HoudiniGeometry, getVertex)
+        PYAPI_METHOD(HoudiniGeometry, addColor)
+        PYAPI_METHOD(HoudiniGeometry, setColor)
+        PYAPI_GETTER(HoudiniGeometry, getColor)
+        PYAPI_METHOD(HoudiniGeometry, clear)
+        PYAPI_METHOD(HoudiniGeometry, addPrimitive)
+        PYAPI_GETTER(HoudiniGeometry, getName)
+        PYAPI_METHOD(HoudiniGeometry, getObjectCount)
 		PYAPI_METHOD(HoudiniGeometry, getGeodeCount)
 		PYAPI_METHOD(HoudiniGeometry, getDrawableCount);
 
@@ -105,6 +153,34 @@ BOOST_PYTHON_MODULE(daHEngine)
     PYAPI_REF_BASE_CLASS(HoudiniParameterList)
         PYAPI_METHOD(HoudiniParameterList, size)
         PYAPI_REF_GETTER(HoudiniParameterList, getParameter);
+
+	// HAPI_ParmTypes
+	enum_<HAPI_ParmType>("ParmType")
+		.value("Int", HAPI_ParmType::HAPI_PARMTYPE_INT)
+		.value("Multiparmlist", HAPI_PARMTYPE_MULTIPARMLIST)
+		.value("Toggle", HAPI_PARMTYPE_TOGGLE)
+		.value("Button", HAPI_PARMTYPE_BUTTON)
+
+		.value("Float", HAPI_ParmType::HAPI_PARMTYPE_FLOAT)
+		.value("Color", HAPI_ParmType::HAPI_PARMTYPE_COLOR)
+
+		.value("String", HAPI_ParmType::HAPI_PARMTYPE_STRING)
+		.value("PathFile", HAPI_ParmType::HAPI_PARMTYPE_PATH_FILE)
+		.value("PathFileGeo", HAPI_ParmType::HAPI_PARMTYPE_PATH_FILE_GEO)
+		.value("PathFileImage", HAPI_ParmType::HAPI_PARMTYPE_PATH_FILE_IMAGE)
+
+		.value("Node", HAPI_ParmType::HAPI_PARMTYPE_NODE)
+
+		.value("Folderlist", HAPI_ParmType::HAPI_PARMTYPE_FOLDERLIST)
+		.value("FolderlistRadio", HAPI_ParmType::HAPI_PARMTYPE_FOLDERLIST_RADIO)
+
+		.value("Folder", HAPI_ParmType::HAPI_PARMTYPE_FOLDER)
+		.value("Label", HAPI_ParmType::HAPI_PARMTYPE_LABEL)
+		.value("Separator", HAPI_ParmType::HAPI_PARMTYPE_SEPARATOR)
+
+		.value("Max", HAPI_ParmType::HAPI_PARMTYPE_MAX)
+	;
+
 #endif
 	// tools for generic models exported from houdini
 	PYAPI_REF_BASE_CLASS(LoaderTools)
@@ -186,10 +262,43 @@ HoudiniEngine::~HoudiniEngine()
 	    }
 	}
 #endif
+
+	mySceneManager = NULL;
+	myEditor = NULL;
+	myMenuManager = NULL;
+	myQuitMenuItem = NULL;
+	houdiniMenu = NULL;
+	houdiniCont = NULL;
+	assetChoiceCont = NULL;
+	stagingCont = NULL;
+	assetConts.clear();
+	// uiParms.clear();
+	removeTheseWidgets.clear();
+
+	myInstance = NULL;
+
+	omsg("~HoudiniEngine");
 }
 
 #if DA_ENABLE_HENGINE > 0
 
+boost::python::list HoudiniEngine::getAvailableAssets(int library_id) {
+	int assetCount = -1;
+	ENSURE_SUCCESS(session,  HAPI_GetAvailableAssetCount( session, library_id, &assetCount ) );
+
+	boost::python::list myAssetNames;
+
+	HAPI_StringHandle* asset_name_sh = new HAPI_StringHandle[assetCount];
+	ENSURE_SUCCESS(session,  HAPI_GetAvailableAssets( session, library_id, asset_name_sh, assetCount ) );
+
+	for (int i =0; i < assetCount; ++i) {
+		// std::string asset_name = get_string( session, asset_name_sh[i] );
+		myAssetNames.append(get_string( session, asset_name_sh[i] ));
+	}
+	delete[] asset_name_sh;
+
+	return myAssetNames;
+};
 
 int HoudiniEngine::loadAssetLibraryFromFile(const String& otlFile)
 {
@@ -251,10 +360,12 @@ int HoudiniEngine::instantiateAsset(const String& asset_name)
 
  	ofmsg("about to instantiate %1%", %asset_name);
 
-    ENSURE_SUCCESS(session, HAPI_InstantiateAsset(
+    ENSURE_SUCCESS(session, HAPI_CreateNode(
 			session,
+			/*parent_node_id=*/-1,
             asset_name.c_str(),
-            /* cook_on_load */ true,
+			/*node_label (optional)=*/NULL,
+            /* cook_on_creation */ true,
             &asset_id ));
 
 	if (asset_id < 0) {
@@ -271,10 +382,14 @@ int HoudiniEngine::instantiateAsset(const String& asset_name)
 
 
 	Ref <RefAsset> myAsset = new RefAsset(asset_id, session);
+	// TODO: this isn't the right way to do this.. remove
 	instancedHEAssets[asset_id] = myAsset;
+	omsg("about to process assets");
     process_assets(*myAsset.get());
+	omsg("processed assets, about to create menu");
 
 	createMenu(asset_id);
+	omsg("created menu");
 	updateGeos = true;
 
 	} catch (hapi::Failure &failure)
@@ -310,10 +425,12 @@ int HoudiniEngine::instantiateAssetById(int asset_id)
 
 	asset_name = get_string( session, asset_name_sh[asset_id]);
 
-    ENSURE_SUCCESS(session, HAPI_InstantiateAsset(
+    ENSURE_SUCCESS(session, HAPI_CreateNode(
 			session,
+			/*parent_node_id=*/-1,
             asset_name.c_str(),
-            /* cook_on_load */ true,
+			/*node_label (optional)=*/NULL,
+            /* cook_on_creation */ true,
             &asset_id ));
 
 	if (asset_id < 0) {
@@ -326,6 +443,7 @@ int HoudiniEngine::instantiateAssetById(int asset_id)
 	wait_for_cook();
 
 	Ref <RefAsset> myAsset = new RefAsset(asset_id, session);
+	// TODO: this isn't the right way to do this
 	instancedHEAssets[asset_id] = myAsset;
 
 	assetNameToIds[asset_name] = asset_id;
@@ -395,10 +513,14 @@ void HoudiniEngine::initialize()
 
 			if (session != NULL) {
 
+				HAPI_ThriftServerOptions thrift_server_options;
+				thrift_server_options.autoClose = true;
+				thrift_server_options.timeoutMs = 5000;
+				
 				int port = env_port ? atoi(env_port) : 7788;
-                
+
 				if (!env_host) {
-					HAPI_StartThriftSocketServer(true, port, 5000, NULL);
+					HAPI_StartThriftSocketServer( &thrift_server_options, port, /*&process_id*/ NULL );
 					env_host = "localhost";
 				}
 
@@ -413,11 +535,11 @@ void HoudiniEngine::initialize()
 
 
 			ENSURE_SUCCESS(session, HAPI_Initialize(
-// 				/* session */ NULL,
 				session,
 				&cook_options,
 				/*use_cooking_thread=*/true,
-				/*cooking_thread_max_size=*/-1,
+				/*cooking_thread_stack_size=*/-1,
+				/*houdini_environment_files=*/NULL,
 				/*otl search path*/ getenv("$HOME"),
 				/*dso_search_path=*/ NULL,
 				/*image_dso_search_path=*/ NULL,

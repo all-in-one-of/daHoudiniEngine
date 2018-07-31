@@ -45,6 +45,8 @@ Based on example file from SideFX
 #include <vector>
 #include <map>
 #include <stdexcept>
+// for cout
+#include <iostream>
 
 namespace hapi
 {
@@ -97,11 +99,15 @@ public:
     HAPI_Result result;
 };
 
-// This helper function is used internally by the classes below.
+// This helper functions is used internally by the classes below.
+static bool hasCallFailed(HAPI_Result result)
+{
+    return (result != HAPI_RESULT_SUCCESS);
+}
 static void throwOnFailure(HAPI_Result result)
 {
-    if (result != HAPI_RESULT_SUCCESS)
-	throw Failure(result);
+    if (hasCallFailed(result))
+	    throw Failure(result);
 }
 
 //----------------------------------------------------------------------------
@@ -135,12 +141,12 @@ class Parm;
 class Asset
 {
 public:
-    Asset(int id, HAPI_Session* mySession)
-    : id(id), _info(NULL), _nodeInfo(NULL), session(mySession)
+    Asset(int nodeid, HAPI_Session* mySession)
+    : nodeid(nodeid), _info(NULL), _nodeInfo(NULL), session(mySession)
     {}
 
     Asset(const Asset &asset)
-    : id(asset.id)
+    : nodeid(asset.nodeid)
     , _info(asset._info ? new HAPI_AssetInfo(*asset._info) : NULL)
     , _nodeInfo(asset._nodeInfo ? new HAPI_NodeInfo(*asset._nodeInfo) : NULL)
 	, session(asset.session)
@@ -158,7 +164,7 @@ public:
 	{
 	    delete this->_info;
 	    delete this->_nodeInfo;
-	    this->id = asset.id;
+	    this->nodeid = asset.nodeid;
 	    this->_info = asset._info ? new HAPI_AssetInfo(*asset._info) : NULL;
 	    this->_nodeInfo = asset._nodeInfo
 		? new HAPI_NodeInfo(*asset._nodeInfo) : NULL;
@@ -171,7 +177,7 @@ public:
 	if (!this->_info)
 	{
 	    this->_info = new HAPI_AssetInfo();
-	    throwOnFailure(HAPI_GetAssetInfo(session, this->id, this->_info));
+	    throwOnFailure(HAPI_GetAssetInfo(session, this->nodeid, this->_info));
 	}
 	return *this->_info;
     }
@@ -189,19 +195,19 @@ public:
     }
 
     std::vector<Object> objects() const;
+    std::vector<HAPI_Transform> transforms() const;
     std::vector<Parm> parms() const;
     std::map<std::string, Parm> parmMap() const;
 
     bool isValid() const
     {
-	int is_valid = 0;
+	HAPI_Bool is_valid = 0;
 	try
 	{
-	    // Note that calling info() might fail if the info isn't cached
-	    // and the asest id is invalid.
-	    throwOnFailure(HAPI_IsAssetValid(
+        // always succeeds
+	    throwOnFailure(HAPI_IsNodeValid(
 		session,
-		this->id, this->info().validationId, &is_valid));
+		this->nodeid, this->nodeInfo().uniqueHoudiniNodeId, &is_valid));
 	    return is_valid;
 	}
 	catch (Failure &failure)
@@ -219,32 +225,32 @@ public:
     std::string filePath() const
     { return getString(session, info().filePathSH); }
 
-    void destroyAsset() const
-    { throwOnFailure(HAPI_DestroyAsset(session, this->id)); }
+    void deleteNode() const
+    { throwOnFailure(HAPI_DeleteNode(session, this->nodeid)); }
 
     void cook() const
-    { throwOnFailure(HAPI_CookAsset(session, this->id, NULL)); }
+    { throwOnFailure(HAPI_CookNode(session, this->nodeid, NULL)); }
 
-    HAPI_TransformEuler getTransform( 
-        HAPI_RSTOrder rst_order, HAPI_XYZOrder rot_order) const
+    HAPI_Transform getTransform( 
+        HAPI_RSTOrder rst_order, int relative_to_node_id) const
     {
-	HAPI_TransformEuler result;
-	throwOnFailure(HAPI_GetAssetTransform(
+	HAPI_Transform result;
+	throwOnFailure(HAPI_GetObjectTransform(
 		session,
-	    this->id, rst_order, rot_order, &result));
+	    this->nodeid, relative_to_node_id, rst_order, &result));
 	return result;
     }
 
     void getTransformAsMatrix(float result_matrix[16]) const
     {
-        HAPI_TransformEuler transform =
-            this->getTransform( HAPI_SRT, HAPI_XYZ );
-	throwOnFailure(HAPI_ConvertTransformEulerToMatrix(
+        HAPI_Transform transform =
+            this->getTransform( HAPI_SRT, -1 );
+	throwOnFailure(HAPI_ConvertTransformQuatToMatrix(
 		session,
 	    &transform, result_matrix ) );
     }
 
-    int id;
+    int nodeid;
 	HAPI_Session* session;
 
 private:
@@ -292,15 +298,42 @@ public:
     {
 	if (!this->_info)
 	{
-	    this->_info = new HAPI_ObjectInfo();
-	    throwOnFailure(HAPI_GetObjects(
-		session,
-		this->asset.id, this->_info, this->id, /*length=*/1));
+		std::cout << "Object: No info, fetching.." << std::endl;
+		std::cout << "  with id: " << this->asset.nodeid << std::endl;
+        _info = new HAPI_ObjectInfo();
+		// this doesn't work!!
+// 		throwOnFailure(HAPI_GetObjectInfo(
+// 			session,
+// 			this->asset.nodeid,
+// 			_info));
+		// this works..
+        int objectCount;
+        throwOnFailure(HAPI_ComposeObjectList( 
+            session, this->asset.nodeid, NULL, &objectCount ));
+
+        std::cout << "Object: about to try GetComposedObjectList with " << std::endl <<
+            "session: " << session << std::endl <<
+            "nodeid: " << this->asset.nodeid << std::endl <<
+            "info: " << _info << std::endl <<
+            "object_id: " << this->id << std::endl <<
+            "object count:" << 1 << std::endl;
+		throwOnFailure(HAPI_GetComposedObjectList( 
+		session, 
+		this->asset.nodeid, 
+		_info, 
+		this->id, 
+		1));
+		cout << "Object: Check some info.." << endl << 
+		"    nodeId: " << _info->nodeId << endl << 
+		"    isVisible: " << _info->isVisible << endl << 
+		"    instancer: "<< _info->isInstancer << endl << 
+		"    geoCount (depr): "<< _info->geoCount << endl;
 	}
 	return *this->_info;
     }
 
     std::vector<Geo> geos() const;
+    Geo displayGeo() const;
 
     std::string name() const
     { return getString(session, info().nameSH); }
@@ -355,10 +388,12 @@ public:
     {
 	if (!this->_info)
 	{
+		std::cout << "Geo: no info, fetching.." << std::endl;
+		std::cout << "    with object id " << this->object.info().nodeId << std::endl;
 	    this->_info = new HAPI_GeoInfo();
-	    throwOnFailure(HAPI_GetGeoInfo(
+	    throwOnFailure(HAPI_GetDisplayGeoInfo(
 		session,
-		this->object.asset.id, this->object.id, this->id, this->_info));
+		this->object.info().nodeId, this->_info));
 	}
 	return *this->_info;
     }
@@ -414,10 +449,13 @@ public:
 	if (!this->_info)
 	{
 	    this->_info = new HAPI_PartInfo();
+		std::cout << "Part: no info, fetching.." << std::endl;
+		std::cout << "    with geo's nodeid " << this->geo.info().nodeId << std::endl;
 	    throwOnFailure(HAPI_GetPartInfo(
-		session,
-		this->geo.object.asset.id, this->geo.object.id, this->geo.id,
-		this->id, this->_info));
+		    session,
+		    this->geo.info().nodeId, 
+            this->id, 
+            this->_info ));
 	}
 	return *this->_info;
     }
@@ -427,22 +465,7 @@ public:
 
     int numAttribs(HAPI_AttributeOwner attrib_owner) const
     {
-	switch (attrib_owner)
-	{
-	    case HAPI_ATTROWNER_VERTEX:
-		return this->info().vertexAttributeCount;
-	    case HAPI_ATTROWNER_POINT:
-		return this->info().pointAttributeCount;
-	    case HAPI_ATTROWNER_PRIM:
-		return this->info().faceAttributeCount;
-	    case HAPI_ATTROWNER_DETAIL:
-		return this->info().detailAttributeCount;
-	    case HAPI_ATTROWNER_MAX:
-	    case HAPI_ATTROWNER_INVALID:
-		break;
-	}
-
-	return 0;
+    	return this->info().attributeCounts[attrib_owner];
     }
 
     std::vector<std::string> attribNames(HAPI_AttributeOwner attrib_owner) const
@@ -459,7 +482,7 @@ public:
 
 	throwOnFailure(HAPI_GetAttributeNames(
 		session,
-	    this->geo.object.asset.id, this->geo.object.id, this->geo.id,
+	    this->geo.info().nodeId, 
 	    this->id, attrib_owner, &attrib_names_sh[0], num_attribs));
 
 	for (int attrib_index=0; attrib_index < int(attrib_names_sh.size());
@@ -474,7 +497,7 @@ public:
 	HAPI_AttributeInfo result;
 	throwOnFailure(HAPI_GetAttributeInfo(
 		session,
-	    this->geo.object.asset.id, this->geo.object.id, this->geo.id,
+	    this->geo.info().nodeId,
 	    this->id, attrib_name, attrib_owner, &result));
 	return result;
     }
@@ -489,9 +512,9 @@ public:
 	float *result = new float[attrib_info.count * attrib_info.tupleSize];
 	throwOnFailure(HAPI_GetAttributeFloatData(
 		session,
-	    this->geo.object.asset.id, this->geo.object.id, this->geo.id,
-	    this->id, attrib_name, &attrib_info, result,
-	    /*start=*/0, attrib_info.count));
+	    this->geo.info().nodeId, 
+	    this->id, attrib_name, &attrib_info, /*stride=*/-1,
+        result, /*start=*/0, attrib_info.count));
 	return result;
     }
 
@@ -634,9 +657,49 @@ inline Parm::Parm(int node_id, const HAPI_ParmInfo &info,
 
 inline std::vector<Object> Asset::objects() const
 {
+    std::cout << "Asset: getting objects for asset with id " << this->nodeid << std::endl;
     std::vector<Object> result;
-    for (int object_id=0; object_id < info().objectCount; ++object_id)
-	result.push_back(Object(*this, object_id));
+
+    int objectCount;
+    throwOnFailure(HAPI_ComposeObjectList( 
+        session, nodeid, NULL, &objectCount ));
+
+    for (int object_id=0; object_id < objectCount; ++object_id) {
+        std::cout << "Asset: adding object " << object_id << " to list to return" << std::endl;
+	    result.push_back(Object(*this, object_id));
+    }
+    return result;
+}
+
+inline std::vector< HAPI_Transform > Asset::transforms() const
+{
+    std::cout << "let's get transforms for asset " << this->nodeid << std::endl;
+    int object_count = 0;
+    std::cout << "composing objectList" << std::endl;
+    throwOnFailure(HAPI_ComposeObjectList( 
+        this->session,
+        this->nodeid,
+        NULL,
+        &object_count ));
+    std::vector< HAPI_ObjectInfo > object_infos( object_count );
+    std::cout << "objectList is " << object_count << " objects long. getting composed objectList" << std::endl;
+    throwOnFailure(HAPI_GetComposedObjectList(
+        this->session, 
+        this->nodeid, 
+        object_infos.data(), 
+        0, 
+        object_count ));
+    std::cout << "got them, now get transforms" << std::endl;
+    std::vector< HAPI_Transform > result( object_count );
+    throwOnFailure(HAPI_GetComposedObjectTransforms(
+        this->session, 
+        this->nodeid, 
+        HAPI_RSTORDER_DEFAULT, 
+        result.data(), 
+        0, 
+        object_count ));
+    std::cout << "got them, there were " <<  object_count << ". now return them" << std::endl;
+
     return result;
 }
 
@@ -678,15 +741,32 @@ inline std::map<std::string, Parm> Asset::parmMap() const
 
 inline std::vector<Geo> Object::geos() const
 {
+    int geoCount = 1;
+    std::vector<Geo> result;
+
+    result.push_back(this->displayGeo());
+
+    return result;
+
+    // old way
+    /*
     std::vector<Geo> result;
     for (int geo_id=0; geo_id < info().geoCount; ++geo_id)
 	result.push_back(Geo(*this, geo_id));
     return result;
+    */
+}
+inline Geo Object::displayGeo() const
+{
+    std::cout << "Object: fetching display geo" << std::endl;
+    return Geo(*this, 0);
+
 }
 
 inline std::vector<Part> Geo::parts() const
 {
     std::vector<Part> result;
+    std::cout << "Geo: getting parts for geo with id " << this->id << " part count is " << info().partCount << std::endl;
     for (int part_id=0; part_id < info().partCount; ++part_id)
 	result.push_back(Part(*this, part_id));
     return result;
