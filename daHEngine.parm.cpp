@@ -403,7 +403,6 @@ void HoudiniEngine::setParameterValue(const String& asset_name, const String& pa
 
     for (vector<hapi::Parm>::iterator it = parms.begin(); it < parms.end(); ++it) {
         if (it->name() == parm_name) {
-            omsg("match");
 
             bool doCook = true;
 
@@ -413,12 +412,18 @@ void HoudiniEngine::setParameterValue(const String& asset_name, const String& pa
                     boost::python::extract<const char*> stringVal(value);
                     if (stringVal.check()) {
                         boost::python::list myChoices = getParameterChoices(asset_name, parm_name);
+                        bool found = false;
                         for (int i = 0; i < boost::python::len(myChoices); ++i) {
                             boost::python::extract<const char *> myVal(myChoices[i]);
                             if (strcmp(stringVal, myVal) == 0) {
                                 it->setIntValue(0, i);
-                                return;
+                                found = true;
+                                break;
                             }
+                        }
+
+                        if (found) {
+                            break;
                         }
                     } // otherwise, fall through and try the int way of doing it
                 }
@@ -479,6 +484,25 @@ void HoudiniEngine::setParameterValue(const String& asset_name, const String& pa
                 }
             }
             case HAPI_PARMTYPE_STRING:
+                if (it->info().choiceCount != 0) {
+                    boost::python::extract<const char*> stringVal(value);
+                    if (stringVal.check()) {
+                        boost::python::list myChoices = getParameterChoices(asset_name, parm_name);
+                        bool found = false;
+                        for (int i = 0; i < boost::python::len(myChoices); ++i) {
+                            boost::python::extract<const char *> myVal(myChoices[i]);
+                            if (strcmp(stringVal, myVal) == 0) {
+                                it->setStringValue(0, myVal);
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (found) {
+                            break;
+                        }
+                    } // otherwise, fall through and try the int way of doing it
+                }
+                // continue through, it's ok!
             case HAPI_PARMTYPE_PATH_FILE: 
             case HAPI_PARMTYPE_PATH_FILE_GEO:
             case HAPI_PARMTYPE_PATH_FILE_IMAGE:
