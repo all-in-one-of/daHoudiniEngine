@@ -377,6 +377,8 @@ int HoudiniEngine::instantiateAsset(const String& asset_name)
 
 	wait_for_cook();
 
+	assetNameToIds[asset_name] = asset_id;
+
 	omsg("after instantiate cook");
 
 
@@ -473,6 +475,9 @@ StaticObject* HoudiniEngine::instantiateGeometry(const String& asset)
 {
 	ofmsg("instantiateGeometry: %1% assets available", %myAssetCount);
 
+	int asset_id = assetNameToIds[asset];
+
+
 	if (myHoudiniGeometrys[asset] == NULL) {
 		ofwarn("No model of %1%.. creating", %asset);
 
@@ -486,13 +491,60 @@ StaticObject* HoudiniEngine::instantiateGeometry(const String& asset)
 	StaticObject* so = new StaticObject(mySceneManager, asset);
 
 	// TODO: make this general
-	if (mySceneManager->getTexture("testing", false) != NULL) {
-		so->setEffect("textured -d white -e white");
-		so->getMaterial()->setDiffuseTexture("testing");
+	omsg("setting materials on newly instantiated object..");
+	if (assetMaterialNodeIds.count(asset)) {
+		for (int i = 0; i < assetMaterialNodeIds[asset].size(); ++i) {
+			hapi::Asset matNode(assetMaterialNodeIds[asset][i], session);
 
+			std::map<std::string, hapi::Parm> parmMap = matNode.parmMap();
+
+			omsg("looking for diffuse colour");
+			Color c;
+			float a = 1.0;
+			if (parmMap.count("ogl_diff")) {
+				c[0] = parmMap["ogl_diff"].getFloatValue(0);
+				c[1] = parmMap["ogl_diff"].getFloatValue(1);
+				c[2] = parmMap["ogl_diff"].getFloatValue(2);
+				ofmsg("found!, col is %1% %2% %3%", 
+					%c[0] %c[1] %c[2]);
+			}
+
+			omsg("looking for alpha material colour");
+			if (parmMap.count("ogl_alpha")) {
+				a = parmMap["ogl_alpha"].getFloatValue(0);
+				ofmsg("found!, alpha is %1%", %a);
+			}
+
+			omsg("looking for specular");
+			if (parmMap.count("ogl_spec")) {
+			}
+
+			omsg("looking for shininess");
+			if (parmMap.count("ogl_rough")) {
+			}
+
+
+			so->setEffect(ostr("colored -d %1%", %c.toString()));
+				if (a < 0.99f && a > 0) {
+					
+				}
+
+			if (assetMaterials[asset].count("diffuseMapName")) {
+				String dif = assetMaterials[asset]["diffuseMapName"];
+				if (mySceneManager->getTexture(dif, false) != NULL) {
+					so->setEffect(ostr("textured -d %1%", %c.toString()));
+					so->getMaterial()->setDiffuseTexture(dif);
+				}
+			}
+		}
 	}
 
 	return so;
+
+
+	
+
+
 }
 
 

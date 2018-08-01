@@ -508,6 +508,12 @@ namespace houdiniEngine {
 		// asset name to id
 		Dictionary < String, int > assetNameToIds;
         Dictionary<String, HoudiniParameterList*> assetParamLists;
+
+        // asset name to material names
+        // eg: assetMaterials["cluster1"]["diffuseMap"]
+        Dictionary < String, Dictionary<String, String> > assetMaterials;
+        Dictionary < String, vector< int > > assetMaterialNodeIds;
+
 		// logging
 		bool myLogEnabled;
 
