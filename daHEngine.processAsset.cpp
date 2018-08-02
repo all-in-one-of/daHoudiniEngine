@@ -787,10 +787,11 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 					// Ref<PixelData> refPd = ImageUtils::decode((void *) myBuffer, image_info.xRes * image_info.yRes * 4);
 					// pds.push_back(ImageUtils::decode((void *) myBuffer, image_info.xRes * image_info.yRes * 4));
 					// pds.push_back(myBuffer);
-					pds.push_back(pd);
+					// pds.push_back(pd);
 
 					// TODO: general case for texture names (diffuse, spec, env, etc)
-					osg::Texture2D* texture = mySceneManager->createTexture(diffuseMapName, pds[pds.size() - 1]);
+					// osg::Texture2D* texture = mySceneManager->createTexture(diffuseMapName, pds[pds.size() - 1]);
+					osg::Texture2D* texture = mySceneManager->createTexture(diffuseMapName, pd);
 					assetMaterials[part.geo.object.asset.name()]["diffuseMapName"] = diffuseMapName;
 
 					// need to set wrap modes too
