@@ -377,7 +377,6 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 	}
 
 	// TODO: render curves
-	// CONTINUE FROM HERE, rendering these curves!
 	if (part.info().type == HAPI_PARTTYPE_CURVE) {
  		ofmsg ("process_assets:     Curve: %1% %2%", %part.name() %part.id);
 
@@ -605,25 +604,40 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 				int normalMapParmId = -1;
 
 				string diffuseMapName;
+				string normalMapName;
 
 				omsg("looking for diffuse map");
 				if (parmMap.count("ogl_tex1")) {
-					diffuseMapParmId = parmMap["ogl_tex1"].info().id;
-					diffuseMapName = parmMap["ogl_tex1"].name();
-					ofmsg("map found, value is %1%", %parmMap["ogl_tex1"].getStringValue(0));
+					// only assign if not empty
+					if (parmMap["ogl_tex1"].getStringValue(0) != "") {
+						diffuseMapParmId = parmMap["ogl_tex1"].info().id;
+						diffuseMapName = parmMap["ogl_tex1"].name();
+						ofmsg("map found, value is %1%", %parmMap["ogl_tex1"].getStringValue(0));
+					}
 				} else if (parmMap.count("baseColorMap")) {
-					diffuseMapParmId = parmMap["baseColorMap"].info().id;
-					diffuseMapName = parmMap["baseColorMap"].name();
-					ofmsg("map found, value is %1%", %parmMap["ogl_tex1"].getStringValue(0));
+					// only assign if not empty
+					if (parmMap["baseColorMap"].getStringValue(0) != "") {
+						diffuseMapParmId = parmMap["baseColorMap"].info().id;
+						diffuseMapName = parmMap["baseColorMap"].name();
+						ofmsg("map found, value is %1%", %parmMap["baseColorMap"].getStringValue(0));
+					}
 				} else if (parmMap.count("map")) {
-					diffuseMapParmId = parmMap["map"].info().id;
-					diffuseMapName = parmMap["map"].name();
-					ofmsg("map found, value is %1%", %parmMap["ogl_tex1"].getStringValue(0));
+					// only assign if not empty
+					if (parmMap["map"].getStringValue(0) != "") {
+						diffuseMapParmId = parmMap["map"].info().id;
+						diffuseMapName = parmMap["map"].name();
+						ofmsg("map found, value is %1%", %parmMap["map"].getStringValue(0));
+					}
 				}
 
 				omsg("looking for normal map");
 				if (parmMap.count("ogl_normalmap")) {
-					normalMapParmId = parmMap["ogl_normalmap"].info().id;
+					// only assign if not empty
+					if (parmMap["ogl_normalmap"].getStringValue(0) != "") {
+						normalMapParmId = parmMap["ogl_normalmap"].info().id;
+						normalMapName = parmMap["ogl_normalmap"].name();
+						ofmsg("map found, value is %1%", %parmMap["ogl_normalmap"].getStringValue(0));
+					}
 				}
 
 				// omsg("looking for diffuse colour");
@@ -792,7 +806,8 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 					// TODO: general case for texture names (diffuse, spec, env, etc)
 					// osg::Texture2D* texture = mySceneManager->createTexture(diffuseMapName, pds[pds.size() - 1]);
 					osg::Texture2D* texture = mySceneManager->createTexture(diffuseMapName, pd);
-					assetMaterials[part.geo.object.asset.name()]["diffuseMapName"] = diffuseMapName;
+					assetMaterials[hg->getName()]["diffuseMapName"] = diffuseMapName;
+
 
 					// need to set wrap modes too
 					osg::Texture::WrapMode textureWrapMode;
@@ -802,9 +817,172 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 					texture->setWrap(osg::Texture2D::WRAP_S, textureWrapMode);
 					texture->setWrap(osg::Texture2D::WRAP_T, textureWrapMode);
 
-					// TODO: each time this is re-cooked, need to update all materials on asset instances
-
+					// Update materials on each instance of this asset
+					if (assetInstances.count(hg->getName()) > 0) {
+						// update diffuse map texture
+						ofmsg("updating %1%'s texture %2%", %hg->getName() %diffuseMapName);
+						assetInstances[hg->getName()]->getMaterial()->setDiffuseTexture(diffuseMapName);
+					}
 				}
+
+				if (normalMapParmId >= 0) {
+
+					omsg("normal map found..");
+					// NOTE this works if the image is a png
+					ENSURE_SUCCESS(session,  HAPI_RenderTextureToImage(
+						session,
+						mat_info.nodeId,
+						normalMapParmId));
+
+
+					HAPI_ImageInfo image_info;
+					ENSURE_SUCCESS(session,  HAPI_GetImageInfo(
+						session,
+						mat_info.nodeId,
+						&image_info));
+
+					String packing;
+					switch (image_info.packing) {
+						case HAPI_IMAGE_PACKING_UNKNOWN:
+						packing = "HAPI_IMAGE_PACKING_UNKNOWN";
+						break;
+						case HAPI_IMAGE_PACKING_SINGLE:
+						packing = "HAPI_IMAGE_PACKING_SINGLE";
+						break;
+						case HAPI_IMAGE_PACKING_DUAL:
+						packing = "HAPI_IMAGE_PACKING_DUAL";
+						break;
+						case HAPI_IMAGE_PACKING_RGB:
+						packing = "HAPI_IMAGE_PACKING_RGB";
+						break;
+						case HAPI_IMAGE_PACKING_BGR:
+						packing = "HAPI_IMAGE_PACKING_BGR";
+						break;
+						case HAPI_IMAGE_PACKING_RGBA:
+						packing = "HAPI_IMAGE_PACKING_RGBA";
+						break;
+						case HAPI_IMAGE_PACKING_ABGR:
+						packing = "HAPI_IMAGE_PACKING_ABGR";
+						break;
+						case HAPI_IMAGE_PACKING_MAX:
+						packing = "HAPI_IMAGE_PACKING_MAX";
+						break;
+						default:
+						break;
+					}
+
+					// set things
+					// As of HE3.1 for Houdini 16.5.405, setImageInfo does nothing, so lets ignore
+					// image_info.packing = HAPI_IMAGE_PACKING_RGBA;
+					// image_info.dataFormat = HAPI_IMAGE_DATA_INT8;
+					// image_info.interleaved = true; // RGBRGBRGB..
+
+
+					// ENSURE_SUCCESS(session,  HAPI_SetImageInfo(
+					// 	session,
+					// 	mat_info.nodeId,
+					// 	&image_info));
+
+
+					ofmsg("process_assets:   width %1% height: %2% format: %3% dataFormat: %4% packing %5% interleaved %6% gamma %7%",
+						%image_info.xRes
+						%image_info.yRes
+						%get_string(session, image_info.imageFileFormatNameSH)
+						%image_info.dataFormat
+						%packing
+						%image_info.interleaved
+						%image_info.gamma
+					);
+
+					// ---------
+
+					HAPI_StringHandle imageSH;
+
+					int planeCount = 0;
+
+					ENSURE_SUCCESS(session,  HAPI_GetImagePlaneCount(
+						session,
+						mat_info.nodeId,
+						&planeCount
+					));
+
+					ofmsg("image plane count: %1%", %planeCount);
+
+					ENSURE_SUCCESS(session,  HAPI_GetImagePlanes(
+						session,
+						mat_info.nodeId,
+						&imageSH,
+						planeCount
+					));
+
+					int imgBufSize = -1;
+
+					// get image planes into a buffer as RAW, so no mistakes
+					// Could eventually optimise this..
+					ENSURE_SUCCESS(session,  HAPI_ExtractImageToMemory(
+						session,
+						mat_info.nodeId,
+						HAPI_RAW_FORMAT_NAME,
+						"C A", /* image planes */
+						&imgBufSize
+					));
+
+					char *myBuffer = new char[imgBufSize];
+
+					// put into a buffer
+					ENSURE_SUCCESS(session,  HAPI_GetImageMemoryBuffer(
+						session,
+						mat_info.nodeId,
+						myBuffer,
+						imgBufSize
+					));
+
+					Ref<PixelData> pd = PixelData::create(image_info.xRes, image_info.yRes, PixelData::FormatRgba);
+
+					// manually set each pixel. Slow, but definitely correct
+					// would be better to dump all pixel data
+					pd->beginPixelAccess();
+					for (int ii = 0; ii < image_info.xRes; ++ii) {
+						for (int jj = 0; jj < image_info.yRes; ++jj) {
+							int offset = 4 * ((image_info.yRes * ii) + jj);
+							int r = static_cast<int>(static_cast<unsigned char>(myBuffer[offset + 0]));
+							int g = static_cast<int>(static_cast<unsigned char>(myBuffer[offset + 1]));
+							int b = static_cast<int>(static_cast<unsigned char>(myBuffer[offset + 2]));
+							int a = static_cast<int>(static_cast<unsigned char>(myBuffer[offset + 3]));
+
+							// y and x are swapped, account for it accordingly
+							pd->setPixel(jj, ii,
+								r,
+								g,
+								b,
+								a
+							);
+						}
+					}
+					pd->endPixelAccess();
+					pd->setDirty(true);
+
+					osg::Texture2D* texture = mySceneManager->createTexture(normalMapName, pd);
+					assetMaterials[hg->getName()]["normalMapName"] = normalMapName;
+
+
+					// need to set wrap modes too
+					osg::Texture::WrapMode textureWrapMode;
+					textureWrapMode = osg::Texture::REPEAT;
+
+					texture->setWrap(osg::Texture2D::WRAP_R, textureWrapMode);
+					texture->setWrap(osg::Texture2D::WRAP_S, textureWrapMode);
+					texture->setWrap(osg::Texture2D::WRAP_T, textureWrapMode);
+
+					// Update materials on each instance of this asset
+					if (assetInstances.count(hg->getName()) > 0) {
+						// update normal map texture
+						ofmsg("updating %1%'s normal map to %2%", %hg->getName() %normalMapName);
+						assetInstances[hg->getName()]->getMaterial()->setNormalTexture(normalMapName);
+					}
+				}
+
+
 			} else {
 				ofmsg("process_assets:   Invalid material %1% for %2%", %i %hg->getName());
 			}

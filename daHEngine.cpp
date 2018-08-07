@@ -488,9 +488,16 @@ StaticObject* HoudiniEngine::instantiateGeometry(const String& asset)
 		}
 	}
 
-	StaticObject* so = new StaticObject(mySceneManager, asset);
+	if (assetInstances.count(asset) == 0) {
+		assetInstances[asset] = new StaticObject(mySceneManager, asset);
+	}
 
 	// TODO: make this general
+	// this should be referring to all the instantiated StaticObjects
+	//     of an asset and setting all their material parameters
+	//     it might be better that this call a method that is also called when cooking
+	//     something like 'updateMaterials() on the object
+	// make a houdini-specific shader that encompasses all these parameters..
 	omsg("setting materials on newly instantiated object..");
 	if (assetMaterialNodeIds.count(asset)) {
 		for (int i = 0; i < assetMaterialNodeIds[asset].size(); ++i) {
@@ -524,7 +531,7 @@ StaticObject* HoudiniEngine::instantiateGeometry(const String& asset)
 			}
 
 
-			so->setEffect(ostr("colored -d %1%", %c.toString()));
+			assetInstances[asset]->setEffect(ostr("colored -d %1%", %c.toString()));
 				if (a < 0.99f && a > 0) {
 					
 				}
@@ -532,14 +539,21 @@ StaticObject* HoudiniEngine::instantiateGeometry(const String& asset)
 			if (assetMaterials[asset].count("diffuseMapName")) {
 				String dif = assetMaterials[asset]["diffuseMapName"];
 				if (mySceneManager->getTexture(dif, false) != NULL) {
-					so->setEffect(ostr("textured -d %1%", %c.toString()));
-					so->getMaterial()->setDiffuseTexture(dif);
+					assetInstances[asset]->setEffect(ostr("textured -d %1%", %c.toString()));
+					assetInstances[asset]->getMaterial()->setDiffuseTexture(dif);
+				}
+			}
+			if (assetMaterials[asset].count("normalMapName")) {
+				String norm = assetMaterials[asset]["normalMapName"];
+				if (mySceneManager->getTexture(norm, false) != NULL) {
+					assetInstances[asset]->setEffect(ostr("textured -d %1%", %norm.toString()));
+					assetInstances[asset]->getMaterial()->setNormalTexture(norm);
 				}
 			}
 		}
 	}
 
-	return so;
+	return assetInstances[asset];
 
 
 	

@@ -462,6 +462,10 @@ namespace houdiniEngine {
 		// Materials/textures
 		vector <Ref<PixelData> > pds;
 
+		// StaticObject instances
+		// used for updating materials/textures of assets
+		Dictionary<String, Ref<StaticObject> > assetInstances;
+
 		// this is only maintained on the master
 		Mapping instancedHEAssets;
 
