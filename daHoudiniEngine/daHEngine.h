@@ -514,8 +514,8 @@ namespace houdiniEngine {
         Dictionary<String, HoudiniParameterList*> assetParamLists;
 
         // asset name to material names
-        // eg: assetMaterials["cluster1"]["diffuseMap"]
-        Dictionary < String, Dictionary<String, String> > assetMaterials;
+        // eg: assetMaterialParms["cluster1"]["diffuseMap"]
+        Dictionary < String, Dictionary<String, String> > assetMaterialParms;
         Dictionary < String, vector< int > > assetMaterialNodeIds;
 
 		// logging

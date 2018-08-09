@@ -75,6 +75,9 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 
 	hg->objectsChanged = asset.info().haveObjectsChanged;
 	ofmsg("process_assets: %1%: %2% objects %3%", %asset.name() %objects.size() %(hg->objectsChanged == 1 ? "Changed" : ""));
+	// forcing true for testing
+	// hg->objectsChanged = true;
+	// ofmsg("process_assets: %1%: %2% objects Forced Changed", %asset.name() %objects.size() );
 
 	if (hg->getObjectCount() < objects.size()) {
 		hg->addObject(objects.size() - hg->getObjectCount());
@@ -85,6 +88,7 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 	}
 
 	// if (hg->objectsChanged) {
+	// still need to traverse this, as an object may not change, but geos in it can change
 	if (true) {
 		omsg("process_assets: let's look at objects");
 		for (int object_index=0; object_index < int(objects.size()); ++object_index)
@@ -370,10 +374,12 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 	// HAPI_PARTTYPE_CURVE
 	// HAPI_PARTTYPE_VOLUME
 	// HAPI_PARTTYPE_INSTANCER
+	// HAPI_PARTTYPE_BOX
+	// HAPI_PARTTYPE_SPHERE
 	// HAPI_PARTTYPE_MAX
 
 	if (part.info().type == HAPI_PARTTYPE_INSTANCER) {
-		omsg("process_assets:     Instancer");
+		omsg("process_assets:     Instancer (TODO)");
 	}
 
 	// TODO: render curves
@@ -806,7 +812,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 					// TODO: general case for texture names (diffuse, spec, env, etc)
 					// osg::Texture2D* texture = mySceneManager->createTexture(diffuseMapName, pds[pds.size() - 1]);
 					osg::Texture2D* texture = mySceneManager->createTexture(diffuseMapName, pd);
-					assetMaterials[hg->getName()]["diffuseMapName"] = diffuseMapName;
+					assetMaterialParms[hg->getName()]["diffuseMapName"] = diffuseMapName;
 
 
 					// need to set wrap modes too
@@ -963,7 +969,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 					pd->setDirty(true);
 
 					osg::Texture2D* texture = mySceneManager->createTexture(normalMapName, pd);
-					assetMaterials[hg->getName()]["normalMapName"] = normalMapName;
+					assetMaterialParms[hg->getName()]["normalMapName"] = normalMapName;
 
 
 					// need to set wrap modes too
@@ -1119,7 +1125,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 	}
 
 	if (part.info().type == HAPI_PARTTYPE_VOLUME) {
-		omsg("process_assets:     Volume");
+		omsg("process_assets:     Volume (TODO)");
 	}
 
 }

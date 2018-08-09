@@ -536,17 +536,17 @@ StaticObject* HoudiniEngine::instantiateGeometry(const String& asset)
 					
 				}
 
-			if (assetMaterials[asset].count("diffuseMapName")) {
-				String dif = assetMaterials[asset]["diffuseMapName"];
+			if (assetMaterialParms[asset].count("diffuseMapName")) {
+				String dif = assetMaterialParms[asset]["diffuseMapName"];
 				if (mySceneManager->getTexture(dif, false) != NULL) {
 					assetInstances[asset]->setEffect(ostr("textured -d %1%", %c.toString()));
 					assetInstances[asset]->getMaterial()->setDiffuseTexture(dif);
 				}
 			}
-			if (assetMaterials[asset].count("normalMapName")) {
-				String norm = assetMaterials[asset]["normalMapName"];
+			if (assetMaterialParms[asset].count("normalMapName")) {
+				String norm = assetMaterialParms[asset]["normalMapName"];
 				if (mySceneManager->getTexture(norm, false) != NULL) {
-					assetInstances[asset]->setEffect(ostr("textured -d %1%", %norm.toString()));
+					assetInstances[asset]->setEffect(ostr("bump -d %1%", %c.toString()));
 					assetInstances[asset]->getMaterial()->setNormalTexture(norm);
 				}
 			}
@@ -554,10 +554,6 @@ StaticObject* HoudiniEngine::instantiateGeometry(const String& asset)
 	}
 
 	return assetInstances[asset];
-
-
-	
-
 
 }
 
