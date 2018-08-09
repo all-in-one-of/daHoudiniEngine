@@ -391,6 +391,11 @@ namespace houdiniEngine {
 			0 :
 			hobjs[objIndex].hgeoms[geodeIndex].hparts[drawableIndex].colors->size();
 		}
+		inline int getUVCount(const int drawableIndex, const int geodeIndex, const int objIndex) {
+			return (hobjs[objIndex].hgeoms[geodeIndex].hparts[drawableIndex].uvs == NULL) ?
+			0 :
+			hobjs[objIndex].hgeoms[geodeIndex].hparts[drawableIndex].uvs->size();
+		}
 
 		inline int getPrimitiveSetCount(
 			const int drawableIndex,

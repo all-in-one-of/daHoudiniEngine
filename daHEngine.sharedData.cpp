@@ -142,6 +142,11 @@ void HoudiniEngine::commitSharedData(SharedOStream& out)
 					for (int i = 0; i < hg->getColorCount(d, g, obj); ++i) {
 						out << hg->getColor(i, d, g, obj);
 					}
+					ofmsg("UV count: %1%", %hg->getUVCount(d, g, obj));
+					out << hg->getUVCount(d, g, obj);
+					for (int i = 0; i < hg->getUVCount(d, g, obj); ++i) {
+						out << hg->getUV(i, d, g, obj);
+					}
 					// faces are done in that primitive set way
 					// TODO: simplification: assume all faces are triangles?
 					osg::Geometry* geo = hg->getOsgNode()->asGroup()->getChild(obj)->asGroup()->getChild(g)->asGeode()->getDrawable(d)->asGeometry();
@@ -371,6 +376,16 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 						Color c;
 						in >> c;
 						hg->addColor(c, d, g, obj);
+					}
+
+					int uvCount = 0;
+					in >> uvCount;
+
+					ofmsg("SLAVE: uv count: '%1%'", %uvCount);
+					for (int j = 0; j < uvCount; ++j) {
+						Vector3f uv;
+						in >> uv;
+						hg->addUV(uv, d, g, obj);
 					}
 
 					// primitive set count
