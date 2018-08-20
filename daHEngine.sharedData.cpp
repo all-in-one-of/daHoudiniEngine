@@ -439,7 +439,6 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 			in.read(imgptr, size);
 			pd->unmap();
 			pd->setDirty(true);
-			ImageUtils::saveImage("/tmp/slave.jpg", pd, ImageUtils::FormatJpeg);
 			osg::Texture2D* texture = mySceneManager->createTexture(val, pd);
 			osg::Texture::WrapMode textureWrapMode;
 			textureWrapMode = osg::Texture::REPEAT;
@@ -456,12 +455,12 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 			// todo: move this somewhere more sensible
 			if (parm == "diffuseMapName") {
 				omsg("SLAVE: setting diffuse map");
-				assetInstances[matName]->setEffect("textured -d white");
+				assetInstances[matName]->setEffect("houdini -d white");
 				assetInstances[matName]->getMaterial()->setDiffuseTexture(val);
 			}
 			if (parm == "normalMapName") {
 				omsg("SLAVE: setting normal map");
-				assetInstances[matName]->setEffect("bump -d white");
+				assetInstances[matName]->setEffect("houdini -d white");
 				assetInstances[matName]->getMaterial()->setNormalTexture(val);
 			}
 		}

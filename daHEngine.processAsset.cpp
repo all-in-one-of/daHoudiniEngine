@@ -301,9 +301,9 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 		if (point_attrib_names[attrib_index] == "Alpha") {
 			has_point_alphas = true;
 		    process_attrib(part, HAPI_ATTROWNER_POINT, "Alpha", alphas);
-			for (int i = 0; i < alphas.size(); ++i) {
-				ofmsg("alpha %1%: %2% ", %i %alphas[i]);
-			}
+			// for (int i = 0; i < alphas.size(); ++i) {
+			// 	ofmsg("alpha %1%: %2% ", %i %alphas[i]);
+			// }
 		}
 		if (point_attrib_names[attrib_index] == "uv") {
 			has_point_uvs = true;
@@ -650,9 +650,10 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 				// if (parmMap.count("ogl_diff")) {
 				// }
 
-				// omsg("looking for alpha material colour");
-				// if (parmMap.count("ogl_alpha")) {
-				// }
+				omsg("looking for alpha material colour");
+				if (parmMap.count("ogl_alpha")) {
+					ofmsg("has alpha, value is %1%", %parmMap["ogl_alpha"].getFloatValue(0));
+				}
 
 				// omsg("looking for specular");
 				// if (parmMap.count("ogl_spec")) {
