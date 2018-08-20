@@ -66,6 +66,8 @@ either expressed or implied, of the Data Arena Project.
 #include <omegaOsg/omegaOsg.h>
 #include <omegaToolkit.h>
 
+#include "daHoudiniEngine/houdiniAsset.h"
+
 #include <stdlib.h>
 #include <iostream>
 #include <string>
@@ -366,7 +368,7 @@ namespace houdiniEngine {
 		int getAvailableAssetCount() { return myAssetCount; };
 		int instantiateAsset(const String& asset);
 		int instantiateAssetById(int asset_id);
-		StaticObject* instantiateGeometry(const String& asset);
+		HoudiniAsset* instantiateGeometry(const String& asset);
 
 		Ref< RefAsset > getAsset(int asset_id) { return instancedHEAssets[asset_id]; }
 
@@ -451,7 +453,7 @@ namespace houdiniEngine {
 		bool updateGeos;
 
 		// this is the model definition, not the instance of it
-		// I change the verts, faces, normals, etc in this and StaticObjects
+		// I change the verts, faces, normals, etc in this and HoudiniAssets
 		// in the scene get updated accordingly
 		typedef Dictionary<String, Ref<HoudiniGeometry> > HGDictionary;
 		typedef Dictionary<int, Ref<RefAsset> > Mapping;
@@ -462,9 +464,9 @@ namespace houdiniEngine {
 		// Materials/textures
 		vector <Ref<PixelData> > pds;
 
-		// StaticObject instances
+		// HoudiniAsset instances
 		// used for updating materials/textures of assets
-		Dictionary<String, Ref<StaticObject> > assetInstances;
+		Dictionary<String, Ref<HoudiniAsset> > assetInstances;
 
 		// this is only maintained on the master
 		Mapping instancedHEAssets;

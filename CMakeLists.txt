@@ -66,6 +66,7 @@ endif()
 link_directories(./)
 
 set (SRCS 
+		houdiniAsset.cpp
 		houdiniGeometry.cpp
 		houdiniParameter.cpp
 		daHEngine.cpp

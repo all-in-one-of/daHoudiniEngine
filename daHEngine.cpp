@@ -40,6 +40,7 @@ daHEngine
 ******************************************************************************/
 
 #include <daHoudiniEngine/daHEngine.h>
+#include <daHoudiniEngine/houdiniAsset.h>
 #include <daHoudiniEngine/houdiniGeometry.h>
 #include <daHoudiniEngine/houdiniParameter.h>
 #if DA_ENABLE_HENGINE > 0
@@ -123,6 +124,12 @@ BOOST_PYTHON_MODULE(daHEngine)
         PYAPI_METHOD(HoudiniEngine, test)
         PYAPI_METHOD(HoudiniEngine, printParms)
 		;
+
+	// HoudiniAsset
+	PYAPI_REF_CLASS(HoudiniAsset, Entity)
+		PYAPI_STATIC_REF_GETTER(HoudiniAsset, create)
+		;
+
 
 	// HoudiniGeometry
 	PYAPI_REF_BASE_CLASS(HoudiniGeometry)
@@ -472,12 +479,12 @@ int HoudiniEngine::instantiateAssetById(int asset_id)
 // TODO: geometry should be instantiated like this:
 //    asset node+
 //     |
-//     o- object node+ (staticObject)
+//     o- object node+ (HoudiniAsset)
 //         |
-//         o- geo node+ (staticObject or osg nodes)
+//         o- geo node+ (HoudiniAsset or osg nodes)
 //             |
 //             o- part node+ (drawables as part of geo, no transforms)
-StaticObject* HoudiniEngine::instantiateGeometry(const String& asset)
+HoudiniAsset* HoudiniEngine::instantiateGeometry(const String& asset)
 {
 	ofmsg("instantiateGeometry: %1% assets available", %myAssetCount);
 
@@ -495,11 +502,11 @@ StaticObject* HoudiniEngine::instantiateGeometry(const String& asset)
 	}
 
 	if (assetInstances.count(asset) == 0) {
-		assetInstances[asset] = new StaticObject(mySceneManager, asset);
+		assetInstances[asset] = new HoudiniAsset(mySceneManager, asset);
 	}
 
 	// TODO: make this general
-	// this should be referring to all the instantiated StaticObjects
+	// this should be referring to all the instantiated HoudiniAssets
 	//     of an asset and setting all their material parameters
 	//     it might be better that this call a method that is also called when cooking
 	//     something like 'updateMaterials() on the object
@@ -537,7 +544,7 @@ StaticObject* HoudiniEngine::instantiateGeometry(const String& asset)
 			}
 
 
-			assetInstances[asset]->setEffect(ostr("colored -d %1%", %c.toString()));
+			assetInstances[asset]->setEffect(ostr("houdini -d %1%", %c.toString()));
 				if (a < 0.99f && a > 0) {
 					
 				}
@@ -545,14 +552,14 @@ StaticObject* HoudiniEngine::instantiateGeometry(const String& asset)
 			if (assetMaterialParms[asset].count("diffuseMapName")) {
 				String dif = assetMaterialParms[asset]["diffuseMapName"];
 				if (mySceneManager->getTexture(dif, false) != NULL) {
-					assetInstances[asset]->setEffect(ostr("textured -d %1%", %c.toString()));
+					assetInstances[asset]->setEffect(ostr("houdini -d %1%", %c.toString()));
 					assetInstances[asset]->getMaterial()->setDiffuseTexture(dif);
 				}
 			}
 			if (assetMaterialParms[asset].count("normalMapName")) {
 				String norm = assetMaterialParms[asset]["normalMapName"];
 				if (mySceneManager->getTexture(norm, false) != NULL) {
-					assetInstances[asset]->setEffect(ostr("bump -d %1%", %c.toString()));
+					assetInstances[asset]->setEffect(ostr("houdini -d %1%", %c.toString()));
 					assetInstances[asset]->getMaterial()->setNormalTexture(norm);
 				}
 			}
