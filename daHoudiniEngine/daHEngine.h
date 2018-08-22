@@ -159,6 +159,12 @@ namespace houdiniEngine {
 			const int partIndex,
 			HoudiniGeometry* hg
 		);
+
+		void process_materials(
+			const hapi::Part &part,
+			HoudiniGeometry* hg
+		);
+
 		void process_float_attrib(
 		    const hapi::Part &part, HAPI_AttributeOwner attrib_owner,
 		    const char *attrib_name, vector<Vector3f>& points
@@ -167,6 +173,11 @@ namespace houdiniEngine {
 		void process_attrib(
 		    const hapi::Part &part, HAPI_AttributeOwner attrib_owner,
 		    const char *attrib_name, vector<float>& vals
+		);
+
+		void process_attrib(
+		    const hapi::Part &part, HAPI_AttributeOwner attrib_owner,
+		    const char *attrib_name, vector<int>& vals
 		);
 
 		// from HAPI
