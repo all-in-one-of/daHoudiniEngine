@@ -134,52 +134,56 @@ static std::string getString(HAPI_Session* session, int string_handle)
 
 //----------------------------------------------------------------------------
 // Classes:
+// TODO:
+// based on https://www.sidefx.com/docs/hengine/_h_a_p_i__assets.html
+// there may be a need to include a Node class?
+// assets are nodes, 
+// objects are transform nodes, can contain object nodes or sops (geos)
+// geos are nodes, they contain parts to render
+//     usually, using getDisplayGeoInfo() gets what you want to show
+//     may need to get more geos if you want to show templated geometry?
+//     geos can be editable, ie put a mesh in here as part of otl
+//     to cook
+// parts are not nodes
+//     could be meshes, curves, volumes, instances, etc
+//     calculated based on primitive groups in houdini
+//     n + 1 parts for n groups, other part contains primitives not in groups
+//     if multiple primitives in group, mutliple parts for each
+// all nodes have Parm info
+// materials aren't either..
 
 class Object;
 class Parm;
+class Asset;
 
-class Asset
+class Node
 {
 public:
-    Asset(int nodeid, HAPI_Session* mySession)
-    : nodeid(nodeid), _info(NULL), _nodeInfo(NULL), session(mySession)
+    Node(int id, HAPI_Session* mySession)
+    : nodeid(id), _nodeInfo(NULL), session(mySession)
     {}
 
-    Asset(const Asset &asset)
-    : nodeid(asset.nodeid)
-    , _info(asset._info ? new HAPI_AssetInfo(*asset._info) : NULL)
-    , _nodeInfo(asset._nodeInfo ? new HAPI_NodeInfo(*asset._nodeInfo) : NULL)
-	, session(asset.session)
+    Node(const Node &node)
+    : nodeid(node.nodeid)
+    , _nodeInfo(node._nodeInfo ? new HAPI_NodeInfo(*node._nodeInfo) : NULL)
+	, session(node.session)
     {}
 
-    ~Asset()
+    ~Node()
     {
-	delete this->_info;
 	delete this->_nodeInfo;
     }
 
-    Asset &operator=(const Asset &asset)
+    Node &operator=(const Node &node)
     {
-	if (this != &asset)
+	if (this != &node)
 	{
-	    delete this->_info;
 	    delete this->_nodeInfo;
-	    this->nodeid = asset.nodeid;
-	    this->_info = asset._info ? new HAPI_AssetInfo(*asset._info) : NULL;
-	    this->_nodeInfo = asset._nodeInfo
-		? new HAPI_NodeInfo(*asset._nodeInfo) : NULL;
+	    this->nodeid = node.nodeid;
+	    this->_nodeInfo = node._nodeInfo
+		? new HAPI_NodeInfo(*node._nodeInfo) : NULL;
 	}
 	return *this;
-    }
-
-    const HAPI_AssetInfo &info() const
-    {
-	if (!this->_info)
-	{
-	    this->_info = new HAPI_AssetInfo();
-	    throwOnFailure(HAPI_GetAssetInfo(session, this->nodeid, this->_info));
-	}
-	return *this->_info;
     }
 
     const HAPI_NodeInfo &nodeInfo() const
@@ -189,13 +193,11 @@ public:
 	    this->_nodeInfo = new HAPI_NodeInfo();
 	    throwOnFailure(HAPI_GetNodeInfo(
 		session,
-		this->info().nodeId, this->_nodeInfo));
+		nodeid, this->_nodeInfo));
 	}
 	return *this->_nodeInfo;
     }
 
-    std::vector<Object> objects() const;
-    std::vector<HAPI_Transform> transforms() const;
     std::vector<Parm> parms() const;
     std::map<std::string, Parm> parmMap() const;
 
@@ -217,19 +219,73 @@ public:
     }
 
     std::string name() const
-    { return getString(session, info().nameSH); }
+    { return getString(session, nodeInfo().nameSH); }
 
-    std::string label() const
-    { return getString(session, info().labelSH); }
-
-    std::string filePath() const
-    { return getString(session, info().filePathSH); }
+    std::string internalNodePath() const
+    { return getString(session, nodeInfo().internalNodePathSH); }
 
     void deleteNode() const
     { throwOnFailure(HAPI_DeleteNode(session, this->nodeid)); }
 
     void cook() const
     { throwOnFailure(HAPI_CookNode(session, this->nodeid, NULL)); }
+
+    int nodeid;
+	HAPI_Session* session;
+
+protected:
+    mutable HAPI_NodeInfo *_nodeInfo;
+};
+
+class Object;
+class Parm;
+
+class Asset : public Node
+{
+public:
+    Asset(int nodeid, HAPI_Session* mySession)
+    : Node(nodeid, mySession), _info(NULL)
+    {}
+
+    Asset(const Asset &asset) : Node(asset)
+    , _info(asset._info ? new HAPI_AssetInfo(*asset._info) : NULL)
+    {
+    }
+
+    ~Asset()
+    {
+	delete this->_info;
+    }
+
+    Asset &operator=(const Asset &asset)
+    {
+	if (this != &asset)
+	{
+        Node::operator=(asset);
+	    delete this->_info;
+	    this->_info = asset._info ? new HAPI_AssetInfo(*asset._info) : NULL;
+	}
+	return *this;
+    }
+
+    const HAPI_AssetInfo &info() const
+    {
+	if (!this->_info)
+	{
+	    this->_info = new HAPI_AssetInfo();
+	    throwOnFailure(HAPI_GetAssetInfo(session, this->nodeid, this->_info));
+	}
+	return *this->_info;
+    }
+
+    std::vector<Object> objects() const;
+    std::vector<HAPI_Transform> transforms() const;
+
+    std::string label() const
+    { return getString(session, info().labelSH); }
+
+    std::string filePath() const
+    { return getString(session, info().filePathSH); }
 
     HAPI_Transform getTransform( 
         HAPI_RSTOrder rst_order, int relative_to_node_id) const
@@ -250,12 +306,8 @@ public:
 	    &transform, result_matrix ) );
     }
 
-    int nodeid;
-	HAPI_Session* session;
-
 private:
     mutable HAPI_AssetInfo *_info;
-    mutable HAPI_NodeInfo *_nodeInfo;
 };
 
 class Geo;
@@ -351,6 +403,8 @@ private:
 
 class Part;
 
+// todo geos:
+// expose group names
 class Geo
 {
 public:
@@ -411,6 +465,10 @@ private:
     mutable HAPI_GeoInfo *_info;
 };
 
+// TODO parts:
+// put in getFaceCounts, getVertexList, getGroupMembership
+// xyz points are actually point attributes, convenience function for it?
+// 
 class Part
 {
 public:
@@ -518,6 +576,22 @@ public:
 	return result;
     }
 
+    int *getNewIntAttribData(
+	HAPI_AttributeInfo &attrib_info, const char *attrib_name,
+	int start=0, int length=-1) const
+    {
+	if (length < 0)
+	    length = attrib_info.count - start;
+
+	int *result = new int[attrib_info.count * attrib_info.tupleSize];
+	throwOnFailure(HAPI_GetAttributeIntData(
+		session,
+	    this->geo.info().nodeId, 
+	    this->id, attrib_name, &attrib_info, /*stride=*/-1,
+        result, /*start=*/0, attrib_info.count));
+	return result;
+    }
+
     Geo geo;
     int id;
 	HAPI_Session* session;
@@ -528,6 +602,10 @@ private:
 
 class ParmChoice;
 
+// todo: 
+// get only folders of parms
+// implement the radio button thing
+// implement parameter presets (https://www.sidefx.com/docs/hengine/_h_a_p_i__parameters.html#HAPI_Parameters_Presets)
 class Parm
 {
 public:
@@ -703,32 +781,32 @@ inline std::vector< HAPI_Transform > Asset::transforms() const
     return result;
 }
 
-inline std::vector<Parm> Asset::parms() const
+inline std::vector<Parm> Node::parms() const
 {
     // Get all the parm infos.
     int num_parms = nodeInfo().parmCount;
     std::vector<HAPI_ParmInfo> parm_infos(num_parms);
     throwOnFailure(HAPI_GetParameters(
 	this->session,
-	this->info().nodeId, &parm_infos[0], /*start=*/0, num_parms));
+	this->nodeid, &parm_infos[0], /*start=*/0, num_parms));
 
     // Get all the parm choice infos.
     std::vector<HAPI_ParmChoiceInfo> parm_choice_infos(
 	this->nodeInfo().parmChoiceCount);
     throwOnFailure(HAPI_GetParmChoiceLists(
 	session,
-	this->info().nodeId, &parm_choice_infos[0], /*start=*/0,
+	this->nodeid, &parm_choice_infos[0], /*start=*/0,
 	this->nodeInfo().parmChoiceCount));
 
     // Build and return a vector of Parm objects.
     std::vector<Parm> result;
     for (int i=0; i < num_parms; ++i)
 	result.push_back(Parm(
-	    this->info().nodeId, parm_infos[i], &parm_choice_infos[0], this->session));
+	    this->nodeid, parm_infos[i], &parm_choice_infos[0], this->session));
     return result;
 }
 
-inline std::map<std::string, Parm> Asset::parmMap() const
+inline std::map<std::string, Parm> Node::parmMap() const
 {
     std::vector<Parm> parms = this->parms();
 

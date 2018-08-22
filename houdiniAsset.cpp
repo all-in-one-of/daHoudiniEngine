@@ -16,6 +16,9 @@ HoudiniAsset::HoudiniAsset(SceneManager* scene, const String& modelName):
 	if(myModel != NULL && myModel->nodes.size() > 0)
 	{
 		initialize(myModel->nodes[0]);
+
+		// use getPiece() on listPieces() items to break asset up?
+		// set materials based on node names..
 	}
 	else
 	{

@@ -66,20 +66,20 @@ endif()
 link_directories(./)
 
 set (SRCS 
-		houdiniAsset.cpp
-		houdiniGeometry.cpp
-		houdiniParameter.cpp
-		daHEngine.cpp
-		loaderTools.cpp
-		daPly/ReaderWriterPLY.cpp
-		daPly/vertexData.cpp
-		daPly/plyfile.cpp
+	houdiniAsset.cpp
+	houdiniGeometry.cpp
+	houdiniParameter.cpp
+	daHEngine.cpp
+	loaderTools.cpp
+	daPly/ReaderWriterPLY.cpp
+	daPly/vertexData.cpp
+	daPly/plyfile.cpp
 )
 
 set ( LIBS
-		omega
-		omegaToolkit
-		omegaOsg
+	omega
+	omegaToolkit
+	omegaOsg
 )
 
 if (DA_ENABLE_HENGINE)

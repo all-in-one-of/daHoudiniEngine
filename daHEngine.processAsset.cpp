@@ -254,6 +254,10 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 	vector<Vector3f> colors;
 	vector<float> alphas;
 
+	vector<float> ppx;
+	vector<float> ppy;
+	vector<float> ppz;
+	vector<int> object_ids;
 	// texture coordinates
 	vector<Vector3f> uvs;
 
@@ -266,6 +270,11 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 
 	bool has_point_uvs = false;
 	bool has_vertex_uvs = false;
+
+	bool has_pivotpoint_x = false;
+	bool has_pivotpoint_y = false;
+	bool has_pivotpoint_z = false;
+	bool has_object_id = false;
 
 	// 	ofmsg("clearing %1%", %hg->getName());
 	// 	hg->clear();
@@ -286,7 +295,24 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 	// 	HAPI_ATTRIB_UV			"uv"
 	// 	HAPI_ATTRIB_UV2			"uv2"
 
-	// TODO: improve this..
+	// TODO: improve this using HAPI_AttributeTypeInfo:
+	// HAPI_ATTRIBUTE_TYPE_INVALID 	
+	// HAPI_ATTRIBUTE_TYPE_NONE 	
+	// HAPI_ATTRIBUTE_TYPE_POINT 	
+	// HAPI_ATTRIBUTE_TYPE_HPOINT 	
+	// HAPI_ATTRIBUTE_TYPE_VECTOR 	
+	// HAPI_ATTRIBUTE_TYPE_NORMAL 	
+	// HAPI_ATTRIBUTE_TYPE_COLOR 	
+	// HAPI_ATTRIBUTE_TYPE_QUATERNION 	
+	// HAPI_ATTRIBUTE_TYPE_MATRIX3 	
+	// HAPI_ATTRIBUTE_TYPE_MATRIX 	
+	// HAPI_ATTRIBUTE_TYPE_ST 	
+	// HAPI_ATTRIBUTE_TYPE_HIDDEN 	
+	// HAPI_ATTRIBUTE_TYPE_BOX2 	
+	// HAPI_ATTRIBUTE_TYPE_BOX 	
+	// HAPI_ATTRIBUTE_TYPE_TEXTURE 	
+	// HAPI_ATTRIBUTE_TYPE_MAX
+
     vector<std::string> point_attrib_names = part.attribNames(
 	HAPI_ATTROWNER_POINT);
 
@@ -320,6 +346,35 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 		if (point_attrib_names[attrib_index] == "uv") {
 			has_point_uvs = true;
 		    process_float_attrib(part, HAPI_ATTROWNER_POINT, "uv", uvs);
+		}
+
+		// TODO: add support for automatic camera-facing of elements
+		// need to effectively unpack the geometry to parts again
+		// then make each one auto look-at camera.. refer to daPly/vertexData.cpp
+		// for a way to do it in osg
+		// otherwise, look at packed primitives in houdini engine
+		if (point_attrib_names[attrib_index] == "pivotpoint_x") {
+			has_pivotpoint_x = true;
+		    process_attrib(part, HAPI_ATTROWNER_POINT, "pivotpoint_x", ppx);
+			ofmsg("ppx %1%", %ppx[0]);
+		}
+
+		if (point_attrib_names[attrib_index] == "pivotpoint_y") {
+			has_pivotpoint_y = true;
+		    process_attrib(part, HAPI_ATTROWNER_POINT, "pivotpoint_y", ppy);
+			ofmsg("ppy %1%", %ppy[0]);
+		}
+		if (point_attrib_names[attrib_index] == "pivotpoint_z") {
+			has_pivotpoint_z = true;
+		    process_attrib(part, HAPI_ATTROWNER_POINT, "pivotpoint_z", ppz);
+			ofmsg("ppz %1%", %ppz[0]);
+		}
+		// Object_ids are consecutive, and should really be a primitive attribute
+		if (point_attrib_names[attrib_index] == "object_id") {
+			has_object_id = true;
+			omsg("this object has object_ids");
+		    process_attrib(part, HAPI_ATTROWNER_POINT, "object_id", object_ids);
+			ofmsg("object_id %1%", %object_ids[0]);
 		}
 	}
 
@@ -545,11 +600,14 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 		if (part.info().faceCount == 0) {
 			// but has points, so draw them?
 			if (part.info().pointCount > 0) {
+				// TODO: is there a better way to do this?
 				foreach(Vector3f point, points) {
 					hg->addVertex(point, partIndex, geoIndex, objIndex);
 				}
 				osg::PrimitiveSet::Mode myType = osg::PrimitiveSet::POINTS;
 				hg->addPrimitiveOsg(myType, 0, part.info().pointCount - 1, partIndex, geoIndex, objIndex);
+
+				// TODO: add a point sprite shader?
 			}
 			
 			hg->dirty();
