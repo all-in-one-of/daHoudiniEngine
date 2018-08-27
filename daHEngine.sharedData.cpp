@@ -152,10 +152,16 @@ void HoudiniEngine::commitSharedData(SharedOStream& out)
 					osg::Geometry* geo = hg->getOsgNode()->asGroup()->getChild(obj)->asGroup()->getChild(g)->asGeode()->getDrawable(d)->asGeometry();
 					osg::Geometry::PrimitiveSetList psl = geo->getPrimitiveSetList();
 
+					ofmsg("Primitive Set count: %1%", %psl.size());
 					out << int(psl.size());
 					for (int i = 0; i < psl.size(); ++i) {
 						osg::DrawArrays* da = dynamic_cast<osg::DrawArrays*>(psl[i].get());
 
+						ofmsg("  ps%1%: %2% %3% %4%", %i 
+							%da->getMode()
+							%da->getFirst()
+							%da->getCount()
+						);
 						out << da->getMode() << int(da->getFirst()) << int(da->getCount());
 					}
 				}
@@ -168,53 +174,64 @@ void HoudiniEngine::commitSharedData(SharedOStream& out)
  	ofmsg("MASTER: sending %1% materials", %matCount);
 	out << matCount;
 
-	typedef Dictionary <String, String> MP;
-	typedef Dictionary < String, MP > Amps;
-    foreach(Amps::Item amp, assetMaterialParms) {
-		ofmsg("MASTER: Material parms for asset Name %1%", %amp.first);
-		out << amp.first;
-		int matParmCount = int(amp.second.size());
-		out << matParmCount;
-		ofmsg("MASTER: sending %1% material parms", %matParmCount);
-	    foreach(MP::Item mp, amp.second) {
-			ofmsg("MASTER: Material parms %1%:%2%", %mp.first %mp.second);
-			out << mp.first << mp.second;
-			Ref<PixelData> pd = PixelData::create(32, 32, PixelData::FormatRgba);
-			pd->copyFrom(mySceneManager->getPixelData(mp.second));
-			ofmsg("MASTER: Sending pixel data info: w %1% h %2%", %pd->getWidth() %pd->getHeight());
-			out << pd->getWidth() << pd->getHeight();
-			ofmsg("MASTER: Sending pixel data size %1%", %pd->getSize());
-			out << pd->getSize();
-			ofmsg("MASTER: Sending pixel data for %1%", %mp.second);
-			out.write(pd->map(), pd->getSize());
-			pd->unmap();
-		}
-	}
+	// typedef Dictionary <String, ParmStruct> MP;
+	// typedef Dictionary < String, MP > Amps;
+    // foreach(Amps::Item amp, assetMaterialParms) {
+	// 	ofmsg("MASTER: Material parms for asset Name %1%", %amp.first);
+	// 	out << amp.first;
+	// 	int matParmCount = int(amp.second.size());
+	// 	out << matParmCount;
+	// 	ofmsg("MASTER: sending %1% material parms", %matParmCount);
+	//     foreach(MP::Item mp, amp.second) {
+	// 		ofmsg("MASTER: Material parm name %1%", %mp.first);
+	// 		out << mp.first;
+	// 		ofmsg("MASTER:   ParmStruct type %1%", %mp.second.type);
+	// 		out << mp.second.type;
 
-	// distribute the parameter list
-	// int parmCount = assetParams.size();
-	// disable parm distribution until menu is improved (WIP)
-	int parmCount = 0;
-	out << parmCount;
+	// 		ofmsg("MASTER:   ParmStruct type int value count: %1%" %mp.second.intValues.size());
+	// 		out << int(mp.second.intValues.size());
+	// 		for (int i = 0; i < mp.second.intValues.size(); ++i) {
+	// 			ofmsg("MASTER:   int value %1%: %2%" %i %mp.second.intValues[i]);
+	// 			out << mp.second.intValues[i];
+	// 		}
 
-	// TODO: reimplement sending of ui
-//     foreach(ParmConts::Item pcs, assetParamConts) {
-// 		out << pcs.first;
-// 		out << int(pcs.second.size());
-// 		for (int i = 0; i < pcs.second.size(); ++i) {
-// 			MenuItem* mi = &pcs.second[i];
-// 			out << mi->getType();
-// 			// MenuItem.Type: { Button, Checkbox, Slider, Label, SubMenu, Image, Container }
-// 			if (mi->getType() == MenuItem::Label) {
-// 				out << mi->getText();
-// 			} else if (mi->getType() == MenuItem::Slider) {
-// 				out << mi->getSlider()->getTicks();
-// 				out << mi->getSlider()->getValue();
-// 			} else if (mi->getType() == MenuItem::Button) { // checkbox is actually a button
-// 				out << mi->isChecked();
-// 			}
-// 		}
-// 	}
+	// 		ofmsg("MASTER:   ParmStruct type float value count: %1%" %mp.second.floatValues.size());
+	// 		out << int(mp.second.floatValues.size());
+	// 		for (int i = 0; i < mp.second.floatValues.size(); ++i) {
+	// 			ofmsg("MASTER:   float value %1%: %2%" %i %mp.second.floatValues[i]);
+	// 			out << mp.second.floatValues[i];
+	// 		}
+
+	// 		ofmsg("MASTER:   ParmStruct type str value count: %1%" %mp.second.stringValues.size());
+	// 		out << int(mp.second.stringValues.size());
+	// 		for (int i = 0; i < mp.second.stringValues.size(); ++i) {
+	// 			ofmsg("MASTER:   str value %1%: %2%" %i %mp.second.stringValues[i]);
+	// 			out << mp.second.stringValues[i];
+	// 		}
+
+
+	// 		// textures are shared based on value 'diffuseMapName' and 'normalMapName'
+	// 		// change this to something more sensible.
+	// 		// maybe just send all the parm values directly?!
+	// 		// ie foreach parm, send the type, string, int and float values.
+	// 		// then, reassemble on other side, picking out only what i need?
+	// 		// yeah, lets try that..
+
+	// 		// share the textures properly in another loop
+	// 		// fetch the texture from the sceneManager and send this across
+	// 		/*
+	// 		Ref<PixelData> pd = PixelData::create(32, 32, PixelData::FormatRgba);
+	// 		pd->copyFrom(mySceneManager->getPixelData(mp.second));
+	// 		ofmsg("MASTER: Sending pixel data info: w %1% h %2%", %pd->getWidth() %pd->getHeight());
+	// 		out << pd->getWidth() << pd->getHeight();
+	// 		ofmsg("MASTER: Sending pixel data size %1%", %pd->getSize());
+	// 		out << pd->getSize();
+	// 		ofmsg("MASTER: Sending pixel data for %1%", %mp.second);
+	// 		out.write(pd->map(), pd->getSize());
+	// 		pd->unmap();
+	// 		*/
+	// 	}
+	// }
 
 }
 
@@ -398,6 +415,7 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 						osg::PrimitiveSet::Mode mode;
 						int startIndex, count;
 						in >> mode >> startIndex >> count;
+						ofmsg("SLAVE:   ps%1%: %2% %3% %4%", %j %mode %startIndex %count);
 						hg->addPrimitiveOsg(mode, startIndex, count, d, g, obj);
 					}
 				}
@@ -411,80 +429,64 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 	int matCount;
 	in >> matCount;
 	ofmsg("SLAVE: reading %1% materials", %matCount);
+	
+	// // lets clobber it so we won't miss
+	// assetMaterialParms.clear();
 
-	// lets clobber it so we won't miss
-	assetMaterialParms.clear();
+	// for (int i = 0; i < matCount; ++i) {
+	// 	String matName;
+	// 	in >> matName;
+	// 	ofmsg("SLAVE: reading material parms for %1%", %matName);
+	// 	int matParmCount;
+	// 	in >> matParmCount;
+	// 	ofmsg("SLAVE: reading %1% parms", %matParmCount);
+	// 	Dictionary<String, String> matParms;
+	// 	for (int j = 0; j < matParmCount; ++j) {
+	// 		String parm, val;
+	// 		in >> parm >> val;
+	// 		ofmsg("SLAVE: read in parm name %1% val '%2%'", %parm %val);
+	// 		matParms[parm] = val;
 
-	for (int i = 0; i < matCount; ++i) {
-		String matName;
-		in >> matName;
-		ofmsg("SLAVE: reading material parms for %1%", %matName);
-		int matParmCount;
-		in >> matParmCount;
-		ofmsg("SLAVE: reading %1% parms", %matParmCount);
-		Dictionary<String, String> matParms;
-		for (int j = 0; j < matParmCount; ++j) {
-			String parm, val;
-			in >> parm >> val;
-			ofmsg("SLAVE: read in parm name %1% val '%2%'", %parm %val);
-			matParms[parm] = val;
-			ofmsg("SLAVE: read in Pixel Data for %1%", %val);
-			int w, h;
-			size_t size;
-			in >> w >> h;
-			in >> size;
-			ofmsg("SLAVE: read in Pixel Data w %1% h %2% and size %3%", %w %h %size);
-			Ref<PixelData> pd = PixelData::create(w, h, PixelData::FormatRgba);
-			byte* imgptr = pd->map();
-			in.read(imgptr, size);
-			pd->unmap();
-			pd->setDirty(true);
-			osg::Texture2D* texture = mySceneManager->createTexture(val, pd);
-			osg::Texture::WrapMode textureWrapMode;
-			textureWrapMode = osg::Texture::REPEAT;
+	// 		/*
+	// 		ofmsg("SLAVE: read in Pixel Data for %1%", %val);
+	// 		int w, h;
+	// 		size_t size;
+	// 		in >> w >> h;
+	// 		in >> size;
+	// 		ofmsg("SLAVE: read in Pixel Data w %1% h %2% and size %3%", %w %h %size);
+	// 		Ref<PixelData> pd = PixelData::create(w, h, PixelData::FormatRgba);
+	// 		byte* imgptr = pd->map();
+	// 		in.read(imgptr, size);
+	// 		pd->unmap();
+	// 		pd->setDirty(true);
+	// 		osg::Texture2D* texture = mySceneManager->createTexture(val, pd);
+	// 		osg::Texture::WrapMode textureWrapMode;
+	// 		textureWrapMode = osg::Texture::REPEAT;
 
-			texture->setWrap(osg::Texture2D::WRAP_R, textureWrapMode);
-			texture->setWrap(osg::Texture2D::WRAP_S, textureWrapMode);
-			texture->setWrap(osg::Texture2D::WRAP_T, textureWrapMode);
+	// 		texture->setWrap(osg::Texture2D::WRAP_R, textureWrapMode);
+	// 		texture->setWrap(osg::Texture2D::WRAP_S, textureWrapMode);
+	// 		texture->setWrap(osg::Texture2D::WRAP_T, textureWrapMode);
 
-			ofmsg("SLAVE: (Hopefully) setting material parm %1% to %2% for asset %3%", 
-				%parm
-				%val
-				%matName
-			);
-			// todo: move this somewhere more sensible
-			if (parm == "diffuseMapName") {
-				omsg("SLAVE: setting diffuse map");
-				assetInstances[matName]->setEffect("houdini -d white");
-				assetInstances[matName]->getMaterial()->setDiffuseTexture(val);
-			}
-			if (parm == "normalMapName") {
-				omsg("SLAVE: setting normal map");
-				assetInstances[matName]->setEffect("houdini -d white");
-				assetInstances[matName]->getMaterial()->setNormalTexture(val);
-			}
-		}
-		assetMaterialParms[matName] = matParms;
-	}
-
-
-	// read in menu parms
-	int parmCount = 0;
-	in >> parmCount;
-
-	//  parameter list
-	// TODO: reimplement reading of new ui layout
-
-	// ofmsg("SLAVE: currently have %1% asset parameter lists", %assetParamConts.size());
-    // foreach(ParmConts::Item mis, assetParamConts)
-	// {
-	// 	ofmsg("SLAVE: name %1%", %mis.first);
-	// 	ofmsg("SLAVE: number %1%", %mis.second.size());
-	// 	for (int i = 0; i < mis.second.size(); ++i) {
-	// 		ofmsg("SLAVE: menu item %1%", %mis.second[i]);
+	// 		ofmsg("SLAVE: (Hopefully) setting material parm %1% to %2% for asset %3%", 
+	// 			%parm
+	// 			%val
+	// 			%matName
+	// 		);
+	// 		// todo: move this somewhere more sensible
+	// 		if (parm == "diffuseMapName") {
+	// 			omsg("SLAVE: setting diffuse map");
+	// 			assetInstances[matName]->setEffect("houdini -d white");
+	// 			assetInstances[matName]->getMaterial()->setDiffuseTexture(val);
+	// 		}
+	// 		if (parm == "normalMapName") {
+	// 			omsg("SLAVE: setting normal map");
+	// 			assetInstances[matName]->setEffect("houdini -d white");
+	// 			assetInstances[matName]->getMaterial()->setNormalTexture(val);
+	// 		}
+	// 		*/
 	// 	}
+	// 	assetMaterialParms[matName] = matParms;
 	// }
-	// ofmsg("SLAVE: received %1% asset parameter lists", %parmCount);
 
 }
 
