@@ -112,7 +112,6 @@ void HoudiniEngine::handleEvent(const Event& evt)
 	Widget* myWidget = Widget::getSource<Widget>(evt);
 
 	ofmsg("widget name: '%1%'", %myWidget->getName());
-	ofmsg("current asset is '%1%''", %currentAssetName);
 
 	// do it if source is button and event is toggle or click
 	if (myWidget != NULL) {
@@ -120,7 +119,7 @@ void HoudiniEngine::handleEvent(const Event& evt)
 		// choice of asset?
 		if (strlen(myWidget->getName().c_str()) > 5 &&
 			StringUtils::startsWith(myWidget->getName(), "Asset", false)) {
-			currentAssetName = ostr("%1%", %myWidget->getName().substr(6));
+			// currentAssetName = ostr("%1%", %myWidget->getName().substr(6));
 			void * data = myWidget->getUserData();
 			int assetIndex = *((int *)&data);
 			// children actually removed on update.. so do this to mark for removal
@@ -132,7 +131,6 @@ void HoudiniEngine::handleEvent(const Event& evt)
 			}
 			houdiniCont->addChild(assetConts[assetIndex]);
 			evt.setProcessed();
-			ofmsg("asset selected: %1%", %currentAssetName);
 		}
 	}
 
