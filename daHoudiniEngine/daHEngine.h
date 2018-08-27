@@ -427,6 +427,9 @@ namespace houdiniEngine {
         void cook_one(hapi::Asset* asset);
 		void wait_for_cook();
 
+		void setCookOptions(HAPI_CookOptions co) { myCookOptions = co; };
+		HAPI_CookOptions getCookOptions() { return myCookOptions; };
+
 		void setLoggingEnabled(const bool toggle);
 
 		void showMappings();
@@ -556,13 +559,13 @@ namespace houdiniEngine {
 		HAPI_Session* session;
 
 		int myAssetCount;
-		int currentAsset;
-		String currentAssetName;
 		
 		// build a list of widgets to remove
 		Vector<Widget* > removeTheseWidgets;
 		
 		static HoudiniEngine* myInstance;
+
+		HAPI_CookOptions myCookOptions;
 
 #endif
 	};

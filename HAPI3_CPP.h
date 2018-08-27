@@ -230,6 +230,9 @@ public:
     void cook() const
     { throwOnFailure(HAPI_CookNode(session, this->nodeid, NULL)); }
 
+    void cook(HAPI_CookOptions* cook_options) const
+    { throwOnFailure(HAPI_CookNode(session, this->nodeid, cook_options)); }
+
     int nodeid;
 	HAPI_Session* session;
 

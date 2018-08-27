@@ -99,7 +99,7 @@ void HoudiniEngine::cook_one(hapi::Asset* asset)
 
         ofmsg("cooking %1%..", %asset->name());
 
-        asset->cook();
+        asset->cook(&myCookOptions);
         wait_for_cook();
 
 		// old way of refreshing parms

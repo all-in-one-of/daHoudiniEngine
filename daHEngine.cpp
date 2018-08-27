@@ -92,6 +92,8 @@ BOOST_PYTHON_MODULE(daHEngine)
  		PYAPI_METHOD(HoudiniEngine, getTime)
  		PYAPI_METHOD(HoudiniEngine, setTime)
  		PYAPI_METHOD(HoudiniEngine, cook)
+ 		PYAPI_METHOD(HoudiniEngine, getCookOptions)
+ 		PYAPI_METHOD(HoudiniEngine, setCookOptions)
  		PYAPI_METHOD(HoudiniEngine, setLoggingEnabled)
  		PYAPI_METHOD(HoudiniEngine, showMappings)
  		PYAPI_REF_GETTER(HoudiniEngine, getContainerForAsset)
@@ -194,6 +196,20 @@ BOOST_PYTHON_MODULE(daHEngine)
 		.value("Max", HAPI_ParmType::HAPI_PARMTYPE_MAX)
 	;
 
+	// HAPI_CookOptions
+	class_<HAPI_CookOptions>("CookOptions")
+	    .def_readwrite("splitGeosByGroup", &HAPI_CookOptions::splitGeosByGroup)
+		.def_readwrite("maxVerticesPerPrimitive", &HAPI_CookOptions::maxVerticesPerPrimitive)
+		.def_readwrite("refineCurveToLinear", &HAPI_CookOptions::refineCurveToLinear)
+		.def_readwrite("curveRefineLOD", &HAPI_CookOptions::curveRefineLOD)
+		.def_readwrite("clearErrorsAndWarnings", &HAPI_CookOptions::clearErrorsAndWarnings)
+		.def_readwrite("cookTemplatedGeos", &HAPI_CookOptions::cookTemplatedGeos)
+		.def_readwrite("splitPointsByVertexAttributes", &HAPI_CookOptions::splitPointsByVertexAttributes)
+		// PYAPI_REF_PROPERTY(HAPI_CookOptions, packedPrimInstancingMode)
+		.def_readwrite("handleBoxPartTypes", &HAPI_CookOptions::handleBoxPartTypes)
+		.def_readwrite("handleSpherePartTypes", &HAPI_CookOptions::handleSpherePartTypes)
+	;
+
 #endif
 	// tools for generic models exported from houdini
 	PYAPI_REF_BASE_CLASS(LoaderTools)
@@ -245,14 +261,16 @@ HoudiniEngine::HoudiniEngine():
 	EngineModule("HoudiniEngine"),
 	mySceneManager(NULL),
 	myLogEnabled(false),
-	myAssetCount(0),
-	currentAsset(-1),
-	currentAssetName("")
+	myAssetCount(0)
+{
+	// defaults
+	myCookOptions.cookTemplatedGeos = true; //default false;
+}
 #else
 	EngineModule("HoudiniEngine")
-#endif
 {
 }
+#endif
 
 HoudiniEngine::~HoudiniEngine()
 {
@@ -615,14 +633,10 @@ void HoudiniEngine::initialize()
 				cout << "Connected to " << env_host << ":" << port << endl;
 			}
 
-			// TODO: expose these in python to allow changeable options
-			HAPI_CookOptions cook_options = HAPI_CookOptions_Create();
-			cook_options.cookTemplatedGeos = true; // default false
-
 
 			ENSURE_SUCCESS(session, HAPI_Initialize(
 				session,
-				&cook_options,
+				&myCookOptions,
 				/*use_cooking_thread=*/true,
 				/*cooking_thread_stack_size=*/-1,
 				/*houdini_environment_files=*/NULL,
