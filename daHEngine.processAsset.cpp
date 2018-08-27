@@ -53,22 +53,18 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 
 	HoudiniGeometry* hg;
 
-	ofmsg("processing asset %1%", %s);
+	ofmsg("process_assets: asset '%1%'", %s);
 
 	if (myHoudiniGeometrys.count(s) > 0) {
 		hg = myHoudiniGeometrys[s];
+		ofmsg("process_assets: acquired existing HoudiniGeometry for '%1%'", %s);
 	} else {
 		hg = HoudiniGeometry::create(s);
 		myHoudiniGeometrys[s] = hg;
-
+		ofmsg("process_assets: created new HoudiniGeometry for '%1%'", %s);
 	}
 
-	omsg("got a houdiniGeometry, doing stuff with it now..");
-
     vector<hapi::Object> objects = asset.objects();
-
-	omsg("got objects of asset, getting transforms");
-
 	vector<HAPI_Transform> objTransforms = asset.transforms();
 
 	ofmsg("process_assets: %1%: %2% objects %3% transforms", %asset.name() %objects.size() %objTransforms.size());
@@ -79,6 +75,7 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 	// hg->objectsChanged = true;
 	// ofmsg("process_assets: %1%: %2% objects Forced Changed", %asset.name() %objects.size() );
 
+	// set number of objects in HoudiniGeometry to match
 	if (hg->getObjectCount() < objects.size()) {
 		hg->addObject(objects.size() - hg->getObjectCount());
 
@@ -90,20 +87,20 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 	// if (hg->objectsChanged) {
 	// still need to traverse this, as an object may not change, but geos in it can change
 	if (true) {
-		omsg("process_assets: let's look at objects");
+		ofmsg("process_assets: iterating through %1% objects", %objects.size());
 		for (int object_index=0; object_index < int(objects.size()); ++object_index)
 	    {
 			HAPI_ObjectInfo objInfo = objects[object_index].info();
 
 			// TODO check for instancing, then do things differently
 			if (objInfo.isInstancer > 0) {
-				ofmsg("instance path: %1%: %2%", %objects[object_index].name() %objects[object_index].objectInstancePath());
-				ofmsg("%1%: %2%", %objects[object_index].id %objInfo.objectToInstanceId);
+				ofmsg("process_assets:   INSTANCE:  instance path: %1%: %2%", %objects[object_index].name() %objects[object_index].objectInstancePath());
 			}
 			// don't use vector, as there should be only one geo
 			// unless we are exposing editable nodes (not yet)
 			vector<hapi::Geo> geos = objects[object_index].geos();
 
+			// adjust geo count
 			if (hg->getGeodeCount(object_index) < geos.size()) {
 				hg->addGeode(geos.size() - hg->getGeodeCount(object_index), object_index);
 
@@ -122,7 +119,7 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 
 			// if (hg->getGeosChanged(object_index)) {
 			if (true) {
-				omsg("process_assets:   let's look at geos");
+				ofmsg("process_assets: iterating through %1% geos", %geos.size());
 
 				for (int geo_index=0; geo_index < int(geos.size()); ++geo_index)
 				{
@@ -145,11 +142,13 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 					hg->clearGeode(geo_index, object_index);
 					// if (hg->getGeoChanged(geo_index, object_index)) {
 					if (true) {
-						ofmsg("process_assets:     let's look at parts, should be %1% of them", %parts.size());
+						ofmsg("process_assets: iterating through %1% parts", %parts.size());
 					    for (int part_index=0; part_index < int(parts.size()); ++part_index)
 						{
 							if (geos[geo_index].info().isDisplayGeo) {
 								ofmsg("process_assets:     processing %1% %2%", %s %parts[part_index].name());
+
+								// update the geometry and materials in each part
 								process_geo_part(parts[part_index], object_index, geo_index, part_index, hg);
 							}
 						}
@@ -316,9 +315,10 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
     vector<std::string> point_attrib_names = part.attribNames(
 	HAPI_ATTROWNER_POINT);
 
+	omsg("process_geo_part:     Attributes");
 	ologaddnewline(false);
 
-	omsg("process_assets:     Point:  ");
+	omsg("process_geo_part:     Point:  ");
 
     for (int attrib_index=0; attrib_index < int(point_attrib_names.size());
 	    ++attrib_index) {
@@ -339,9 +339,6 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 		if (point_attrib_names[attrib_index] == "Alpha") {
 			has_point_alphas = true;
 		    process_attrib(part, HAPI_ATTROWNER_POINT, "Alpha", alphas);
-			// for (int i = 0; i < alphas.size(); ++i) {
-			// 	ofmsg("alpha %1%: %2% ", %i %alphas[i]);
-			// }
 		}
 		if (point_attrib_names[attrib_index] == "uv") {
 			has_point_uvs = true;
@@ -383,7 +380,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
     vector<std::string> vertex_attrib_names = part.attribNames(
 	HAPI_ATTROWNER_VERTEX);
 
-	omsg("process_assets:     Vert:   ");
+	omsg("process_geo_part:     Vert:   ");
 
 	for (int attrib_index=0; attrib_index < int(vertex_attrib_names.size());
 	    ++attrib_index) {
@@ -405,7 +402,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
    vector<std::string> primitive_attrib_names = part.attribNames(
 	HAPI_ATTROWNER_PRIM);
 
-	omsg("process_assets:     Prim:   ");
+	omsg("process_geo_part:     Prim:   ");
 
 	for (int attrib_index=0; attrib_index < int(primitive_attrib_names.size());
 	    ++attrib_index) {
@@ -423,7 +420,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
     vector<std::string> detail_attrib_names = part.attribNames(
 	HAPI_ATTROWNER_DETAIL);
 
-	omsg("process_assets:     Detail: ");
+	omsg("process_geo_part:     Detail: ");
 
 	for (int attrib_index=0; attrib_index < int(detail_attrib_names.size());
 	    ++attrib_index) {
@@ -446,7 +443,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 	// HAPI_PARTTYPE_MAX
 
 	if (part.info().type == HAPI_PARTTYPE_INSTANCER) {
-		omsg("process_assets:     Instancer (TODO)");
+		omsg("process_geo_part:     Instancer (TODO)");
 	}
 
 	// TODO: render curves
@@ -590,7 +587,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 	}
 
 	if (part.info().type == HAPI_PARTTYPE_MESH) {
-		ofmsg("process_assets:     Mesh (faceCount: %1% pointCount: %2% vertCount: %3%)", 
+		ofmsg("process_geo_part:     Mesh (faceCount: %1% pointCount: %2% vertCount: %3%)", 
 			%part.info().faceCount
 			%part.info().pointCount
 			%part.info().vertexCount
@@ -623,9 +620,6 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 			0,
 			part.info().faceCount
 		) );
-
-		// Material handling
-		process_materials(part, hg);
 
 		std::vector< int > vertex_list ( part.info().vertexCount );
 		ENSURE_SUCCESS(session,  HAPI_GetVertexList(
@@ -743,7 +737,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 			myType = osg::PrimitiveSet::TRIANGLE_FAN;
 		}
 
-		ofmsg("process_assets:   make primitive set face size %1%, from %2% plus %3%",
+		ofmsg("process_geo_part:   make primitive set face size %1%, from %2% plus %3%",
 			%prev_faceCount
 			%prev_faceCountIndex
 			%(curr_index - prev_faceCountIndex)
@@ -751,29 +745,34 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 
 		hg->addPrimitiveOsg(myType, prev_faceCountIndex, curr_index - prev_faceCountIndex, partIndex, geoIndex, objIndex);
 
+		// Material handling
+		process_materials(part, hg);
+
 		hg->dirty();
 
 	}
 
 	if (part.info().type == HAPI_PARTTYPE_VOLUME) {
-		omsg("process_assets:     Volume (TODO)");
+		omsg("process_geo_part:     Volume (TODO)");
 	}
 
 	if (part.info().type == HAPI_PARTTYPE_BOX) {
-		omsg("process_assets:     Box (TODO)");
+		omsg("process_geo_part:     Box (TODO)");
 	}
 	// todo: check out some geometry shaders for this..
 	if (part.info().type == HAPI_PARTTYPE_SPHERE) {
-		omsg("process_assets:     Sphere (TODO)");
+		omsg("process_geo_part:     Sphere (TODO)");
 	}
 
 }
 
 
 void HoudiniEngine::process_materials(const hapi::Part &part, HoudiniGeometry* hg) {
-	bool all_same = true;
+	bool all_same = false;
 
-	std::vector< HAPI_NodeId > mat_ids_on_faces( part.info().faceCount );
+	int faceCount = part.info().faceCount;
+
+	std::vector< HAPI_NodeId > mat_ids_on_faces( faceCount );
 
 
 	ENSURE_SUCCESS(session,  HAPI_GetMaterialNodeIdsOnFaces(
@@ -782,24 +781,29 @@ void HoudiniEngine::process_materials(const hapi::Part &part, HoudiniGeometry* h
 		part.id,
 		&all_same /* are_all_the_same*/,
 		mat_ids_on_faces.data(), 
-		0, part.info().faceCount ));
+		0, faceCount ));
 
 	std::vector< int > mat_ids;
 
-	if (!all_same) {
-		for (vector<int>::iterator it = mat_ids.begin(); it < mat_ids.end(); ++it) {
+	ofmsg("process_materials:   all same? %1%", %(all_same ? "Yes" : "No"));
+
+	// collect all material node ids
+	if (all_same) {
+		mat_ids.push_back(mat_ids_on_faces[0]);
+	} else {
+		for (vector<int>::iterator it = mat_ids_on_faces.begin(); it < mat_ids_on_faces.end(); ++it) {
 			if (std::find(mat_ids.begin(), mat_ids.end(), *it) == mat_ids.end()) {
 				mat_ids.push_back(*it);
 			}
 		}
-	} else {
-		mat_ids.push_back(mat_ids_on_faces[0]);
 	}
 
-	ofmsg(" unique mat ids: %1%", %mat_ids.size());
+	ofmsg("process_materials:   unique mat ids: %1%", %mat_ids.size());
 	for (int i =0; i < mat_ids.size(); ++i) {
-		ofmsg("%1%", %mat_ids[i]);
+		ofmsg("process_materials:   material %1% %2%", %i %mat_ids[i]);
 	}
+
+	assetMaterialParms[part.geo.object.asset.name()].clear();
 
 	for (int i = 0; i < mat_ids.size(); ++i) {
 
@@ -807,18 +811,20 @@ void HoudiniEngine::process_materials(const hapi::Part &part, HoudiniGeometry* h
 
 		ENSURE_SUCCESS(session,  HAPI_GetMaterialInfo (
 			session,
-			mat_ids_on_faces[i],
+			mat_ids[i],
 			&mat_info));
 
+		// currently, sharing only what I will be using
+		// TODO: share it all, then implement what I will use
 		if (mat_info.exists) {
-			ofmsg("process_assets:   Material info for %1%: nodeId: %2% hasChanged: %3%",
+			ofmsg("process_materials:   Material info for %1%: nodeId: %2% hasChanged: %3%",
 				%hg->getName() %mat_info.nodeId %mat_info.hasChanged
 			);
 
-			HAPI_NodeInfo node_info;
+			hapi::Node matNode(mat_info.nodeId, session);
 
-			hapi::Asset matNode(mat_info.nodeId, session);
-			assetMaterialNodeIds[part.geo.object.asset.name()].push_back(mat_info.nodeId);
+			MatStruct ms;
+			ms.matId = mat_info.nodeId;
 
 			std::map<std::string, hapi::Parm> parmMap = matNode.parmMap();
 
@@ -827,61 +833,116 @@ void HoudiniEngine::process_materials(const hapi::Part &part, HoudiniGeometry* h
 
 			string diffuseMapName;
 			string normalMapName;
-
-			omsg("looking for diffuse map");
+			omsg("process_materials:   looking for diffuse map");
 			if (parmMap.count("ogl_tex1")) {
 				// only assign if not empty
 				if (parmMap["ogl_tex1"].getStringValue(0) != "") {
 					diffuseMapParmId = parmMap["ogl_tex1"].info().id;
 					diffuseMapName = parmMap["ogl_tex1"].name();
-					ofmsg("map found, value is %1%", %parmMap["ogl_tex1"].getStringValue(0));
+					ofmsg("process_materials:   map found, value is %1%", %parmMap["ogl_tex1"].getStringValue(0));
 				}
 			} else if (parmMap.count("baseColorMap")) {
 				// only assign if not empty
 				if (parmMap["baseColorMap"].getStringValue(0) != "") {
 					diffuseMapParmId = parmMap["baseColorMap"].info().id;
 					diffuseMapName = parmMap["baseColorMap"].name();
-					ofmsg("map found, value is %1%", %parmMap["baseColorMap"].getStringValue(0));
+					ofmsg("process_materials:   map found, value is %1%", %parmMap["baseColorMap"].getStringValue(0));
 				}
 			} else if (parmMap.count("map")) {
 				// only assign if not empty
 				if (parmMap["map"].getStringValue(0) != "") {
 					diffuseMapParmId = parmMap["map"].info().id;
 					diffuseMapName = parmMap["map"].name();
-					ofmsg("map found, value is %1%", %parmMap["map"].getStringValue(0));
+					ofmsg("process_materials:   map found, value is %1%", %parmMap["map"].getStringValue(0));
 				}
 			}
 
-			omsg("looking for normal map");
+			omsg("process_materials:   looking for normal map");
 			if (parmMap.count("ogl_normalmap")) {
 				// only assign if not empty
 				if (parmMap["ogl_normalmap"].getStringValue(0) != "") {
 					normalMapParmId = parmMap["ogl_normalmap"].info().id;
 					normalMapName = parmMap["ogl_normalmap"].name();
-					ofmsg("map found, value is %1%", %parmMap["ogl_normalmap"].getStringValue(0));
+					ofmsg("process_materials:   map found, value is %1%", %parmMap["ogl_normalmap"].getStringValue(0));
 				}
 			}
 
-			// omsg("looking for diffuse colour");
-			// if (parmMap.count("ogl_diff")) {
-			// }
-
-			omsg("looking for alpha material colour");
-			if (parmMap.count("ogl_alpha")) {
-				ofmsg("has alpha, value is %1%", %parmMap["ogl_alpha"].getFloatValue(0));
+			omsg("process_materials:   looking for ambient colour");
+			if (parmMap.count("ogl_amb")) {
+				ofmsg("process_materials:   has ambient, value is %1%,%2%,%3%", 
+					%parmMap["ogl_amb"].getFloatValue(0)
+					%parmMap["ogl_amb"].getFloatValue(1)
+					%parmMap["ogl_amb"].getFloatValue(2)
+				);
+				ParmStruct ps;
+				ps.type = parmMap["ogl_amb"].info().type;
+				ps.floatValues.push_back(parmMap["ogl_amb"].getFloatValue(0));
+				ps.floatValues.push_back(parmMap["ogl_amb"].getFloatValue(1));
+				ps.floatValues.push_back(parmMap["ogl_amb"].getFloatValue(2));
+				ms.parms["ogl_amb"] = ps;
 			}
 
-			// omsg("looking for specular");
-			// if (parmMap.count("ogl_spec")) {
-			// }
+			omsg("process_materials:   looking for diffuse colour");
+			if (parmMap.count("ogl_diff")) {
+				ofmsg("has diffuse, value is %1%,%2%,%3%", 
+					%parmMap["ogl_diff"].getFloatValue(0)
+					%parmMap["ogl_diff"].getFloatValue(1)
+					%parmMap["ogl_diff"].getFloatValue(2)
+				);
+				ParmStruct ps;
+				ps.type = parmMap["ogl_diff"].info().type;
+				ps.floatValues.push_back(parmMap["ogl_diff"].getFloatValue(0));
+				ps.floatValues.push_back(parmMap["ogl_diff"].getFloatValue(1));
+				ps.floatValues.push_back(parmMap["ogl_diff"].getFloatValue(2));
+				ms.parms["ogl_diff"] = ps;
 
-			// omsg("looking for shininess");
-			// if (parmMap.count("ogl_rough")) {
-			// }
+				// update diffuse in instances
+				if (assetInstances.count(hg->getName()) > 0) {
+					assetInstances[part.geo.object.asset.name()]->getMaterial()->setColor(Color(
+						ps.floatValues[0],
+						ps.floatValues[1],
+						ps.floatValues[2],
+						1
+					), Color(1,1,1,1));
+				}
+			}
+
+			omsg("process_materials:   looking for specular colour");
+			if (parmMap.count("ogl_spec")) {
+				ofmsg("has specular, value is %1%,%2%,%3%", 
+					%parmMap["ogl_spec"].getFloatValue(0)
+					%parmMap["ogl_spec"].getFloatValue(1)
+					%parmMap["ogl_spec"].getFloatValue(2)
+				);
+				ParmStruct ps;
+				ps.type = parmMap["ogl_spec"].info().type;
+				ps.floatValues.push_back(parmMap["ogl_spec"].getFloatValue(0));
+				ps.floatValues.push_back(parmMap["ogl_spec"].getFloatValue(1));
+				ps.floatValues.push_back(parmMap["ogl_spec"].getFloatValue(2));
+				ms.parms["ogl_spec"] = ps;
+			}
+
+			omsg("process_materials:   looking for alpha material colour");
+			if (parmMap.count("ogl_alpha")) {
+				ofmsg("process_materials:   has alpha, value is %1%", %parmMap["ogl_alpha"].getFloatValue(0));
+				ParmStruct ps;
+				ps.type = parmMap["ogl_alpha"].info().type;
+				ps.floatValues.push_back(parmMap["ogl_alpha"].getFloatValue(0));
+				ms.parms["ogl_apha"] = ps;
+			}
+
+			omsg("process_materials:   looking for shininess");
+			if (parmMap.count("ogl_rough")) {
+				ofmsg("process_materials:   has shininess, value is %1%", %parmMap["ogl_rough"].getFloatValue(0));
+				ParmStruct ps;
+				ps.type = parmMap["ogl_rough"].info().type;
+				ps.floatValues.push_back(parmMap["ogl_rough"].getFloatValue(0));
+				ms.parms["ogl_rough"] = ps;
+			}
 
 			if (diffuseMapParmId >= 0) {
 
-				omsg("diffuse map found..");
+				omsg("process_materials:   diffuse map found..");
 				// NOTE this works if the image is a png
 				ENSURE_SUCCESS(session,  HAPI_RenderTextureToImage(
 					session,
@@ -938,7 +999,7 @@ void HoudiniEngine::process_materials(const hapi::Part &part, HoudiniGeometry* h
 				// 	&image_info));
 
 
-				ofmsg("process_assets:   width %1% height: %2% format: %3% dataFormat: %4% packing %5% interleaved %6% gamma %7%",
+				ofmsg("process_materials:   width %1% height: %2% format: %3% dataFormat: %4% packing %5% interleaved %6% gamma %7%",
 					%image_info.xRes
 					%image_info.yRes
 					%get_string(session, image_info.imageFileFormatNameSH)
@@ -960,7 +1021,7 @@ void HoudiniEngine::process_materials(const hapi::Part &part, HoudiniGeometry* h
 					&planeCount
 				));
 
-				ofmsg("image plane count: %1%", %planeCount);
+				ofmsg("process_materials:   image plane count: %1%", %planeCount);
 
 				ENSURE_SUCCESS(session,  HAPI_GetImagePlanes(
 					session,
@@ -1029,7 +1090,10 @@ void HoudiniEngine::process_materials(const hapi::Part &part, HoudiniGeometry* h
 				// TODO: general case for texture names (diffuse, spec, env, etc)
 				// osg::Texture2D* texture = mySceneManager->createTexture(diffuseMapName, pds[pds.size() - 1]);
 				osg::Texture2D* texture = mySceneManager->createTexture(diffuseMapName, pd);
-				assetMaterialParms[hg->getName()]["diffuseMapName"] = diffuseMapName;
+				ParmStruct ps;
+				ps.type = parmMap["diffuseMapName"].info().type;
+				ps.stringValues.push_back(parmMap["diffuseMapName"].getStringValue(0));
+				ms.parms["diffuseMapName"] = ps;
 
 
 				// need to set wrap modes too
@@ -1043,14 +1107,14 @@ void HoudiniEngine::process_materials(const hapi::Part &part, HoudiniGeometry* h
 				// Update materials on each instance of this asset
 				if (assetInstances.count(hg->getName()) > 0) {
 					// update diffuse map texture
-					ofmsg("updating %1%'s texture %2%", %hg->getName() %diffuseMapName);
+					ofmsg("process_materials:   updating %1%'s texture %2%", %hg->getName() %diffuseMapName);
 					assetInstances[hg->getName()]->getMaterial()->setDiffuseTexture(diffuseMapName);
 				}
 			}
 
 			if (normalMapParmId >= 0) {
 
-				omsg("normal map found..");
+				omsg("process_materials:   normal map found..");
 				// NOTE this works if the image is a png
 				ENSURE_SUCCESS(session,  HAPI_RenderTextureToImage(
 					session,
@@ -1107,7 +1171,7 @@ void HoudiniEngine::process_materials(const hapi::Part &part, HoudiniGeometry* h
 				// 	&image_info));
 
 
-				ofmsg("process_assets:   width %1% height: %2% format: %3% dataFormat: %4% packing %5% interleaved %6% gamma %7%",
+				ofmsg("process_materials:   width %1% height: %2% format: %3% dataFormat: %4% packing %5% interleaved %6% gamma %7%",
 					%image_info.xRes
 					%image_info.yRes
 					%get_string(session, image_info.imageFileFormatNameSH)
@@ -1129,7 +1193,7 @@ void HoudiniEngine::process_materials(const hapi::Part &part, HoudiniGeometry* h
 					&planeCount
 				));
 
-				ofmsg("image plane count: %1%", %planeCount);
+				ofmsg("process_materials:   image plane count: %1%", %planeCount);
 
 				ENSURE_SUCCESS(session,  HAPI_GetImagePlanes(
 					session,
@@ -1186,7 +1250,10 @@ void HoudiniEngine::process_materials(const hapi::Part &part, HoudiniGeometry* h
 				pd->setDirty(true);
 
 				osg::Texture2D* texture = mySceneManager->createTexture(normalMapName, pd);
-				assetMaterialParms[hg->getName()]["normalMapName"] = normalMapName;
+				ParmStruct ps;
+				ps.type = parmMap["normalMapName"].info().type;
+				ps.stringValues.push_back(parmMap["normalMapName"].getStringValue(0));
+				ms.parms["normalMapName"] = ps;
 
 
 				// need to set wrap modes too
@@ -1200,14 +1267,15 @@ void HoudiniEngine::process_materials(const hapi::Part &part, HoudiniGeometry* h
 				// Update materials on each instance of this asset
 				if (assetInstances.count(hg->getName()) > 0) {
 					// update normal map texture
-					ofmsg("updating %1%'s normal map to %2%", %hg->getName() %normalMapName);
+					ofmsg("process_materials:   updating %1%'s normal map to %2%", %hg->getName() %normalMapName);
 					assetInstances[hg->getName()]->getMaterial()->setNormalTexture(normalMapName);
 				}
 			}
 
+			assetMaterialParms[part.geo.object.asset.name()].push_back(ms);
 
 		} else {
-			ofmsg("process_assets:   Invalid material %1% for %2%", %i %hg->getName());
+			ofmsg("process_materials:   Could not get material %1% for %2%", %i %hg->getName());
 		}
 	}
 

@@ -511,59 +511,70 @@ HoudiniAsset* HoudiniEngine::instantiateGeometry(const String& asset)
 	//     it might be better that this call a method that is also called when cooking
 	//     something like 'updateMaterials() on the object
 	// make a houdini-specific shader that encompasses all these parameters..
-	omsg("setting materials on newly instantiated object..");
-	if (assetMaterialNodeIds.count(asset)) {
-		for (int i = 0; i < assetMaterialNodeIds[asset].size(); ++i) {
-			hapi::Asset matNode(assetMaterialNodeIds[asset][i], session);
-
-			std::map<std::string, hapi::Parm> parmMap = matNode.parmMap();
-
-			omsg("looking for diffuse colour");
+	if (assetMaterialParms.count(asset)) {
+		ofmsg("setting %1% material(s) on newly instantiated object..", %assetMaterialParms[asset].size() );
+		for (int i = 0; i < assetMaterialParms[asset].size(); ++i) {
+			Color amb;
 			Color c;
-			float a = 1.0;
-			if (parmMap.count("ogl_diff")) {
-				c[0] = parmMap["ogl_diff"].getFloatValue(0);
-				c[1] = parmMap["ogl_diff"].getFloatValue(1);
-				c[2] = parmMap["ogl_diff"].getFloatValue(2);
-				ofmsg("found!, col is %1% %2% %3%", 
-					%c[0] %c[1] %c[2]);
+			Color spec;
+			String dif = "";
+			String norm = "";
+			float alpha = 1.0;
+			float shininess = 1.0;
+			bool isTransparent = false;
+
+			if (assetMaterialParms[asset][i].parms.count("ogl_amb")) {
+				amb[0] = assetMaterialParms[asset][i].parms["ogl_amb"].floatValues[0];
+				amb[1] = assetMaterialParms[asset][i].parms["ogl_amb"].floatValues[1];
+				amb[2] = assetMaterialParms[asset][i].parms["ogl_amb"].floatValues[2];
 			}
 
-			omsg("looking for alpha material colour");
-			if (parmMap.count("ogl_alpha")) {
-				a = parmMap["ogl_alpha"].getFloatValue(0);
-				ofmsg("found!, alpha is %1%", %a);
+			if (assetMaterialParms[asset][i].parms.count("ogl_diff")) {
+				c[0] = assetMaterialParms[asset][i].parms["ogl_diff"].floatValues[0];
+				c[1] = assetMaterialParms[asset][i].parms["ogl_diff"].floatValues[1];
+				c[2] = assetMaterialParms[asset][i].parms["ogl_diff"].floatValues[2];
 			}
 
-			omsg("looking for specular");
-			if (parmMap.count("ogl_spec")) {
+			if (assetMaterialParms[asset][i].parms.count("ogl_spec")) {
+				spec[0] = assetMaterialParms[asset][i].parms["ogl_spec"].floatValues[0];
+				spec[1] = assetMaterialParms[asset][i].parms["ogl_spec"].floatValues[1];
+				spec[2] = assetMaterialParms[asset][i].parms["ogl_spec"].floatValues[2];
 			}
 
-			omsg("looking for shininess");
-			if (parmMap.count("ogl_rough")) {
+			if (assetMaterialParms[asset][i].parms.count("ogl_alpha")) {
+				alpha = assetMaterialParms[asset][i].parms["ogl_alpha"].floatValues[0];
+				isTransparent = alpha < 0.95;
 			}
 
+			if (assetMaterialParms[asset][i].parms.count("ogl_rough")) {
+				shininess = assetMaterialParms[asset][i].parms["ogl_rough"].floatValues[0];
+			}
 
-			assetInstances[asset]->setEffect(ostr("houdini -d %1%", %c.toString()));
-				if (a < 0.99f && a > 0) {
-					
-				}
+			String effect = ostr("houdini %2%-d %1% -s %3%", 
+				%c.toString()
+				%(isTransparent ? "-t -a -D " : "")
+				%shininess
+			);
+			ofmsg("about to set effect '%1%'", %effect);
+			assetInstances[asset]->setEffect(effect);
 
-			if (assetMaterialParms[asset].count("diffuseMapName")) {
-				String dif = assetMaterialParms[asset]["diffuseMapName"];
+			if (assetMaterialParms[asset][i].parms.count("diffuseMapName")) {
+				dif = assetMaterialParms[asset][i].parms["diffuseMapName"].stringValues[0];
 				if (mySceneManager->getTexture(dif, false) != NULL) {
-					assetInstances[asset]->setEffect(ostr("houdini -d %1%", %c.toString()));
 					assetInstances[asset]->getMaterial()->setDiffuseTexture(dif);
 				}
 			}
-			if (assetMaterialParms[asset].count("normalMapName")) {
-				String norm = assetMaterialParms[asset]["normalMapName"];
+
+			if (assetMaterialParms[asset][i].parms.count("normalMapName")) {
+				norm = assetMaterialParms[asset][i].parms["normalMapName"].stringValues[0];
 				if (mySceneManager->getTexture(norm, false) != NULL) {
-					assetInstances[asset]->setEffect(ostr("houdini -d %1%", %c.toString()));
 					assetInstances[asset]->getMaterial()->setNormalTexture(norm);
 				}
 			}
+
 		}
+	} else {
+		ofmsg("%1% does not have materials", %asset);
 	}
 
 	return assetInstances[asset];

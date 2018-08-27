@@ -526,10 +526,28 @@ namespace houdiniEngine {
 		Dictionary < String, int > assetNameToIds;
         Dictionary<String, HoudiniParameterList*> assetParamLists;
 
-        // asset name to material names
-        // eg: assetMaterialParms["cluster1"]["diffuseMap"]
-        Dictionary < String, Dictionary<String, String> > assetMaterialParms;
-        Dictionary < String, vector< int > > assetMaterialNodeIds;
+		// parm value container..
+		typedef struct {
+			int type;
+			Vector<int> intValues;
+			Vector<float> floatValues;
+			Vector<String> stringValues;
+		} ParmStruct;
+
+		// material container.. 
+		// TODO: better way to do this? By reusing code?
+		typedef struct {
+			int matId;
+			Dictionary<String, ParmStruct> parms;
+		} MatStruct;
+        // asset name to material parms
+		// TODO: this is not enough.. needs more than a string..
+		// needs whatever parms can be..
+        // eg: assetMaterialParms["cluster1"][4]["ogl_diff"]
+        Dictionary < String, Vector< MatStruct > > assetMaterialParms;
+		// the asset name to node ids for materials
+		// eg: assetMaterialNodeIds["cluster1"] = [1, 5, 8];
+        Dictionary < String, Vector< int > > assetMaterialNodeIds;
 
 		// logging
 		bool myLogEnabled;
