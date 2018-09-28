@@ -436,6 +436,9 @@ namespace houdiniEngine {
 
 		void printParms(int asset_id);
 
+		// print the scenegraph of the houdini asset
+		void printGraph(const String& asset_name);
+
 		Container* getContainerForAsset(int n);
 		Container* getHoudiniCont() { return houdiniCont; };
 		Container* getStagingCont() { return stagingCont; };
@@ -541,6 +544,7 @@ namespace houdiniEngine {
 		// TODO: better way to do this? By reusing code?
 		typedef struct {
 			int matId;
+			int partId;
 			Dictionary<String, ParmStruct> parms;
 		} MatStruct;
         // asset name to material parms

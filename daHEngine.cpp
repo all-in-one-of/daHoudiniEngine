@@ -125,11 +125,13 @@ BOOST_PYTHON_MODULE(daHEngine)
         PYAPI_METHOD(HoudiniEngine, doIt)
         PYAPI_METHOD(HoudiniEngine, test)
         PYAPI_METHOD(HoudiniEngine, printParms)
+        PYAPI_METHOD(HoudiniEngine, printGraph)
 		;
 
 	// HoudiniAsset
 	PYAPI_REF_CLASS(HoudiniAsset, Entity)
 		PYAPI_STATIC_REF_GETTER(HoudiniAsset, create)
+        PYAPI_METHOD(HoudiniAsset, getCounts)
 		;
 
 

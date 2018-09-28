@@ -25,6 +25,8 @@ namespace houdiniEngine {
 
 		ModelAsset* getModel();
 
+		void getCounts();
+
 	private:
 		ModelAsset* myModel;
 	};

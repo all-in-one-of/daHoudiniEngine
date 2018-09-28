@@ -43,7 +43,100 @@ daHEngine
 #include <daHoudiniEngine/houdiniGeometry.h>
 #include <daHEngine.static.cpp>
 
+// for printVisitor
+#include <osgUtil/PrintVisitor>
+#include <ostream>
+
 using namespace houdiniEngine;
+
+// Temporary debugging visitor (TODO: move this somewhere else to use more
+// often?)
+class MyPrintVisitor: public osgUtil::PrintVisitor
+{
+    public:
+
+        MyPrintVisitor(std::ostream& out, int indent=0, int step=2):
+			osgUtil::PrintVisitor(out, indent, step)
+		{
+		}
+
+        void apply(osg::Node& node) {
+			output()<<node.libraryName()<<"::"<<node.className()<<std::endl;
+
+			enter();
+			traverse(node);
+			leave();
+		}
+
+        void apply(osg::PositionAttitudeTransform& node) {
+			output()<<node.libraryName()<<"::"<<node.className()<<std::endl;
+			output()<<"pos: ("<<node.getPosition()[0]<<
+				","<<node.getPosition()[1]<<
+				","<<node.getPosition()[2]<<
+				")"<<std::endl;
+			enter();
+			traverse(node);
+			leave();
+		}
+
+        void apply(osg::Geode& geo) {
+			output()<<geo.libraryName()<<"::"<<geo.className()<<std::endl;
+			enter();
+			for (int i = 0; i < geo.getNumDrawables(); ++i) {
+				apply(*(geo.getDrawable(i)));
+			}
+			leave();
+		}
+
+		void apply(osg::Drawable& draw) {
+			output()<<"  "<< draw.className() << "(" << draw.getName() <<")" << std::endl;
+			output()<<"    Verts:"<< draw.asGeometry()->getVertexArray()->getNumElements() << std::endl;
+			output()<<"    PrimSets:"<< draw.asGeometry()->getNumPrimitiveSets() << std::endl;
+		}
+
+    protected:
+
+        MyPrintVisitor& operator = (const MyPrintVisitor&) { return *this; }
+
+};
+
+void HoudiniEngine::printGraph(const String& asset_name) {
+
+	HoudiniGeometry* hg = myHoudiniGeometrys[asset_name];
+
+	MyPrintVisitor mpv(std::cout,0, 2);
+
+	mpv.apply(*(hg->getOsgNode()));
+	ofmsg("materials under %1%", %asset_name);
+	typedef Dictionary <String, ParmStruct > PS;
+	typedef Dictionary < String, Vector< MatStruct > > Amps;
+    foreach(Amps::Item amp, assetMaterialParms) {
+		ofmsg("%1%", %amp.first);
+
+		for (int i = 0; i < amp.second.size(); ++i) {
+			ofmsg("  mat id: %1%, part id: %2%", %amp.second[i].matId %amp.second[i].partId);
+			ologaddnewline(false);
+			foreach(PS::Item ps, amp.second[i].parms) {
+				ofmsg("    %1%:%2% ", %ps.first %ps.second.type);
+				for (int j = 0; j < ps.second.intValues.size(); ++j) {
+					if (j == 0) omsg("    int ");
+					ofmsg("%1% ", %ps.second.intValues[j]);
+				}
+				for (int j = 0; j < ps.second.floatValues.size(); ++j) {
+					if (j == 0) omsg("    float ");
+					ofmsg("%1% ", %ps.second.floatValues[j]);
+				}
+				for (int j = 0; j < ps.second.stringValues.size(); ++j) {
+					if (j == 0) omsg("    string ");
+					ofmsg("%1% ", %ps.second.stringValues[j]);
+				}
+				omsg("\n");
+			}
+			ologaddnewline(true);
+		}
+
+	}
+}
 
 // put houdini engine asset data into a houdiniGeometry
 void HoudiniEngine::process_assets(const hapi::Asset &asset)
@@ -232,6 +325,8 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 	if (mySceneManager->getModel(s) == NULL) {
 		mySceneManager->addModel(hg);
 	}
+
+	printGraph(s);
 }
 
 // TODO: expand on this..

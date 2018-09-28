@@ -25,3 +25,13 @@ HoudiniAsset::HoudiniAsset(SceneManager* scene, const String& modelName):
 		ofwarn("HoudiniAsset::HoudiniAsset: could not create static object: model not found - %1%", %modelName);
 	}
 }
+
+void HoudiniAsset::getCounts() {
+	// for (int i = 0; i < myModel->getObjectCount(); i++) {
+	// 	for (int j = 0; j < myModel->getGeoCount(i); j++) {
+	// 		for (int k = 0; j < myModel->getPartCount(j, i); j++) {
+	// 			ofmsg("%1%:%2%:%3%", %i %j %k);
+	// 		}
+	// 	}
+	// }
+}
