@@ -532,7 +532,14 @@ HoudiniAsset* HoudiniEngine::instantiateGeometry(const String& asset)
 	//     something like 'updateMaterials() on the object
 	// make a houdini-specific shader that encompasses all these parameters..
 	if (assetMaterialParms.count(asset)) {
-		ofmsg("setting %1% material(s) on newly instantiated object..", %assetMaterialParms[asset].size() );
+
+		omsg("instantiateGeometry: applying default material on newly instantiated object..");
+		assetInstances[asset]->setEffect("houdini");
+
+		if (assetMaterialParms[asset].size() > 0) {
+			ofmsg("instantiateGeometry: setting %1% material(s) on newly instantiated object..", %assetMaterialParms[asset].size() );
+		}
+
 		for (int i = 0; i < assetMaterialParms[asset].size(); ++i) {
 			Color amb;
 			Color c;

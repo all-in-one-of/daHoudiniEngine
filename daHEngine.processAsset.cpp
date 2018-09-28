@@ -841,7 +841,13 @@ void HoudiniEngine::process_part(const hapi::Part &part, const int objIndex, con
 
 }
 
-
+// TODO:
+// get the part id from the Part, 
+// use it to make a stateset for the relevant Geode in the HG
+// set the various parms according to their names:
+//     eg: diff -> Material.setDiffuseColour()
+//     or if a uniform, add uniform to the stateset
+//     shader should end up propogating changes.. right?
 void HoudiniEngine::process_materials(const hapi::Part &part, HoudiniGeometry* hg) {
 	bool all_same = false;
 
@@ -946,6 +952,24 @@ void HoudiniEngine::process_materials(const hapi::Part &part, HoudiniGeometry* h
 				ps.floatValues.push_back(parmMap["ogl_amb"].getFloatValue(1));
 				ps.floatValues.push_back(parmMap["ogl_amb"].getFloatValue(2));
 				ms.parms["ogl_amb"] = ps;
+
+				// update the state set for this attribute
+				if (assetInstances.count(hg->getName()) > 0) {
+					osg::StateSet* ss =  hg->getOsgNode(part.geo.id, part.geo.object.id)->getDrawable(part.id)->getOrCreateStateSet();
+					Ref<osg::Material> mat = static_cast<osg::Material*>(ss->getAttribute(osg::StateAttribute::MATERIAL));
+					if (mat == NULL) {
+						mat = new osg::Material();
+					}
+					mat->setAmbient(osg::Material::FRONT_AND_BACK, osg::Vec4(
+						ps.floatValues[0],
+						ps.floatValues[1],
+						ps.floatValues[2],
+						1.0
+					));
+					ss->setAttributeAndModes(mat, 
+						osg::StateAttribute::ON | osg::StateAttribute::PROTECTED | 
+						osg::StateAttribute::OVERRIDE);
+				}
 			}
 
 			omsg("process_materials:   looking for diffuse colour");
@@ -962,14 +986,22 @@ void HoudiniEngine::process_materials(const hapi::Part &part, HoudiniGeometry* h
 				ps.floatValues.push_back(parmMap["ogl_diff"].getFloatValue(2));
 				ms.parms["ogl_diff"] = ps;
 
-				// update diffuse in instances
+				// update the state set for this attribute
 				if (assetInstances.count(hg->getName()) > 0) {
-					assetInstances[part.geo.object.asset.name()]->getMaterial()->setColor(Color(
+					osg::StateSet* ss =  hg->getOsgNode(part.geo.id, part.geo.object.id)->getDrawable(part.id)->getOrCreateStateSet();
+					Ref<osg::Material> mat = static_cast<osg::Material*>(ss->getAttribute(osg::StateAttribute::MATERIAL));
+					if (mat == NULL) {
+						mat = new osg::Material();
+					}
+					mat->setDiffuse(osg::Material::FRONT_AND_BACK, osg::Vec4(
 						ps.floatValues[0],
 						ps.floatValues[1],
 						ps.floatValues[2],
-						1
-					), Color(1,1,1,1));
+						1.0
+					));
+					ss->setAttributeAndModes(mat, 
+						osg::StateAttribute::ON | osg::StateAttribute::PROTECTED | 
+						osg::StateAttribute::OVERRIDE);
 				}
 			}
 
@@ -986,6 +1018,24 @@ void HoudiniEngine::process_materials(const hapi::Part &part, HoudiniGeometry* h
 				ps.floatValues.push_back(parmMap["ogl_spec"].getFloatValue(1));
 				ps.floatValues.push_back(parmMap["ogl_spec"].getFloatValue(2));
 				ms.parms["ogl_spec"] = ps;
+
+				// update the state set for this attribute
+				if (assetInstances.count(hg->getName()) > 0) {
+					osg::StateSet* ss =  hg->getOsgNode(part.geo.id, part.geo.object.id)->getDrawable(part.id)->getOrCreateStateSet();
+					Ref<osg::Material> mat = static_cast<osg::Material*>(ss->getAttribute(osg::StateAttribute::MATERIAL));
+					if (mat == NULL) {
+						mat = new osg::Material();
+					}
+					mat->setSpecular(osg::Material::FRONT_AND_BACK, osg::Vec4(
+						ps.floatValues[0],
+						ps.floatValues[1],
+						ps.floatValues[2],
+						1.0
+					));
+					ss->setAttributeAndModes(mat, 
+						osg::StateAttribute::ON | osg::StateAttribute::PROTECTED | 
+						osg::StateAttribute::OVERRIDE);
+				}
 			}
 
 			omsg("process_materials:   looking for alpha material colour");
