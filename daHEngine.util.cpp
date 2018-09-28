@@ -108,7 +108,7 @@ void HoudiniEngine::cook_one(hapi::Asset* asset)
 		// 	if (uip != NULL) uip->refreshParm();
 		// }
 
-        process_assets(*asset);
+        process_asset(*asset);
 
 		// TODO: need to regenerate ui for different assets, as ui parms can change
 		// from a cook!

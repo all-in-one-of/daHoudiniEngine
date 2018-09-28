@@ -139,7 +139,7 @@ void HoudiniEngine::printGraph(const String& asset_name) {
 }
 
 // put houdini engine asset data into a houdiniGeometry
-void HoudiniEngine::process_assets(const hapi::Asset &asset)
+void HoudiniEngine::process_asset(const hapi::Asset &asset)
 {
 
 	String s = ostr("%1%", %asset.name());
@@ -159,6 +159,9 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 
     vector<hapi::Object> objects = asset.objects();
 	vector<HAPI_Transform> objTransforms = asset.transforms();
+
+	ofmsg("process_assets: clear %1% materials", %assetMaterialParms[s].size());
+	assetMaterialParms[s].clear();
 
 	ofmsg("process_assets: %1%: %2% objects %3% transforms", %asset.name() %objects.size() %objTransforms.size());
 
@@ -183,78 +186,7 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 		ofmsg("process_assets: iterating through %1% objects", %objects.size());
 		for (int object_index=0; object_index < int(objects.size()); ++object_index)
 	    {
-			HAPI_ObjectInfo objInfo = objects[object_index].info();
-
-			// TODO check for instancing, then do things differently
-			if (objInfo.isInstancer > 0) {
-				ofmsg("process_assets:   INSTANCE:  instance path: %1%: %2%", %objects[object_index].name() %objects[object_index].objectInstancePath());
-			}
-			// don't use vector, as there should be only one geo
-			// unless we are exposing editable nodes (not yet)
-			vector<hapi::Geo> geos = objects[object_index].geos();
-
-			// adjust geo count
-			if (hg->getGeodeCount(object_index) < geos.size()) {
-				hg->addGeode(geos.size() - hg->getGeodeCount(object_index), object_index);
-
-                for (int i=0; i < geos.size(); i++) {
-                    hg->setGeodeName(i, object_index, geos[i].name());
-                }
-			}
-
-			hg->setGeosChanged(objInfo.haveGeosChanged, object_index);
-			ofmsg("process_assets:   %1%/%2%: %3% %4%",
-				%(object_index + 1)
-				%geos.size()
-				%objects[object_index].name()
-				%(hg->getGeosChanged(object_index) == 1 ? "Changed" : "")
-			);
-
-			// if (hg->getGeosChanged(object_index)) {
-			if (true) {
-				ofmsg("process_assets: iterating through %1% geos", %geos.size());
-
-				for (int geo_index=0; geo_index < int(geos.size()); ++geo_index)
-				{
-				    vector<hapi::Part> parts = geos[geo_index].parts();
-
-					if (hg->getDrawableCount(geo_index, object_index) < parts.size()) {
-						hg->addDrawable(parts.size() - hg->getDrawableCount(geo_index, object_index), geo_index, object_index);
-					}
-
-					hg->setGeoChanged(geos[geo_index].info().hasGeoChanged, geo_index, object_index);
-					ofmsg("process_assets:     %1%:%2%/%3% %4% %5% %6%",
-						%(object_index + 1)
-						%(geo_index + 1)
-						%parts.size()
-						%(hg->getGeoChanged(geo_index, object_index) == 1 ? "Changed" : "")
-						%(geos[geo_index].info().isDisplayGeo == 1 ? "Display" : "-")
-						%(geos[geo_index].info().isTemplated == 1 ? "Template" : "-")
-					);
-
-					hg->clearGeode(geo_index, object_index);
-					// if (hg->getGeoChanged(geo_index, object_index)) {
-					if (true) {
-						ofmsg("process_assets: iterating through %1% parts", %parts.size());
-					    for (int part_index=0; part_index < int(parts.size()); ++part_index)
-						{
-							if (geos[geo_index].info().isDisplayGeo) {
-								ofmsg("process_assets:     processing %1% %2%", %s %parts[part_index].name());
-
-								// update the geometry and materials in each part
-								process_geo_part(parts[part_index], object_index, geo_index, part_index, hg);
-							}
-						}
-					}
-				}
-			}
-
- 			hg->setTransformChanged(objInfo.hasTransformChanged, object_index);
-			ofmsg("process_assets:   Transform changed: %2%", %object_index %(hg->getTransformChanged(object_index) == 1 ? "Yes" : "No"));
-		}
-
-		for (int object_index=0; object_index < int(objects.size()); ++object_index)
-	    {
+			process_object(objects[object_index], object_index, hg);
 			// if (hg->getTransformChanged(object_index)) {
 			if (true) {
 				hg->getOsgNode()->asGroup()->getChild(object_index)->asTransform()->
@@ -285,48 +217,90 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 	    }
 	}
 
-	// do asset matrix transforms
-	float asset_matrix[16];
-	HAPI_TransformEuler assetTransformEuler;
-	asset.getTransformAsMatrix(asset_matrix);
-	ENSURE_SUCCESS(session,
-		HAPI_ConvertMatrixToEuler(
-			session,
-			asset_matrix,
-			HAPI_RSTORDER_DEFAULT,
-			HAPI_XYZORDER_DEFAULT,
-			&assetTransformEuler
-		)
-	);
-
-	// ENSURE_SUCCESS(session,
-	// 	HAPI_GetObjectTransform(
-	// 		session,
-	// 		asset.nodeid,
-	// 		-1,
-	// 		HAPI_RSTORDER_DEFAULT,
-	// 		&assetTransform
-	// 	)
-	// );
-
-	// should have the matrix here.. check it out.
-	ofmsg("process_assets:   matrix pos   %1% %2% %3%", %assetTransformEuler.position[0]
-		                              %assetTransformEuler.position[1]
-		                              %assetTransformEuler.position[2]);
-
-	ofmsg("process_assets:   matrix rot   %1% %2% %3%", %assetTransformEuler.rotationEuler[0]
-		                              %assetTransformEuler.rotationEuler[1]
-		                              %assetTransformEuler.rotationEuler[2]);
-
-	ofmsg("process_assets:   matrix scale %1% %2% %3%", %assetTransformEuler.scale[0]
-		                              %assetTransformEuler.scale[1]
-		                              %assetTransformEuler.scale[2]);
-
 	if (mySceneManager->getModel(s) == NULL) {
+		ofmsg("%1% not in sceneManager, adding..", %s);
 		mySceneManager->addModel(hg);
 	}
 
 	printGraph(s);
+}
+
+void HoudiniEngine::process_object(const hapi::Object &object, const int objIndex, HoudiniGeometry* hg)
+{
+	HAPI_ObjectInfo objInfo = object.info();
+
+	// TODO check for instancing, then do things differently
+	if (objInfo.isInstancer > 0) {
+		ofmsg("process_object:   INSTANCE:  instance path: %1%: %2%", %object.name() %object.objectInstancePath());
+	}
+	// don't use vector, as there should be only one geo
+	// unless we are exposing editable nodes (not yet)
+	vector<hapi::Geo> geos = object.geos();
+
+	// adjust geo count
+	if (hg->getGeodeCount(objIndex) < geos.size()) {
+		hg->addGeode(geos.size() - hg->getGeodeCount(objIndex), objIndex);
+
+		for (int i=0; i < geos.size(); i++) {
+			hg->setGeodeName(i, objIndex, geos[i].name());
+		}
+	}
+
+	hg->setGeosChanged(objInfo.haveGeosChanged, objIndex);
+	ofmsg("process_object:   %1%/%2%: %3% %4%",
+		%(objIndex + 1)
+		%geos.size()
+		%object.name()
+		%(hg->getGeosChanged(objIndex) == 1 ? "Changed" : "")
+	);
+
+	// if (hg->getGeosChanged(objIndex)) {
+	if (true) {
+		ofmsg("process_object: iterating through %1% geos", %geos.size());
+
+		for (int geo_index=0; geo_index < int(geos.size()); ++geo_index)
+		{
+			process_geo(geos[geo_index], objIndex, geo_index, hg);
+		}
+	}
+
+	hg->setTransformChanged(objInfo.hasTransformChanged, objIndex);
+	ofmsg("process_object:   Transform changed: %2%", %objIndex %(hg->getTransformChanged(objIndex) == 1 ? "Yes" : "No"));
+}
+
+
+void HoudiniEngine::process_geo(const hapi::Geo &geo, const int objIndex, const int geoIndex, HoudiniGeometry* hg)
+{
+	vector<hapi::Part> parts = geo.parts();
+
+	if (hg->getDrawableCount(geoIndex, objIndex) < parts.size()) {
+		hg->addDrawable(parts.size() - hg->getDrawableCount(geoIndex, objIndex), geoIndex, objIndex);
+	}
+
+	hg->setGeoChanged(geo.info().hasGeoChanged, geoIndex, objIndex);
+	ofmsg("process_geo:     %1%:%2%/%3% %4% %5% %6%",
+		%(objIndex + 1)
+		%(geoIndex + 1)
+		%parts.size()
+		%(hg->getGeoChanged(geoIndex, objIndex) == 1 ? "Changed" : "")
+		%(geo.info().isDisplayGeo == 1 ? "Display" : "-")
+		%(geo.info().isTemplated == 1 ? "Template" : "-")
+	);
+
+	hg->clearGeode(geoIndex, objIndex);
+	// if (hg->getGeoChanged(geoIndex, objIndex)) {
+	if (true) {
+		ofmsg("process_geo: iterating through %1% parts", %parts.size());
+		for (int part_index=0; part_index < int(parts.size()); ++part_index)
+		{
+			if (geo.info().isDisplayGeo) {
+				ofmsg("process_geo:     processing %1%", %parts[part_index].name());
+
+				// update the geometry and materials in each part
+				process_part(parts[part_index], objIndex, geoIndex, part_index, hg);
+			}
+		}
+	}
 }
 
 // TODO: expand on this..
@@ -340,9 +314,12 @@ Vector3f bez(float t, Vector3f a, Vector3f b) {
 
 // TODO: incrementally update the geometry?
 // send a new version, and still have the old version?
-void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex, const int geoIndex, const int partIndex, HoudiniGeometry* hg)
+void HoudiniEngine::process_part(const hapi::Part &part, const int objIndex, const int geoIndex, const int partIndex, HoudiniGeometry* hg)
 {
-	omsg("process_geo_part: entered");
+	ofmsg("process_part: processing %1%", %part.name());
+	// TODO: is there a better way to convert from Vector3f to osg::Vec3?
+	// Vector3f is from the Eigen lib
+	// Vec3Array is from osg
 	vector<Vector3f> points;
 	vector<Vector3f> normals;
 	vector<Vector3f> colors;
@@ -410,10 +387,10 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
     vector<std::string> point_attrib_names = part.attribNames(
 	HAPI_ATTROWNER_POINT);
 
-	omsg("process_geo_part:     Attributes");
+	omsg("process_part:     Attributes");
 	ologaddnewline(false);
 
-	omsg("process_geo_part:     Point:  ");
+	omsg("process_part:     Point:  ");
 
     for (int attrib_index=0; attrib_index < int(point_attrib_names.size());
 	    ++attrib_index) {
@@ -475,7 +452,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
     vector<std::string> vertex_attrib_names = part.attribNames(
 	HAPI_ATTROWNER_VERTEX);
 
-	omsg("process_geo_part:     Vert:   ");
+	omsg("process_part:     Vert:   ");
 
 	for (int attrib_index=0; attrib_index < int(vertex_attrib_names.size());
 	    ++attrib_index) {
@@ -497,7 +474,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
    vector<std::string> primitive_attrib_names = part.attribNames(
 	HAPI_ATTROWNER_PRIM);
 
-	omsg("process_geo_part:     Prim:   ");
+	omsg("process_part:     Prim:   ");
 
 	for (int attrib_index=0; attrib_index < int(primitive_attrib_names.size());
 	    ++attrib_index) {
@@ -515,7 +492,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
     vector<std::string> detail_attrib_names = part.attribNames(
 	HAPI_ATTROWNER_DETAIL);
 
-	omsg("process_geo_part:     Detail: ");
+	omsg("process_part:     Detail: ");
 
 	for (int attrib_index=0; attrib_index < int(detail_attrib_names.size());
 	    ++attrib_index) {
@@ -538,12 +515,14 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 	// HAPI_PARTTYPE_MAX
 
 	if (part.info().type == HAPI_PARTTYPE_INSTANCER) {
-		omsg("process_geo_part:     Instancer (TODO)");
+		omsg("process_part:     Instancer (TODO)");
 	}
 
 	// TODO: render curves
 	if (part.info().type == HAPI_PARTTYPE_CURVE) {
- 		ofmsg ("process_assets:     Curve: %1% %2%", %part.name() %part.id);
+ 		omsg ("process_part:     Curve: (TODO)");
+#if 0
+ 		ofmsg ("process_asset:     Curve: %1% %2%", %part.name() %part.id);
 
 		HAPI_CurveInfo curve_info;
 		ENSURE_SUCCESS(session, HAPI_GetCurveInfo(
@@ -679,10 +658,11 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 		}
 		hg->dirty();
 		return;
+#endif
 	}
 
 	if (part.info().type == HAPI_PARTTYPE_MESH) {
-		ofmsg("process_geo_part:     Mesh (faceCount: %1% pointCount: %2% vertCount: %3%)", 
+		ofmsg("process_part:     Mesh (faceCount: %1% pointCount: %2% vertCount: %3%)", 
 			%part.info().faceCount
 			%part.info().pointCount
 			%part.info().vertexCount
@@ -832,7 +812,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 			myType = osg::PrimitiveSet::TRIANGLE_FAN;
 		}
 
-		ofmsg("process_geo_part:   make primitive set face size %1%, from %2% plus %3%",
+		ofmsg("process_part:   make primitive set face size %1%, from %2% plus %3%",
 			%prev_faceCount
 			%prev_faceCountIndex
 			%(curr_index - prev_faceCountIndex)
@@ -848,15 +828,15 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 	}
 
 	if (part.info().type == HAPI_PARTTYPE_VOLUME) {
-		omsg("process_geo_part:     Volume (TODO)");
+		omsg("process_part:     Volume (TODO)");
 	}
 
 	if (part.info().type == HAPI_PARTTYPE_BOX) {
-		omsg("process_geo_part:     Box (TODO)");
+		omsg("process_part:     Box (TODO)");
 	}
 	// todo: check out some geometry shaders for this..
 	if (part.info().type == HAPI_PARTTYPE_SPHERE) {
-		omsg("process_geo_part:     Sphere (TODO)");
+		omsg("process_part:     Sphere (TODO)");
 	}
 
 }

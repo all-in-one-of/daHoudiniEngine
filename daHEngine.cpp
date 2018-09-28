@@ -419,8 +419,8 @@ int HoudiniEngine::instantiateAsset(const String& asset_name)
 	Ref <RefAsset> myAsset = new RefAsset(asset_id, session);
 	// TODO: this isn't the right way to do this.. remove
 	instancedHEAssets[asset_id] = myAsset;
-	omsg("about to process assets");
-    process_assets(*myAsset.get());
+	omsg("about to process asset");
+    process_asset(*myAsset.get());
 	omsg("processed assets, about to create menu");
 
 	createMenu(asset_id);
@@ -487,7 +487,7 @@ int HoudiniEngine::instantiateAssetById(int asset_id)
 	// is this important?
  	ofmsg("Instantiated %1%, id: %2%", %myAsset.get()->name() %asset_id);
 
-    process_assets(*myAsset.get());
+    process_asset(*myAsset.get());
 
 	createMenu(asset_id);
 	updateGeos = true;

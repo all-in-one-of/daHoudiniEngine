@@ -151,8 +151,22 @@ namespace houdiniEngine {
 		// <<<<<< subclassed modules
 
 		// helper functions
-		void process_assets(const hapi::Asset &asset);
-		void process_geo_part(
+		// helper functions
+		void process_asset(
+			const hapi::Asset &asset
+		);
+		void process_object(
+			const hapi::Object &object,
+			const int objIndex,
+			HoudiniGeometry* hg
+		);
+		void process_geo(
+			const hapi::Geo &geo,
+			const int objIndex,
+			const int geoIndex,
+			HoudiniGeometry* hg
+		);
+		void process_part(
 			const hapi::Part &part,
 			const int objIndex,
 			const int geoIndex,
