@@ -595,6 +595,8 @@ public:
 	return result;
     }
 
+    std::vector< HAPI_NodeId > materialNodeIdsOnFaces(bool &all_same) const;
+
     Geo geo;
     int id;
 	HAPI_Session* session;
@@ -850,6 +852,19 @@ inline std::vector<Part> Geo::parts() const
     std::cout << "Geo: getting parts for geo with id " << this->id << " part count is " << info().partCount << std::endl;
     for (int part_id=0; part_id < info().partCount; ++part_id)
 	result.push_back(Part(*this, part_id));
+    return result;
+}
+
+inline std::vector< HAPI_NodeId > Part::materialNodeIdsOnFaces(bool &all_same) const
+{
+    std::vector< HAPI_NodeId > result( info().faceCount );
+    throwOnFailure(HAPI_GetMaterialNodeIdsOnFaces(
+		session,
+		geo.info().nodeId,
+		id,
+		&all_same /* are_all_the_same*/,
+		result.data(), 
+		0, info().faceCount ));
     return result;
 }
 

@@ -772,16 +772,7 @@ void HoudiniEngine::process_materials(const hapi::Part &part, HoudiniGeometry* h
 
 	int faceCount = part.info().faceCount;
 
-	std::vector< HAPI_NodeId > mat_ids_on_faces( faceCount );
-
-
-	ENSURE_SUCCESS(session,  HAPI_GetMaterialNodeIdsOnFaces(
-		session,
-		part.geo.info().nodeId,
-		part.id,
-		&all_same /* are_all_the_same*/,
-		mat_ids_on_faces.data(), 
-		0, faceCount ));
+	std::vector< HAPI_NodeId > mat_ids_on_faces = part.materialNodeIdsOnFaces(all_same);
 
 	std::vector< int > mat_ids;
 
