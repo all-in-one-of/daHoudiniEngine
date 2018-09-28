@@ -354,7 +354,8 @@ public:
 	if (!this->_info)
 	{
 		std::cout << "Object: No info, fetching.." << std::endl;
-		std::cout << "  with id: " << this->asset.nodeid << std::endl;
+		std::cout << "Object:   asset id: " << this->asset.nodeid << std::endl;
+		std::cout << "Object:   object id: " << this->id << std::endl;
         _info = new HAPI_ObjectInfo();
 		// this doesn't work!!
 // 		throwOnFailure(HAPI_GetObjectInfo(
@@ -366,23 +367,16 @@ public:
         throwOnFailure(HAPI_ComposeObjectList( 
             session, this->asset.nodeid, NULL, &objectCount ));
 
-        std::cout << "Object: about to try GetComposedObjectList with " << std::endl <<
-            "session: " << session << std::endl <<
-            "nodeid: " << this->asset.nodeid << std::endl <<
-            "info: " << _info << std::endl <<
-            "object_id: " << this->id << std::endl <<
-            "object count:" << 1 << std::endl;
 		throwOnFailure(HAPI_GetComposedObjectList( 
 		session, 
 		this->asset.nodeid, 
 		_info, 
 		this->id, 
 		1));
-		cout << "Object: Check some info.." << endl << 
-		"    nodeId: " << _info->nodeId << endl << 
-		"    isVisible: " << _info->isVisible << endl << 
-		"    instancer: "<< _info->isInstancer << endl << 
-		"    geoCount (depr): "<< _info->geoCount << endl;
+		cout << "Object: Check some info.." << std::endl << 
+		"Object:   nodeId: " << _info->nodeId << std::endl << 
+		"Object:   isVisible: " << _info->isVisible << std::endl << 
+		"Object:   instancer: "<< _info->isInstancer << std::endl;
 	}
 	return *this->_info;
     }
@@ -446,7 +440,7 @@ public:
 	if (!this->_info)
 	{
 		std::cout << "Geo: no info, fetching.." << std::endl;
-		std::cout << "    with object id " << this->object.info().nodeId << std::endl;
+		std::cout << "Geo:   with object id " << this->object.info().nodeId << std::endl;
 	    this->_info = new HAPI_GeoInfo();
 	    throwOnFailure(HAPI_GetDisplayGeoInfo(
 		session,
@@ -511,7 +505,7 @@ public:
 	{
 	    this->_info = new HAPI_PartInfo();
 		std::cout << "Part: no info, fetching.." << std::endl;
-		std::cout << "    with geo's nodeid " << this->geo.info().nodeId << std::endl;
+		std::cout << "Part:   with geo's nodeid " << this->geo.info().nodeId << std::endl;
 	    throwOnFailure(HAPI_GetPartInfo(
 		    session,
 		    this->geo.info().nodeId, 
@@ -740,7 +734,6 @@ inline Parm::Parm(int node_id, const HAPI_ParmInfo &info,
 
 inline std::vector<Object> Asset::objects() const
 {
-    std::cout << "Asset: getting objects for asset with id " << this->nodeid << std::endl;
     std::vector<Object> result;
 
     int objectCount;
@@ -748,31 +741,24 @@ inline std::vector<Object> Asset::objects() const
         session, nodeid, NULL, &objectCount ));
 
     for (int object_id=0; object_id < objectCount; ++object_id) {
-        std::cout << "Asset: adding object " << object_id << " to list to return" << std::endl;
 	    result.push_back(Object(*this, object_id));
     }
+    std::cout << "Asset: getting " << result.size() << " objects" << std::endl;
     return result;
 }
 
 inline std::vector< HAPI_Transform > Asset::transforms() const
 {
-    std::cout << "let's get transforms for asset " << this->nodeid << std::endl;
     int object_count = 0;
-    std::cout << "composing objectList" << std::endl;
-    throwOnFailure(HAPI_ComposeObjectList( 
-        this->session,
-        this->nodeid,
-        NULL,
-        &object_count ));
+    throwOnFailure(HAPI_ComposeObjectList(
+        session, nodeid, NULL, &object_count ));
     std::vector< HAPI_ObjectInfo > object_infos( object_count );
-    std::cout << "objectList is " << object_count << " objects long. getting composed objectList" << std::endl;
     throwOnFailure(HAPI_GetComposedObjectList(
         this->session, 
         this->nodeid, 
         object_infos.data(), 
         0, 
         object_count ));
-    std::cout << "got them, now get transforms" << std::endl;
     std::vector< HAPI_Transform > result( object_count );
     throwOnFailure(HAPI_GetComposedObjectTransforms(
         this->session, 
@@ -781,7 +767,7 @@ inline std::vector< HAPI_Transform > Asset::transforms() const
         result.data(), 
         0, 
         object_count ));
-    std::cout << "got them, there were " <<  object_count << ". now return them" << std::endl;
+    std::cout << "Object: getting " <<  object_count << " transforms" << std::endl;
 
     return result;
 }

@@ -512,7 +512,7 @@ HoudiniAsset* HoudiniEngine::instantiateGeometry(const String& asset)
 
 
 	if (myHoudiniGeometrys[asset] == NULL) {
-		ofwarn("No model of %1%.. creating", %asset);
+		ofwarn("instantiateGeometry: No model of %1%.. creating", %asset);
 
 		HoudiniGeometry* hg = HoudiniGeometry::create(asset);
 		myHoudiniGeometrys[asset] = hg;
@@ -582,7 +582,7 @@ HoudiniAsset* HoudiniEngine::instantiateGeometry(const String& asset)
 				%(isTransparent ? "-t -a -D " : "")
 				%shininess
 			);
-			ofmsg("about to set effect '%1%'", %effect);
+			ofmsg("instantiateGeometry: about to set effect '%1%'", %effect);
 			assetInstances[asset]->setEffect(effect);
 
 			if (assetMaterialParms[asset][i].parms.count("diffuseMapName")) {
@@ -601,7 +601,7 @@ HoudiniAsset* HoudiniEngine::instantiateGeometry(const String& asset)
 
 		}
 	} else {
-		ofmsg("%1% does not have materials", %asset);
+		ofmsg("instantiateGeometry: %1% does not have materials", %asset);
 	}
 
 	return assetInstances[asset];
