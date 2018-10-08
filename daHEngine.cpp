@@ -40,6 +40,7 @@ daHEngine
 ******************************************************************************/
 
 #include <daHoudiniEngine/daHEngine.h>
+#include <daHoudiniEngine/houdiniAsset.h>
 #include <daHoudiniEngine/houdiniGeometry.h>
 #include <daHoudiniEngine/houdiniParameter.h>
 #if DA_ENABLE_HENGINE > 0
@@ -91,6 +92,8 @@ BOOST_PYTHON_MODULE(daHEngine)
  		PYAPI_METHOD(HoudiniEngine, getTime)
  		PYAPI_METHOD(HoudiniEngine, setTime)
  		PYAPI_METHOD(HoudiniEngine, cook)
+ 		PYAPI_METHOD(HoudiniEngine, getCookOptions)
+ 		PYAPI_METHOD(HoudiniEngine, setCookOptions)
  		PYAPI_METHOD(HoudiniEngine, setLoggingEnabled)
  		PYAPI_METHOD(HoudiniEngine, showMappings)
  		PYAPI_REF_GETTER(HoudiniEngine, getContainerForAsset)
@@ -103,11 +106,8 @@ BOOST_PYTHON_MODULE(daHEngine)
 		// dict of parameter names:types for a given asset
 		// get/set parms by name (and by index?)
 		// TODO: multiple set parms for a given cook
-		// TODO: insert/remove multiparm instance..
 		// this should only return parameter names
 		PYAPI_METHOD(HoudiniEngine, getParameters)
-		// TODO
-		// PYAPI_METHOD(HoudiniEngine, getParameterValues)
 		PYAPI_METHOD(HoudiniEngine, getParameterValue)
 		PYAPI_METHOD(HoudiniEngine, setParameterValue)
 		PYAPI_METHOD(HoudiniEngine, insertMultiparmInstance)
@@ -117,12 +117,20 @@ BOOST_PYTHON_MODULE(daHEngine)
 		// Assets
 		// list of available assets
  		PYAPI_METHOD(HoudiniEngine, getAvailableAssets)
-		
+
 		// extras
         PYAPI_METHOD(HoudiniEngine, doIt)
         PYAPI_METHOD(HoudiniEngine, test)
         PYAPI_METHOD(HoudiniEngine, printParms)
+        PYAPI_METHOD(HoudiniEngine, printGraph)
 		;
+
+	// HoudiniAsset
+	PYAPI_REF_CLASS(HoudiniAsset, Entity)
+		PYAPI_STATIC_REF_GETTER(HoudiniAsset, create)
+        PYAPI_METHOD(HoudiniAsset, getCounts)
+		;
+
 
 	// HoudiniGeometry
 	PYAPI_REF_BASE_CLASS(HoudiniGeometry)
@@ -133,6 +141,12 @@ BOOST_PYTHON_MODULE(daHEngine)
         PYAPI_METHOD(HoudiniGeometry, addColor)
         PYAPI_METHOD(HoudiniGeometry, setColor)
         PYAPI_GETTER(HoudiniGeometry, getColor)
+        PYAPI_METHOD(HoudiniGeometry, addUV)
+        PYAPI_METHOD(HoudiniGeometry, setUV)
+        PYAPI_GETTER(HoudiniGeometry, getUV)
+        PYAPI_METHOD(HoudiniGeometry, addNormal)
+        PYAPI_METHOD(HoudiniGeometry, setNormal)
+        PYAPI_GETTER(HoudiniGeometry, getNormal)
         PYAPI_METHOD(HoudiniGeometry, clear)
         PYAPI_METHOD(HoudiniGeometry, addPrimitive)
         PYAPI_GETTER(HoudiniGeometry, getName)
@@ -179,6 +193,20 @@ BOOST_PYTHON_MODULE(daHEngine)
 		.value("Separator", HAPI_ParmType::HAPI_PARMTYPE_SEPARATOR)
 
 		.value("Max", HAPI_ParmType::HAPI_PARMTYPE_MAX)
+	;
+
+	// HAPI_CookOptions
+	class_<HAPI_CookOptions>("CookOptions")
+	    .def_readwrite("splitGeosByGroup", &HAPI_CookOptions::splitGeosByGroup)
+		.def_readwrite("maxVerticesPerPrimitive", &HAPI_CookOptions::maxVerticesPerPrimitive)
+		.def_readwrite("refineCurveToLinear", &HAPI_CookOptions::refineCurveToLinear)
+		.def_readwrite("curveRefineLOD", &HAPI_CookOptions::curveRefineLOD)
+		.def_readwrite("clearErrorsAndWarnings", &HAPI_CookOptions::clearErrorsAndWarnings)
+		.def_readwrite("cookTemplatedGeos", &HAPI_CookOptions::cookTemplatedGeos)
+		.def_readwrite("splitPointsByVertexAttributes", &HAPI_CookOptions::splitPointsByVertexAttributes)
+		// PYAPI_REF_PROPERTY(HAPI_CookOptions, packedPrimInstancingMode)
+		.def_readwrite("handleBoxPartTypes", &HAPI_CookOptions::handleBoxPartTypes)
+		.def_readwrite("handleSpherePartTypes", &HAPI_CookOptions::handleSpherePartTypes)
 	;
 
 #endif
@@ -232,14 +260,16 @@ HoudiniEngine::HoudiniEngine():
 	EngineModule("HoudiniEngine"),
 	mySceneManager(NULL),
 	myLogEnabled(false),
-	myAssetCount(0),
-	currentAsset(-1),
-	currentAssetName("")
+	myAssetCount(0)
+{
+	// defaults
+	myCookOptions.cookTemplatedGeos = true; //default false;
+}
 #else
 	EngineModule("HoudiniEngine")
-#endif
 {
 }
+#endif
 
 HoudiniEngine::~HoudiniEngine()
 {
@@ -377,6 +407,8 @@ int HoudiniEngine::instantiateAsset(const String& asset_name)
 
 	wait_for_cook();
 
+	assetNameToIds[asset_name] = asset_id;
+
 	omsg("after instantiate cook");
 
 
@@ -384,8 +416,8 @@ int HoudiniEngine::instantiateAsset(const String& asset_name)
 	Ref <RefAsset> myAsset = new RefAsset(asset_id, session);
 	// TODO: this isn't the right way to do this.. remove
 	instancedHEAssets[asset_id] = myAsset;
-	omsg("about to process assets");
-    process_assets(*myAsset.get());
+	omsg("about to process asset");
+    process_asset(*myAsset.get());
 	omsg("processed assets, about to create menu");
 
 	createMenu(asset_id);
@@ -452,7 +484,7 @@ int HoudiniEngine::instantiateAssetById(int asset_id)
 	// is this important?
  	ofmsg("Instantiated %1%, id: %2%", %myAsset.get()->name() %asset_id);
 
-    process_assets(*myAsset.get());
+    process_asset(*myAsset.get());
 
 	createMenu(asset_id);
 	updateGeos = true;
@@ -461,20 +493,23 @@ int HoudiniEngine::instantiateAssetById(int asset_id)
 	return asset_id;
 }
 
-// TODO: geometry should be instantiated like this:
-//    asset node+
+// Geometry is instantiated like this:
+//    asset node+ (HoudiniAsset)
 //     |
-//     o- object node+ (staticObject)
+//     o- object node+ (Transforms)
 //         |
-//         o- geo node+ (staticObject or osg nodes)
+//         o- geo node+ (Nodes to display)
 //             |
-//             o- part node+ (drawables as part of geo, no transforms)
-StaticObject* HoudiniEngine::instantiateGeometry(const String& asset)
+//             o- part node+ (As drawables under a geometry)
+HoudiniAsset* HoudiniEngine::instantiateGeometry(const String& asset)
 {
 	ofmsg("instantiateGeometry: %1% assets available", %myAssetCount);
 
+	int asset_id = assetNameToIds[asset];
+
+
 	if (myHoudiniGeometrys[asset] == NULL) {
-		ofwarn("No model of %1%.. creating", %asset);
+		ofwarn("instantiateGeometry: No model of %1%.. creating", %asset);
 
 		HoudiniGeometry* hg = HoudiniGeometry::create(asset);
 		myHoudiniGeometrys[asset] = hg;
@@ -483,16 +518,106 @@ StaticObject* HoudiniEngine::instantiateGeometry(const String& asset)
 		}
 	}
 
-	StaticObject* so = new StaticObject(mySceneManager, asset);
-
-	// TODO: make this general
-	if (mySceneManager->getTexture("testing", false) != NULL) {
-		so->setEffect("textured -d white -e white");
-		so->getMaterial()->setDiffuseTexture("testing");
-
+	if (assetInstances.count(asset) == 0) {
+		assetInstances[asset] = new HoudiniAsset(mySceneManager, asset);
+		omsg("instantiateGeometry: applying default material on newly instantiated object..");
+		assetInstances[asset]->setEffect("houdini");
 	}
 
-	return so;
+	// TODO: make this general
+	// this should be referring to all the instantiated HoudiniAssets
+	//     of an asset and setting all their material parameters
+	//     it might be better that this call a method that is also called when cooking
+	//     something like 'updateMaterials() on the object
+	// make a houdini-specific shader that encompasses all these parameters..
+	if (assetMaterialParms.count(asset)) {
+
+
+		if (assetMaterialParms[asset].size() > 0) {
+			ofmsg("instantiateGeometry: setting %1% material(s) on newly instantiated object..", %assetMaterialParms[asset].size() );
+		}
+
+		for (int i = 0; i < assetMaterialParms[asset].size(); ++i) {
+			Color emit;
+			Color amb;
+			Color c;
+			Color spec;
+			String dif = "";
+			String norm = "";
+			float alpha = 1.0;
+			float shininess = 1.0;
+			bool isTransparent = false;
+
+			// NB: This overwrites shader info set elsewhere so ignoring it for now..
+			// if (assetMaterialParms[asset][i].parms.count("ogl_amb")) {
+			// 	amb[0] = assetMaterialParms[asset][i].parms["ogl_amb"].floatValues[0];
+			// 	amb[1] = assetMaterialParms[asset][i].parms["ogl_amb"].floatValues[1];
+			// 	amb[2] = assetMaterialParms[asset][i].parms["ogl_amb"].floatValues[2];
+			// 	amb[3] = 1;
+			// }
+
+			if (assetMaterialParms[asset][i].parms.count("ogl_emit")) {
+				emit[0] = assetMaterialParms[asset][i].parms["ogl_emit"].floatValues[0];
+				emit[1] = assetMaterialParms[asset][i].parms["ogl_emit"].floatValues[1];
+				emit[2] = assetMaterialParms[asset][i].parms["ogl_emit"].floatValues[2];
+				emit[3] = 1;
+			}
+
+			if (assetMaterialParms[asset][i].parms.count("ogl_diff")) {
+				c[0] = assetMaterialParms[asset][i].parms["ogl_diff"].floatValues[0];
+				c[1] = assetMaterialParms[asset][i].parms["ogl_diff"].floatValues[1];
+				c[2] = assetMaterialParms[asset][i].parms["ogl_diff"].floatValues[2];
+				c[3] = 1;
+			}
+
+			// NB: This overwrites shader info set elsewhere so ignoring it for now..
+			// if (assetMaterialParms[asset][i].parms.count("ogl_spec")) {
+			// 	spec[0] = assetMaterialParms[asset][i].parms["ogl_spec"].floatValues[0];
+			// 	spec[1] = assetMaterialParms[asset][i].parms["ogl_spec"].floatValues[1];
+			// 	spec[2] = assetMaterialParms[asset][i].parms["ogl_spec"].floatValues[2];
+			// 	spec[3] = 1;
+			// }
+
+			// approximate transparency
+			if (assetMaterialParms[asset][i].parms.count("ogl_alpha")) {
+				alpha = assetMaterialParms[asset][i].parms["ogl_alpha"].floatValues[0];
+				isTransparent = alpha < 0.95;
+			}
+
+			if (assetMaterialParms[asset][i].parms.count("ogl_rough")) {
+				shininess = assetMaterialParms[asset][i].parms["ogl_rough"].floatValues[0];
+			}
+
+			String effect = ostr("houdini %1%-d %2% -e %3% -s %4%",
+				%(isTransparent ? "-t -a -D " : "")
+				%c.toString()
+				%emit.toString()
+				%shininess
+			);
+			ofmsg("instantiateGeometry: about to set effect '%1%'", %effect);
+			assetInstances[asset]->setEffect(effect);
+
+			if (assetMaterialParms[asset][i].parms.count("diffuseMapName")) {
+				dif = assetMaterialParms[asset][i].parms["diffuseMapName"].stringValues[0];
+				if (mySceneManager->getTexture(dif, false) != NULL) {
+					assetInstances[asset]->getMaterial()->setDiffuseTexture(dif);
+				}
+			}
+
+			if (assetMaterialParms[asset][i].parms.count("normalMapName")) {
+				norm = assetMaterialParms[asset][i].parms["normalMapName"].stringValues[0];
+				if (mySceneManager->getTexture(norm, false) != NULL) {
+					assetInstances[asset]->getMaterial()->setNormalTexture(norm);
+				}
+			}
+
+		}
+	} else {
+		ofmsg("instantiateGeometry: %1% does not have materials", %asset);
+	}
+
+	return assetInstances[asset];
+
 }
 
 
@@ -516,7 +641,7 @@ void HoudiniEngine::initialize()
 				HAPI_ThriftServerOptions thrift_server_options;
 				thrift_server_options.autoClose = true;
 				thrift_server_options.timeoutMs = 5000;
-				
+
 				int port = env_port ? atoi(env_port) : 7788;
 
 				if (!env_host) {
@@ -529,14 +654,10 @@ void HoudiniEngine::initialize()
 				cout << "Connected to " << env_host << ":" << port << endl;
 			}
 
-			// TODO: expose these in python to allow changeable options
-			HAPI_CookOptions cook_options = HAPI_CookOptions_Create();
-			cook_options.cookTemplatedGeos = true; // default false
-
 
 			ENSURE_SUCCESS(session, HAPI_Initialize(
 				session,
-				&cook_options,
+				&myCookOptions,
 				/*use_cooking_thread=*/true,
 				/*cooking_thread_stack_size=*/-1,
 				/*houdini_environment_files=*/NULL,

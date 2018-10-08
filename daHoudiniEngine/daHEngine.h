@@ -66,6 +66,8 @@ either expressed or implied, of the Data Arena Project.
 #include <omegaOsg/omegaOsg.h>
 #include <omegaToolkit.h>
 
+#include "daHoudiniEngine/houdiniAsset.h"
+
 #include <stdlib.h>
 #include <iostream>
 #include <string>
@@ -149,14 +151,34 @@ namespace houdiniEngine {
 		// <<<<<< subclassed modules
 
 		// helper functions
-		void process_assets(const hapi::Asset &asset);
-		void process_geo_part(
+		// helper functions
+		void process_asset(
+			const hapi::Asset &asset
+		);
+		void process_object(
+			const hapi::Object &object,
+			const int objIndex,
+			HoudiniGeometry* hg
+		);
+		void process_geo(
+			const hapi::Geo &geo,
+			const int objIndex,
+			const int geoIndex,
+			HoudiniGeometry* hg
+		);
+		void process_part(
 			const hapi::Part &part,
 			const int objIndex,
 			const int geoIndex,
 			const int partIndex,
 			HoudiniGeometry* hg
 		);
+
+		void process_materials(
+			const hapi::Part &part,
+			HoudiniGeometry* hg
+		);
+
 		void process_float_attrib(
 		    const hapi::Part &part, HAPI_AttributeOwner attrib_owner,
 		    const char *attrib_name, vector<Vector3f>& points
@@ -167,8 +189,12 @@ namespace houdiniEngine {
 		    const char *attrib_name, vector<float>& vals
 		);
 
-		// from HAPI
+		void process_attrib(
+		    const hapi::Part &part, HAPI_AttributeOwner attrib_owner,
+		    const char *attrib_name, vector<int>& vals
+		);
 
+		// from HAPI 3.1
 // 		CreateInProcessSession (HAPI_Session *session);
 // 		StartThriftSocketServer (const HAPI_ThriftServerOptions *options, int port, HAPI_ProcessId *process_id);
 // 		CreateThriftSocketSession (HAPI_Session *session, const char *host_name, int port);
@@ -366,7 +392,7 @@ namespace houdiniEngine {
 		int getAvailableAssetCount() { return myAssetCount; };
 		int instantiateAsset(const String& asset);
 		int instantiateAssetById(int asset_id);
-		StaticObject* instantiateGeometry(const String& asset);
+		HoudiniAsset* instantiateGeometry(const String& asset);
 
 		Ref< RefAsset > getAsset(int asset_id) { return instancedHEAssets[asset_id]; }
 
@@ -386,8 +412,6 @@ namespace houdiniEngine {
         HoudiniParameterList* loadParameters(const String& asset_name);
 
 		// python methods for HAPI Parameters
-		// TODO: make get/set parameter values take either int or string arguments
-		// do that here or in the boost::python method exposing
 		boost::python::dict getParameters(const String& asset_name);
 		void setParameterValue(const String& asset_name, const String& parm_name, boost::python::object value);
 		boost::python::object getParameterValue(const String& asset_name, const String& parm_name);
@@ -414,16 +438,22 @@ namespace houdiniEngine {
         void cook_one(hapi::Asset* asset);
 		void wait_for_cook();
 
+		void setCookOptions(HAPI_CookOptions co) { myCookOptions = co; };
+		HAPI_CookOptions getCookOptions() { return myCookOptions; };
+
 		void setLoggingEnabled(const bool toggle);
 
 		void showMappings();
 
 		void printParms(int asset_id);
 
+		// print the scenegraph of the houdini asset
+		void printGraph(const String& asset_name);
+
 		Container* getContainerForAsset(int n);
 		Container* getHoudiniCont() { return houdiniCont; };
 		Container* getStagingCont() { return stagingCont; };
-		
+
 
 	private:
 
@@ -434,7 +464,7 @@ namespace houdiniEngine {
 	private:
 		//helper function
 		void removeConts(Container* cont);
-		
+
 		SceneManager* mySceneManager;
 
 		// Scene editor. This will be used to manipulate the object.
@@ -451,7 +481,7 @@ namespace houdiniEngine {
 		bool updateGeos;
 
 		// this is the model definition, not the instance of it
-		// I change the verts, faces, normals, etc in this and StaticObjects
+		// I change the verts, faces, normals, etc in this and HoudiniAssets
 		// in the scene get updated accordingly
 		typedef Dictionary<String, Ref<HoudiniGeometry> > HGDictionary;
 		typedef Dictionary<int, Ref<RefAsset> > Mapping;
@@ -461,6 +491,10 @@ namespace houdiniEngine {
 
 		// Materials/textures
 		vector <Ref<PixelData> > pds;
+
+		// HoudiniAsset instances
+		// used for updating materials/textures of assets
+		Dictionary<String, Ref<HoudiniAsset> > assetInstances;
 
 		// this is only maintained on the master
 		Mapping instancedHEAssets;
@@ -508,6 +542,28 @@ namespace houdiniEngine {
 		// asset name to id
 		Dictionary < String, int > assetNameToIds;
         Dictionary<String, HoudiniParameterList*> assetParamLists;
+
+		// parm value container..
+		typedef struct {
+			int type;
+			Vector<int> intValues;
+			Vector<float> floatValues;
+			Vector<String> stringValues;
+		} ParmStruct;
+
+		// material container..
+		// TODO: better way to do this?
+		typedef struct {
+			int matId;
+			int partId;
+			int geoId;
+			int objId;
+			Dictionary<String, ParmStruct> parms;
+		} MatStruct;
+        // asset name to material parms
+        // eg: assetMaterialParms["cluster1"][4]["ogl_diff"]
+        Dictionary < String, Vector< MatStruct > > assetMaterialParms;
+
 		// logging
 		bool myLogEnabled;
 
@@ -515,13 +571,13 @@ namespace houdiniEngine {
 		HAPI_Session* session;
 
 		int myAssetCount;
-		int currentAsset;
-		String currentAssetName;
-		
+
 		// build a list of widgets to remove
 		Vector<Widget* > removeTheseWidgets;
-		
+
 		static HoudiniEngine* myInstance;
+
+		HAPI_CookOptions myCookOptions;
 
 #endif
 	};

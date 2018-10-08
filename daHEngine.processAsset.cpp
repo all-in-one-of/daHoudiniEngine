@@ -43,39 +43,140 @@ daHEngine
 #include <daHoudiniEngine/houdiniGeometry.h>
 #include <daHEngine.static.cpp>
 
+// for printVisitor
+#include <osgUtil/PrintVisitor>
+#include <ostream>
+
 using namespace houdiniEngine;
 
+// Temporary debugging visitor (TODO: move this somewhere else to use more
+// often?)
+class MyPrintVisitor: public osgUtil::PrintVisitor
+{
+    public:
+
+        MyPrintVisitor(std::ostream& out, int indent=0, int step=2):
+			osgUtil::PrintVisitor(out, indent, step)
+		{
+		}
+
+        void apply(osg::Node& node) {
+			output()<<node.libraryName()<<"::"<<node.className()<<std::endl;
+
+			enter();
+			traverse(node);
+			leave();
+		}
+
+        void apply(osg::PositionAttitudeTransform& node) {
+			output()<<node.libraryName()<<"::"<<node.className()<<std::endl;
+			output()<<"pos: ("<<node.getPosition()[0]<<
+				","<<node.getPosition()[1]<<
+				","<<node.getPosition()[2]<<
+				")"<<std::endl;
+			enter();
+			traverse(node);
+			leave();
+		}
+
+        void apply(osg::Geode& geo) {
+			output()<<geo.libraryName()<<"::"<<geo.className()<<std::endl;
+			enter();
+			for (int i = 0; i < geo.getNumDrawables(); ++i) {
+				apply(*(geo.getDrawable(i)));
+			}
+			leave();
+		}
+
+		void apply(osg::Drawable& draw) {
+			output()<<"  "<< draw.className() << "(" << draw.getName() <<")" << std::endl;
+			output()<<"    Verts:"<< draw.asGeometry()->getVertexArray()->getNumElements() << std::endl;
+			output()<<"    PrimSets:"<< draw.asGeometry()->getNumPrimitiveSets() << std::endl;
+		}
+
+    protected:
+
+        MyPrintVisitor& operator = (const MyPrintVisitor&) { return *this; }
+
+};
+
+void HoudiniEngine::printGraph(const String& asset_name) {
+
+	HoudiniGeometry* hg = myHoudiniGeometrys[asset_name];
+
+	MyPrintVisitor mpv(std::cout,0, 2);
+
+	mpv.apply(*(hg->getOsgNode()));
+	ofmsg("materials under %1%", %asset_name);
+	typedef Dictionary <String, ParmStruct > PS;
+	typedef Dictionary < String, Vector< MatStruct > > Amps;
+    foreach(Amps::Item amp, assetMaterialParms) {
+		ofmsg("%1%", %amp.first);
+
+		for (int i = 0; i < amp.second.size(); ++i) {
+			ofmsg("  mat id: %1%, part: %2% geo: %3% obj: %4%", 
+				%amp.second[i].matId 
+				%amp.second[i].partId
+				%amp.second[i].geoId
+				%amp.second[i].objId
+			);
+			ologaddnewline(false);
+			foreach(PS::Item ps, amp.second[i].parms) {
+				ofmsg("    %1%:%2% ", %ps.first %ps.second.type);
+				for (int j = 0; j < ps.second.intValues.size(); ++j) {
+					if (j == 0) omsg("    int ");
+					ofmsg("%1% ", %ps.second.intValues[j]);
+				}
+				for (int j = 0; j < ps.second.floatValues.size(); ++j) {
+					if (j == 0) omsg("    float ");
+					ofmsg("%1% ", %ps.second.floatValues[j]);
+				}
+				for (int j = 0; j < ps.second.stringValues.size(); ++j) {
+					if (j == 0) omsg("    string ");
+					ofmsg("%1% ", %ps.second.stringValues[j]);
+				}
+				omsg("\n");
+			}
+			ologaddnewline(true);
+		}
+
+	}
+}
+
 // put houdini engine asset data into a houdiniGeometry
-void HoudiniEngine::process_assets(const hapi::Asset &asset)
+void HoudiniEngine::process_asset(const hapi::Asset &asset)
 {
 
 	String s = ostr("%1%", %asset.name());
 
 	HoudiniGeometry* hg;
 
-	ofmsg("processing asset %1%", %s);
+	ofmsg("process_assets: asset '%1%'", %s);
 
 	if (myHoudiniGeometrys.count(s) > 0) {
 		hg = myHoudiniGeometrys[s];
+		ofmsg("process_assets: acquired existing HoudiniGeometry for '%1%'", %s);
 	} else {
 		hg = HoudiniGeometry::create(s);
 		myHoudiniGeometrys[s] = hg;
-
+		ofmsg("process_assets: created new HoudiniGeometry for '%1%'", %s);
 	}
 
-	omsg("got a houdiniGeometry, doing stuff with it now..");
-
     vector<hapi::Object> objects = asset.objects();
-
-	omsg("got objects of asset, getting transforms");
-
 	vector<HAPI_Transform> objTransforms = asset.transforms();
+
+	// ofmsg("process_assets: clear %1% materials", %assetMaterialParms[s].size());
+	// assetMaterialParms[s].clear();
 
 	ofmsg("process_assets: %1%: %2% objects %3% transforms", %asset.name() %objects.size() %objTransforms.size());
 
 	hg->objectsChanged = asset.info().haveObjectsChanged;
 	ofmsg("process_assets: %1%: %2% objects %3%", %asset.name() %objects.size() %(hg->objectsChanged == 1 ? "Changed" : ""));
+	// forcing true for testing
+	// hg->objectsChanged = true;
+	// ofmsg("process_assets: %1%: %2% objects Forced Changed", %asset.name() %objects.size() );
 
+	// set number of objects in HoudiniGeometry to match
 	if (hg->getObjectCount() < objects.size()) {
 		hg->addObject(objects.size() - hg->getObjectCount());
 
@@ -85,80 +186,12 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 	}
 
 	// if (hg->objectsChanged) {
+	// still need to traverse this, as an object may not change, but geos in it can change
 	if (true) {
-		omsg("process_assets: let's look at objects");
+		ofmsg("process_assets: iterating through %1% objects", %objects.size());
 		for (int object_index=0; object_index < int(objects.size()); ++object_index)
 	    {
-			HAPI_ObjectInfo objInfo = objects[object_index].info();
-
-			// TODO check for instancing, then do things differently
-			if (objInfo.isInstancer > 0) {
-				ofmsg("instance path: %1%: %2%", %objects[object_index].name() %objects[object_index].objectInstancePath());
-				ofmsg("%1%: %2%", %objects[object_index].id %objInfo.objectToInstanceId);
-			}
-			// don't use vector, as there should be only one geo
-			// unless we are exposing editable nodes (not yet)
-			vector<hapi::Geo> geos = objects[object_index].geos();
-
-			if (hg->getGeodeCount(object_index) < geos.size()) {
-				hg->addGeode(geos.size() - hg->getGeodeCount(object_index), object_index);
-
-                for (int i=0; i < geos.size(); i++) {
-                    hg->setGeodeName(i, object_index, geos[i].name());
-                }
-			}
-
-			hg->setGeosChanged(objInfo.haveGeosChanged, object_index);
-			ofmsg("process_assets:   %1%/%2%: %3% %4%",
-				%(object_index + 1)
-				%geos.size()
-				%objects[object_index].name()
-				%(hg->getGeosChanged(object_index) == 1 ? "Changed" : "")
-			);
-
-			// if (hg->getGeosChanged(object_index)) {
-			if (true) {
-				omsg("process_assets:   let's look at geos");
-
-				for (int geo_index=0; geo_index < int(geos.size()); ++geo_index)
-				{
-				    vector<hapi::Part> parts = geos[geo_index].parts();
-
-					if (hg->getDrawableCount(geo_index, object_index) < parts.size()) {
-						hg->addDrawable(parts.size() - hg->getDrawableCount(geo_index, object_index), geo_index, object_index);
-					}
-
-					hg->setGeoChanged(geos[geo_index].info().hasGeoChanged, geo_index, object_index);
-					ofmsg("process_assets:     %1%:%2%/%3% %4% %5% %6%",
-						%(object_index + 1)
-						%(geo_index + 1)
-						%parts.size()
-						%(hg->getGeoChanged(geo_index, object_index) == 1 ? "Changed" : "")
-						%(geos[geo_index].info().isDisplayGeo == 1 ? "Display" : "-")
-						%(geos[geo_index].info().isTemplated == 1 ? "Template" : "-")
-					);
-
-					hg->clearGeode(geo_index, object_index);
-					// if (hg->getGeoChanged(geo_index, object_index)) {
-					if (true) {
-						ofmsg("process_assets:     let's look at parts, should be %1% of them", %parts.size());
-					    for (int part_index=0; part_index < int(parts.size()); ++part_index)
-						{
-							if (geos[geo_index].info().isDisplayGeo) {
-								ofmsg("process_assets:     processing %1% %2%", %s %parts[part_index].name());
-								process_geo_part(parts[part_index], object_index, geo_index, part_index, hg);
-							}
-						}
-					}
-				}
-			}
-
- 			hg->setTransformChanged(objInfo.hasTransformChanged, object_index);
-			ofmsg("process_assets:   Transform changed: %2%", %object_index %(hg->getTransformChanged(object_index) == 1 ? "Yes" : "No"));
-		}
-
-		for (int object_index=0; object_index < int(objects.size()); ++object_index)
-	    {
+			process_object(objects[object_index], object_index, hg);
 			// if (hg->getTransformChanged(object_index)) {
 			if (true) {
 				hg->getOsgNode()->asGroup()->getChild(object_index)->asTransform()->
@@ -189,37 +222,93 @@ void HoudiniEngine::process_assets(const hapi::Asset &asset)
 	    }
 	}
 
-	// do asset matrix transforms
-	HAPI_Transform assetTransform;
-	ENSURE_SUCCESS(session,
-		HAPI_GetObjectTransform(
-			session,
-			asset.nodeid,
-			-1,
-			HAPI_RSTORDER_DEFAULT,
-			&assetTransform
-		)
+	if (mySceneManager->getModel(s) == NULL) {
+		ofmsg("%1% not in sceneManager, adding..", %s);
+		mySceneManager->addModel(hg);
+	}
+
+	printGraph(s);
+}
+
+void HoudiniEngine::process_object(const hapi::Object &object, const int objIndex, HoudiniGeometry* hg)
+{
+	HAPI_ObjectInfo objInfo = object.info();
+
+	// TODO check for instancing, then do things differently
+	if (objInfo.isInstancer > 0) {
+		ofmsg("process_object:   INSTANCE:  instance path: %1%: %2%", %object.name() %object.objectInstancePath());
+	}
+	// don't use vector, as there should be only one geo
+	// unless we are exposing editable nodes (not yet)
+	vector<hapi::Geo> geos = object.geos();
+
+	// adjust geo count
+	if (hg->getGeodeCount(objIndex) < geos.size()) {
+		hg->addGeode(geos.size() - hg->getGeodeCount(objIndex), objIndex);
+
+		for (int i=0; i < geos.size(); i++) {
+			hg->setGeodeName(i, objIndex, geos[i].name());
+		}
+	}
+
+	hg->setGeosChanged(objInfo.haveGeosChanged, objIndex);
+	ofmsg("process_object:   %1%/%2%: %3% %4%",
+		%(objIndex + 1)
+		%geos.size()
+		%object.name()
+		%(hg->getGeosChanged(objIndex) == 1 ? "Changed" : "")
 	);
 
-	// should have the matrix here.. check it out.
-	// ofmsg("process_assets:   matrix pos   %1% %2% %3%", %assetTransformEuler.position[0]
-	// 	                              %assetTransformEuler.position[1]
-	// 	                              %assetTransformEuler.position[2]);
+	// if (hg->getGeosChanged(objIndex)) {
+	if (true) {
+		ofmsg("process_object: iterating through %1% geos", %geos.size());
 
-	// ofmsg("process_assets:   matrix rot   %1% %2% %3%", %assetTransformEuler.rotationEuler[0]
-	// 	                              %assetTransformEuler.rotationEuler[1]
-	// 	                              %assetTransformEuler.rotationEuler[2]);
+		for (int geo_index=0; geo_index < int(geos.size()); ++geo_index)
+		{
+			process_geo(geos[geo_index], objIndex, geo_index, hg);
+		}
+	}
 
-	// ofmsg("process_assets:   matrix scale %1% %2% %3%", %assetTransformEuler.scale[0]
-	// 	                              %assetTransformEuler.scale[1]
-	// 	                              %assetTransformEuler.scale[2]);
+	hg->setTransformChanged(objInfo.hasTransformChanged, objIndex);
+	ofmsg("process_object:   Transform changed: %2%", %objIndex %(hg->getTransformChanged(objIndex) == 1 ? "Yes" : "No"));
+}
 
-	if (mySceneManager->getModel(s) == NULL) {
-		mySceneManager->addModel(hg);
+
+void HoudiniEngine::process_geo(const hapi::Geo &geo, const int objIndex, const int geoIndex, HoudiniGeometry* hg)
+{
+	vector<hapi::Part> parts = geo.parts();
+
+	if (hg->getDrawableCount(geoIndex, objIndex) < parts.size()) {
+		hg->addDrawable(parts.size() - hg->getDrawableCount(geoIndex, objIndex), geoIndex, objIndex);
+	}
+
+	hg->setGeoChanged(geo.info().hasGeoChanged, geoIndex, objIndex);
+	ofmsg("process_geo:     %1%:%2%/%3% %4% %5% %6%",
+		%(objIndex + 1)
+		%(geoIndex + 1)
+		%parts.size()
+		%(hg->getGeoChanged(geoIndex, objIndex) == 1 ? "Changed" : "")
+		%(geo.info().isDisplayGeo == 1 ? "Display" : "-")
+		%(geo.info().isTemplated == 1 ? "Template" : "-")
+	);
+
+	hg->clearGeode(geoIndex, objIndex);
+	// if (hg->getGeoChanged(geoIndex, objIndex)) {
+	if (true) {
+		ofmsg("process_geo: iterating through %1% parts", %parts.size());
+		for (int part_index=0; part_index < int(parts.size()); ++part_index)
+		{
+			if (geo.info().isDisplayGeo) {
+				ofmsg("process_geo:     processing %1%", %parts[part_index].name());
+
+				// update the geometry and materials in each part
+				process_part(parts[part_index], objIndex, geoIndex, part_index, hg);
+			}
+		}
 	}
 }
 
-// TODO: expand on this..
+// TODO: expand on this.. (to do with curve rendering)
 Vector3f bez(float t, Vector3f a, Vector3f b) {
 	return Vector3f(
 		a[0] + t *(b[0] - a[0]),
@@ -230,14 +319,22 @@ Vector3f bez(float t, Vector3f a, Vector3f b) {
 
 // TODO: incrementally update the geometry?
 // send a new version, and still have the old version?
-void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex, const int geoIndex, const int partIndex, HoudiniGeometry* hg)
+//     write it out to a file based on a hash of parameters
+void HoudiniEngine::process_part(const hapi::Part &part, const int objIndex, const int geoIndex, const int partIndex, HoudiniGeometry* hg)
 {
-	omsg("process_geo_part: entered");
+	ofmsg("process_part: processing %1%", %part.name());
+	// TODO: is there a better way to convert from Vector3f to osg::Vec3?
+	// Vector3f is from the Eigen lib
+	// Vec3Array is from osg
 	vector<Vector3f> points;
 	vector<Vector3f> normals;
 	vector<Vector3f> colors;
 	vector<float> alphas;
 
+	vector<float> ppx;
+	vector<float> ppy;
+	vector<float> ppz;
+	vector<int> object_ids;
 	// texture coordinates
 	vector<Vector3f> uvs;
 
@@ -250,6 +347,11 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 
 	bool has_point_uvs = false;
 	bool has_vertex_uvs = false;
+
+	bool has_pivotpoint_x = false;
+	bool has_pivotpoint_y = false;
+	bool has_pivotpoint_z = false;
+	bool has_object_id = false;
 
 	// 	ofmsg("clearing %1%", %hg->getName());
 	// 	hg->clear();
@@ -270,13 +372,31 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 	// 	HAPI_ATTRIB_UV			"uv"
 	// 	HAPI_ATTRIB_UV2			"uv2"
 
-	// TODO: improve this..
+	// TODO: improve this using HAPI_AttributeTypeInfo:
+	// HAPI_ATTRIBUTE_TYPE_INVALID 	
+	// HAPI_ATTRIBUTE_TYPE_NONE 	
+	// HAPI_ATTRIBUTE_TYPE_POINT 	
+	// HAPI_ATTRIBUTE_TYPE_HPOINT 	
+	// HAPI_ATTRIBUTE_TYPE_VECTOR 	
+	// HAPI_ATTRIBUTE_TYPE_NORMAL 	
+	// HAPI_ATTRIBUTE_TYPE_COLOR 	
+	// HAPI_ATTRIBUTE_TYPE_QUATERNION 	
+	// HAPI_ATTRIBUTE_TYPE_MATRIX3 	
+	// HAPI_ATTRIBUTE_TYPE_MATRIX 	
+	// HAPI_ATTRIBUTE_TYPE_ST 	
+	// HAPI_ATTRIBUTE_TYPE_HIDDEN 	
+	// HAPI_ATTRIBUTE_TYPE_BOX2 	
+	// HAPI_ATTRIBUTE_TYPE_BOX 	
+	// HAPI_ATTRIBUTE_TYPE_TEXTURE 	
+	// HAPI_ATTRIBUTE_TYPE_MAX
+
     vector<std::string> point_attrib_names = part.attribNames(
 	HAPI_ATTROWNER_POINT);
 
+	omsg("process_part:     Attributes");
 	ologaddnewline(false);
 
-	omsg("process_assets:     Point:  ");
+	omsg("process_part:     Point:  ");
 
     for (int attrib_index=0; attrib_index < int(point_attrib_names.size());
 	    ++attrib_index) {
@@ -297,13 +417,39 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 		if (point_attrib_names[attrib_index] == "Alpha") {
 			has_point_alphas = true;
 		    process_attrib(part, HAPI_ATTROWNER_POINT, "Alpha", alphas);
-			for (int i = 0; i < alphas.size(); ++i) {
-				ofmsg("alpha %1%: %2% ", %i %alphas[i]);
-			}
 		}
 		if (point_attrib_names[attrib_index] == "uv") {
 			has_point_uvs = true;
 		    process_float_attrib(part, HAPI_ATTROWNER_POINT, "uv", uvs);
+		}
+
+		// TODO: add support for automatic camera-facing of elements
+		// need to effectively unpack the geometry to parts again
+		// then make each one auto look-at camera.. refer to daPly/vertexData.cpp
+		// for a way to do it in osg
+		// otherwise, look at packed primitives in houdini engine
+		if (point_attrib_names[attrib_index] == "pivotpoint_x") {
+			has_pivotpoint_x = true;
+		    process_attrib(part, HAPI_ATTROWNER_POINT, "pivotpoint_x", ppx);
+			ofmsg("ppx %1%", %ppx[0]);
+		}
+
+		if (point_attrib_names[attrib_index] == "pivotpoint_y") {
+			has_pivotpoint_y = true;
+		    process_attrib(part, HAPI_ATTROWNER_POINT, "pivotpoint_y", ppy);
+			ofmsg("ppy %1%", %ppy[0]);
+		}
+		if (point_attrib_names[attrib_index] == "pivotpoint_z") {
+			has_pivotpoint_z = true;
+		    process_attrib(part, HAPI_ATTROWNER_POINT, "pivotpoint_z", ppz);
+			ofmsg("ppz %1%", %ppz[0]);
+		}
+		// Object_ids are consecutive, and should really be a primitive attribute
+		if (point_attrib_names[attrib_index] == "object_id") {
+			has_object_id = true;
+			omsg("this object has object_ids");
+		    process_attrib(part, HAPI_ATTROWNER_POINT, "object_id", object_ids);
+			ofmsg("object_id %1%", %object_ids[0]);
 		}
 	}
 
@@ -312,7 +458,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
     vector<std::string> vertex_attrib_names = part.attribNames(
 	HAPI_ATTROWNER_VERTEX);
 
-	omsg("process_assets:     Vert:   ");
+	omsg("process_part:     Vert:   ");
 
 	for (int attrib_index=0; attrib_index < int(vertex_attrib_names.size());
 	    ++attrib_index) {
@@ -334,7 +480,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
    vector<std::string> primitive_attrib_names = part.attribNames(
 	HAPI_ATTROWNER_PRIM);
 
-	omsg("process_assets:     Prim:   ");
+	omsg("process_part:     Prim:   ");
 
 	for (int attrib_index=0; attrib_index < int(primitive_attrib_names.size());
 	    ++attrib_index) {
@@ -352,7 +498,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
     vector<std::string> detail_attrib_names = part.attribNames(
 	HAPI_ATTROWNER_DETAIL);
 
-	omsg("process_assets:     Detail: ");
+	omsg("process_part:     Detail: ");
 
 	for (int attrib_index=0; attrib_index < int(detail_attrib_names.size());
 	    ++attrib_index) {
@@ -370,16 +516,19 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 	// HAPI_PARTTYPE_CURVE
 	// HAPI_PARTTYPE_VOLUME
 	// HAPI_PARTTYPE_INSTANCER
+	// HAPI_PARTTYPE_BOX
+	// HAPI_PARTTYPE_SPHERE
 	// HAPI_PARTTYPE_MAX
 
 	if (part.info().type == HAPI_PARTTYPE_INSTANCER) {
-		omsg("process_assets:     Instancer");
+		omsg("process_part:     Instancer (TODO)");
 	}
 
 	// TODO: render curves
-	// CONTINUE FROM HERE, rendering these curves!
 	if (part.info().type == HAPI_PARTTYPE_CURVE) {
- 		ofmsg ("process_assets:     Curve: %1% %2%", %part.name() %part.id);
+ 		omsg ("process_part:     Curve: (TODO)");
+#if 0
+ 		ofmsg ("process_asset:     Curve: %1% %2%", %part.name() %part.id);
 
 		HAPI_CurveInfo curve_info;
 		ENSURE_SUCCESS(session, HAPI_GetCurveInfo(
@@ -515,10 +664,11 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 		}
 		hg->dirty();
 		return;
+#endif
 	}
 
 	if (part.info().type == HAPI_PARTTYPE_MESH) {
-		ofmsg("process_assets:     Mesh (faceCount: %1% pointCount: %2% vertCount: %3%)", 
+		ofmsg("process_part:     Mesh (faceCount: %1% pointCount: %2% vertCount: %3%)", 
 			%part.info().faceCount
 			%part.info().pointCount
 			%part.info().vertexCount
@@ -528,11 +678,14 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 		if (part.info().faceCount == 0) {
 			// but has points, so draw them?
 			if (part.info().pointCount > 0) {
+				// TODO: is there a better way to do this?
 				foreach(Vector3f point, points) {
 					hg->addVertex(point, partIndex, geoIndex, objIndex);
 				}
 				osg::PrimitiveSet::Mode myType = osg::PrimitiveSet::POINTS;
 				hg->addPrimitiveOsg(myType, 0, part.info().pointCount - 1, partIndex, geoIndex, objIndex);
+
+				// TODO: add a point sprite shader?
 			}
 			
 			hg->dirty();
@@ -548,199 +701,6 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 			0,
 			part.info().faceCount
 		) );
-
-		// Material handling (WIP)
-
-		bool all_same = true;
-
-		// NEW WAY
-		// HAPI_GetMaterialNodeIdsOnFaces(
-		// 	nullptr, sop_node_id, part_info.nodeId, &are_all_the_same,
-		// 	materials.data(), 0, part_info.faceCount );
-		// HAPI_MaterialInfo material_info;
-		// HAPI_GetMaterialInfo( nullptr, materials[ 0 ], &material_info );
-		// All other materials getters and setters take just the material node id as the sole identifier.
-
-		std::vector< HAPI_NodeId > mat_ids( part.info().faceCount );
-
-		ENSURE_SUCCESS(session,  HAPI_GetMaterialNodeIdsOnFaces(
-			session,
-			part.geo.info().nodeId,
-			part.id,
-			&all_same /* are_all_the_same*/,
-			mat_ids.data(), 
-			0, part.info().faceCount ));
-
-		HAPI_MaterialInfo mat_info;
-
-		ENSURE_SUCCESS(session,  HAPI_GetMaterialInfo (
-			session,
-			mat_ids[0],
-			&mat_info));
-
-		if (mat_info.exists) {
-			ofmsg("process_assets:   Material info for %1%: nodeId: %2% hasChanged: %3%",
-				%hg->getName() %mat_info.nodeId %mat_info.hasChanged
-			);
-
-			HAPI_NodeInfo node_info;
-			ENSURE_SUCCESS(session,  HAPI_GetNodeInfo(
-				session,
-				mat_info.nodeId, &node_info ));
-			ofmsg("process_assets:   Node info for %1%: id: %2% parentId: %3% internal path: %4%",
-				%get_string( session, node_info.nameSH) %node_info.id %node_info.parentId
-				%get_string( session, node_info.internalNodePathSH)
-			);
-
-			HAPI_ParmInfo* parm_infos = new HAPI_ParmInfo[node_info.parmCount];
-			ENSURE_SUCCESS(session,  HAPI_GetParameters(
-				session,
-				mat_info.nodeId,
-				parm_infos,
-				0 /* start */,
-				node_info.parmCount));
-
-			int mapIndex = -1;
-
-			for (int i =0; i < node_info.parmCount; ++i) {
-				// node parm output
-				// ofmsg("%1% %2% (%3%) id = %4%",
-				// 	  %i
-				// 	  %get_string( session, parm_infos[i].labelSH)
-				// 	  %get_string( session, parm_infos[i].nameSH)
-				// 	  %parm_infos[i].id);
-				if (parm_infos[i].stringValuesIndex >= 0) {
-					int sh = -1;
-					ENSURE_SUCCESS(session,  HAPI_GetParmStringValues(
-						session,
-						mat_info.nodeId, true,
-						&sh,
-						parm_infos[i].stringValuesIndex, 1)
-					);
-					// more node parm output
-					// ofmsg("%1%  %2%: %3%", %i %parm_infos[i].id
-					//                        %get_string(session, sh));
-
-					if (sh != -1 && (get_string(session, parm_infos[i].nameSH) == "baseColorMap")) {
-					// if (sh != -1 && (get_string(session, parm_infos[i].nameSH) == "map")) {
-						mapIndex = i;
-					}
-				}
-			}
-
-			if (mapIndex == -1) {
-				ofmsg("process_assets:   Unsupported material found for %1%", %hg->getName());
-			} else {
-
-				// debug output
-				// for (int i = 0; i < node_info.parmCount; ++i) {
-				// 	ofmsg("index %1%: %2% '%3%'",
-				// 		  %i
-				// 		  %parm_infos[i].id
-				// 		  %get_string(session, parm_infos[i].nameSH)
-				// 	);
-				// }
-
-				// ofmsg("the texture path: assetId=%1% matInfo.id=%2% mapIndex=%3% parm_id=%4% string=%5%",
-				// 	  %mat_info.assetId
-				// 	  %mat_info.id
-				// 	  %mapIndex
-				// 	  %parm_infos[mapIndex].id
-				// 	  %get_string(session, parm_infos[mapIndex].nameSH)
-				// );
-
-				// NOTE this works if the image is a png
-				ENSURE_SUCCESS(session,  HAPI_RenderTextureToImage(
-					session,
-					mat_info.nodeId,
-					parm_infos[mapIndex].id /* parmIndex for "map" */));
-
-
-				// render using mantra
-				// ENSURE_SUCCESS(session,  HAPI_RenderMaterialToImage(
-				// 	mat_info.assetId,
-				// 	mat_info.id,
-				// 	HAPI_SHADER_MANTRA));
-				// 	// HAPI_SHADER_OPENGL));
-
-				HAPI_ImageInfo image_info;
-				ENSURE_SUCCESS(session,  HAPI_GetImageInfo(
-					session,
-					mat_info.nodeId,
-					&image_info));
-
-				ofmsg("process_assets:   width %1% height: %2% format: %3% dataFormat: %4% packing %5%",
-					%image_info.xRes
-					%image_info.yRes
-					%get_string(session, image_info.imageFileFormatNameSH)
-					%image_info.dataFormat
-					%image_info.packing
-				);
-				// ---------
-
-				HAPI_StringHandle imageSH;
-
-				ENSURE_SUCCESS(session,  HAPI_GetImagePlanes(
-					session,
-					mat_info.nodeId,
-					&imageSH,
-					1
-				));
-
-				int imgBufSize = -1;
-
-				//TODO: get the image extraction working correctly..
-				// needed to convert from PNG/JPG/etc to RGBA.. use decode() from omegalib
-
-				// get image planes into a buffer (default is png.. change to RGBA?)
-				ENSURE_SUCCESS(session,  HAPI_ExtractImageToMemory(
-					session,
-					mat_info.nodeId,
-					HAPI_PNG_FORMAT_NAME,
-					// NULL /* HAPI_DEFAULT_IMAGE_FORMAT_NAME */,
-					"C A", /* image planes */
-					&imgBufSize
-				));
-
-				char *myBuffer = new char[imgBufSize];
-
-				// put into a buffer
-				ENSURE_SUCCESS(session,  HAPI_GetImageMemoryBuffer(
-					session,
-					mat_info.nodeId,
-					myBuffer /* tried (char *)pd->map() */,
-					imgBufSize
-				));
-
-				// load into a pixelData bufferObject
-				// this works!
-				// Ref<PixelData> refPd = ImageUtils::decode((void *) myBuffer, image_info.xRes * image_info.yRes * 4);
-				pds.push_back(ImageUtils::decode((void *) myBuffer, image_info.xRes * image_info.yRes * 4));
-
-				// TODO: general case for texture names (diffuse, spec, env, etc)
-				osg::Texture2D* texture = mySceneManager->createTexture("testing", pds[0]);
-
-				// need to set wrap modes too
-				osg::Texture::WrapMode textureWrapMode;
-				textureWrapMode = osg::Texture::REPEAT;
-
-				texture->setWrap(osg::Texture2D::WRAP_R, textureWrapMode);
-				texture->setWrap(osg::Texture2D::WRAP_S, textureWrapMode);
-				texture->setWrap(osg::Texture2D::WRAP_T, textureWrapMode);
-
-				// should have something else here.. this doesn't seem to be working..
-				// TODO: put textures in HoudiniGeometry, use default shader to show everything properly
-				// hg->getOsgNode(geoIndex, objIndex)->getOrCreateStateSet()->setTextureAttributeAndModes(0, tex, osg::StateAttribute::ON);
-
-				// ofmsg("my image width %1% height: %2%, size %3%, bufSize %4%",
-				// 	%refPd->getWidth() %refPd->getHeight() %refPd->getSize() %imgBufSize
-				// );
-			}
-		} else {
-			ofmsg("process_assets:   No material for %1%", %hg->getName());
-		}
-
-		// end materials
 
 		std::vector< int > vertex_list ( part.info().vertexCount );
 		ENSURE_SUCCESS(session,  HAPI_GetVertexList(
@@ -858,7 +818,7 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 			myType = osg::PrimitiveSet::TRIANGLE_FAN;
 		}
 
-		ofmsg("process_assets:   make primitive set face size %1%, from %2% plus %3%",
+		ofmsg("process_part:   make primitive set face size %1%, from %2% plus %3%",
 			%prev_faceCount
 			%prev_faceCountIndex
 			%(curr_index - prev_faceCountIndex)
@@ -866,16 +826,678 @@ void HoudiniEngine::process_geo_part(const hapi::Part &part, const int objIndex,
 
 		hg->addPrimitiveOsg(myType, prev_faceCountIndex, curr_index - prev_faceCountIndex, partIndex, geoIndex, objIndex);
 
+		// transparency override
+		osg::StateSet* ss =  hg->getOsgNode(geoIndex, objIndex)->getDrawable(partIndex)->getOrCreateStateSet();
+		hg->setTransparent(has_point_alphas, partIndex, geoIndex, objIndex);
+
+		// Material handling
+		process_materials(part, hg);
+
+		// set transparency state set on this part if there are any alphas
+		if (has_point_alphas) {
+			ofmsg("process_part:   setting part %1% as transparent", %partIndex);
+			ss->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
+			ss->setMode(GL_BLEND, osg::StateAttribute::ON | osg::StateAttribute::PROTECTED | 
+			osg::StateAttribute::OVERRIDE);
+		} else {
+			ofmsg("process_part:   setting part %1% as opaque", %partIndex);
+			ss->setRenderingHint(osg::StateSet::OPAQUE_BIN);
+			ss->setMode(GL_BLEND, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED | 
+			osg::StateAttribute::OVERRIDE);
+		}
+
 		hg->dirty();
 
 	}
 
 	if (part.info().type == HAPI_PARTTYPE_VOLUME) {
-		omsg("process_assets:     Volume");
+		omsg("process_part:     Volume (TODO)");
+	}
+
+	// todo: check out some geometry shaders for this..
+	if (part.info().type == HAPI_PARTTYPE_BOX) {
+		omsg("process_part:     Box (TODO)");
+	}
+	// todo: check out some geometry shaders for this..
+	if (part.info().type == HAPI_PARTTYPE_SPHERE) {
+		omsg("process_part:     Sphere (TODO)");
 	}
 
 }
 
+// get the part id from the Part, 
+// use it to make a stateset for the relevant Geode in the HG
+// set the various parms according to their names:
+//     eg: diff -> Material.setDiffuseColour()
+//     or if a uniform, add uniform to the stateset
+//     shader should end up propogating changes
+void HoudiniEngine::process_materials(const hapi::Part &part, HoudiniGeometry* hg) {
+	bool all_same = false;
+
+	int faceCount = part.info().faceCount;
+
+	std::vector< HAPI_NodeId > mat_ids_on_faces = part.materialNodeIdsOnFaces(all_same);
+
+	std::vector< int > mat_ids;
+
+	ofmsg("process_materials:   all same? %1%", %(all_same ? "Yes" : "No"));
+
+	// collect all material node ids
+	if (all_same) {
+		mat_ids.push_back(mat_ids_on_faces[0]);
+	} else {
+		for (vector<int>::iterator it = mat_ids_on_faces.begin(); it < mat_ids_on_faces.end(); ++it) {
+			if (std::find(mat_ids.begin(), mat_ids.end(), *it) == mat_ids.end()) {
+				mat_ids.push_back(*it);
+			}
+		}
+	}
+
+	ofmsg("process_materials:   unique mat ids: %1%", %mat_ids.size());
+	for (int i =0; i < mat_ids.size(); ++i) {
+		ofmsg("process_materials:   material %1% %2%", %i %mat_ids[i]);
+	}
+
+	// don't clear..
+	// assetMaterialParms[part.geo.object.asset.name()].clear();
+
+	for (int i = 0; i < mat_ids.size(); ++i) {
+
+		HAPI_MaterialInfo mat_info;
+
+		ENSURE_SUCCESS(session,  HAPI_GetMaterialInfo (
+			session,
+			mat_ids[i],
+			&mat_info));
+
+		// currently, sharing only what I will be using
+		// TODO: share it all, then implement what I will use
+		if (mat_info.exists) {
+			ofmsg("process_materials:   Material info for %1%: nodeId: %2% hasChanged: %3%",
+				%hg->getName() %mat_info.nodeId %mat_info.hasChanged
+			);
+
+			hapi::Node matNode(mat_info.nodeId, session);
+
+			MatStruct* ms = NULL;
+
+			for (int j = 0; j < assetMaterialParms[hg->getName()].size(); ++j) {
+				if (assetMaterialParms[hg->getName()][j].matId == mat_info.nodeId) {
+					ms = &assetMaterialParms[hg->getName()][j];
+					break;
+				}
+			}
+
+			if (ms == NULL) {
+				ms = new MatStruct();
+			}
+
+			ms->matId = mat_info.nodeId;
+			ms->partId = part.id;
+			ms->geoId = part.geo.id;
+			ms->objId = part.geo.object.id;
+
+			ofmsg("process_materials:   set matId of %1% on part %2%, geo %3% object %4% of asset %5%",
+				%mat_info.nodeId
+				%part.id
+				%part.geo.id
+				%part.geo.object.id
+				%hg->getName()
+			);
+			hg->setMatId(mat_info.nodeId, part.id, part.geo.id, part.geo.object.id);
+
+			std::map<std::string, hapi::Parm> parmMap = matNode.parmMap();
+
+			int diffuseMapParmId = -1;
+			int normalMapParmId = -1;
+
+			string diffuseMapName;
+			string normalMapName;
+			omsg("process_materials:   looking for diffuse map");
+			if (parmMap.count("ogl_tex1")) {
+				// only assign if not empty
+				if (parmMap["ogl_tex1"].getStringValue(0) != "") {
+					diffuseMapParmId = parmMap["ogl_tex1"].info().id;
+					diffuseMapName = parmMap["ogl_tex1"].name();
+					ofmsg("process_materials:   map found, value is %1%", %parmMap["ogl_tex1"].getStringValue(0));
+				}
+			} else if (parmMap.count("baseColorMap")) {
+				// only assign if not empty
+				if (parmMap["baseColorMap"].getStringValue(0) != "") {
+					diffuseMapParmId = parmMap["baseColorMap"].info().id;
+					diffuseMapName = parmMap["baseColorMap"].name();
+					ofmsg("process_materials:   map found, value is %1%", %parmMap["baseColorMap"].getStringValue(0));
+				}
+			} else if (parmMap.count("map")) {
+				// only assign if not empty
+				if (parmMap["map"].getStringValue(0) != "") {
+					diffuseMapParmId = parmMap["map"].info().id;
+					diffuseMapName = parmMap["map"].name();
+					ofmsg("process_materials:   map found, value is %1%", %parmMap["map"].getStringValue(0));
+				}
+			}
+
+			omsg("process_materials:   looking for normal map");
+			if (parmMap.count("ogl_normalmap")) {
+				// only assign if not empty
+				if (parmMap["ogl_normalmap"].getStringValue(0) != "") {
+					normalMapParmId = parmMap["ogl_normalmap"].info().id;
+					normalMapName = parmMap["ogl_normalmap"].name();
+					ofmsg("process_materials:   map found, value is %1%", %parmMap["ogl_normalmap"].getStringValue(0));
+				}
+			}
+
+			// omsg("process_materials:   looking for ambient colour");
+			// if (parmMap.count("ogl_amb")) {
+			// 	ofmsg("process_materials:   has ambient, value is %1%,%2%,%3%", 
+			// 		%parmMap["ogl_amb"].getFloatValue(0)
+			// 		%parmMap["ogl_amb"].getFloatValue(1)
+			// 		%parmMap["ogl_amb"].getFloatValue(2)
+			// 	);
+			// 	ParmStruct ps;
+			// 	ps.type = parmMap["ogl_amb"].info().type;
+			// 	ps.floatValues.push_back(parmMap["ogl_amb"].getFloatValue(0));
+			// 	ps.floatValues.push_back(parmMap["ogl_amb"].getFloatValue(1));
+			// 	ps.floatValues.push_back(parmMap["ogl_amb"].getFloatValue(2));
+			// 	ms->parms["ogl_amb"] = ps;
+
+			// 	// update the state set for this attribute
+			// 	if (assetInstances.count(hg->getName()) > 0) {
+			// 		osg::StateSet* ss =  hg->getOsgNode(part.geo.id, part.geo.object.id)->getDrawable(part.id)->getOrCreateStateSet();
+			// 		Ref<osg::Material> mat = static_cast<osg::Material*>(ss->getAttribute(osg::StateAttribute::MATERIAL));
+			// 		if (mat == NULL) {
+			// 			mat = new osg::Material();
+			// 		}
+			// 		mat->setAmbient(osg::Material::FRONT_AND_BACK, osg::Vec4(
+			// 			ps.floatValues[0],
+			// 			ps.floatValues[1],
+			// 			ps.floatValues[2],
+			// 			1.0
+			// 		));
+			// 		ss->setAttributeAndModes(mat, 
+			// 			osg::StateAttribute::ON | osg::StateAttribute::PROTECTED | 
+			// 			osg::StateAttribute::OVERRIDE);
+			// 	}
+			// }
+
+			omsg("process_materials:   looking for emission colour");
+			if (parmMap.count("ogl_emit")) {
+				ofmsg("process_materials:   has emission, value is %1%,%2%,%3%", 
+					%parmMap["ogl_emit"].getFloatValue(0)
+					%parmMap["ogl_emit"].getFloatValue(1)
+					%parmMap["ogl_emit"].getFloatValue(2)
+				);
+				ParmStruct ps;
+				ps.type = parmMap["ogl_emit"].info().type;
+				ps.floatValues.push_back(parmMap["ogl_emit"].getFloatValue(0));
+				ps.floatValues.push_back(parmMap["ogl_emit"].getFloatValue(1));
+				ps.floatValues.push_back(parmMap["ogl_emit"].getFloatValue(2));
+				ms->parms["ogl_emit"] = ps;
+
+				// update the state set for this attribute
+				if (assetInstances.count(hg->getName()) > 0) {
+					osg::StateSet* ss =  hg->getOsgNode(part.geo.id, part.geo.object.id)->getDrawable(part.id)->getOrCreateStateSet();
+					Ref<osg::Material> mat = static_cast<osg::Material*>(ss->getAttribute(osg::StateAttribute::MATERIAL));
+					if (mat == NULL) {
+						mat = new osg::Material();
+					}
+					mat->setEmission(osg::Material::FRONT_AND_BACK, osg::Vec4(
+						ps.floatValues[0],
+						ps.floatValues[1],
+						ps.floatValues[2],
+						1.0
+					));
+					ss->setAttributeAndModes(mat, 
+						osg::StateAttribute::ON | osg::StateAttribute::PROTECTED | 
+						osg::StateAttribute::OVERRIDE);
+				}
+			}
+
+			omsg("process_materials:   looking for diffuse colour");
+			if (parmMap.count("ogl_diff")) {
+				ofmsg("has diffuse, value is %1%,%2%,%3%", 
+					%parmMap["ogl_diff"].getFloatValue(0)
+					%parmMap["ogl_diff"].getFloatValue(1)
+					%parmMap["ogl_diff"].getFloatValue(2)
+				);
+				ParmStruct ps;
+				ps.type = parmMap["ogl_diff"].info().type;
+				ps.floatValues.push_back(parmMap["ogl_diff"].getFloatValue(0));
+				ps.floatValues.push_back(parmMap["ogl_diff"].getFloatValue(1));
+				ps.floatValues.push_back(parmMap["ogl_diff"].getFloatValue(2));
+				ms->parms["ogl_diff"] = ps;
+
+				// update the state set for this attribute
+				if (assetInstances.count(hg->getName()) > 0) {
+					osg::StateSet* ss =  hg->getOsgNode(part.geo.id, part.geo.object.id)->getDrawable(part.id)->getOrCreateStateSet();
+					Ref<osg::Material> mat = static_cast<osg::Material*>(ss->getAttribute(osg::StateAttribute::MATERIAL));
+					if (mat == NULL) {
+						mat = new osg::Material();
+					}
+					mat->setDiffuse(osg::Material::FRONT_AND_BACK, osg::Vec4(
+						ps.floatValues[0],
+						ps.floatValues[1],
+						ps.floatValues[2],
+						1.0
+					));
+					ss->setAttributeAndModes(mat, 
+						osg::StateAttribute::ON | osg::StateAttribute::PROTECTED | 
+						osg::StateAttribute::OVERRIDE);
+				}
+			}
+
+			// omsg("process_materials:   looking for specular colour");
+			// if (parmMap.count("ogl_spec")) {
+			// 	ofmsg("has specular, value is %1%,%2%,%3%", 
+			// 		%parmMap["ogl_spec"].getFloatValue(0)
+			// 		%parmMap["ogl_spec"].getFloatValue(1)
+			// 		%parmMap["ogl_spec"].getFloatValue(2)
+			// 	);
+			// 	ParmStruct ps;
+			// 	ps.type = parmMap["ogl_spec"].info().type;
+			// 	ps.floatValues.push_back(parmMap["ogl_spec"].getFloatValue(0));
+			// 	ps.floatValues.push_back(parmMap["ogl_spec"].getFloatValue(1));
+			// 	ps.floatValues.push_back(parmMap["ogl_spec"].getFloatValue(2));
+			// 	ms->parms["ogl_spec"] = ps;
+
+			// 	// update the state set for this attribute
+			// 	if (assetInstances.count(hg->getName()) > 0) {
+			// 		osg::StateSet* ss =  hg->getOsgNode(part.geo.id, part.geo.object.id)->getDrawable(part.id)->getOrCreateStateSet();
+			// 		Ref<osg::Material> mat = static_cast<osg::Material*>(ss->getAttribute(osg::StateAttribute::MATERIAL));
+			// 		if (mat == NULL) {
+			// 			mat = new osg::Material();
+			// 		}
+			// 		mat->setSpecular(osg::Material::FRONT_AND_BACK, osg::Vec4(
+			// 			ps.floatValues[0],
+			// 			ps.floatValues[1],
+			// 			ps.floatValues[2],
+			// 			1.0
+			// 		));
+			// 		ss->setAttributeAndModes(mat, 
+			// 			osg::StateAttribute::ON | osg::StateAttribute::PROTECTED | 
+			// 			osg::StateAttribute::OVERRIDE);
+			// 	}
+			// }
+
+			omsg("process_materials:   looking for alpha material colour");
+			if (parmMap.count("ogl_alpha")) {
+				ofmsg("process_materials:   has alpha, value is %1%", %parmMap["ogl_alpha"].getFloatValue(0));
+				ParmStruct ps;
+				ps.type = parmMap["ogl_alpha"].info().type;
+				ps.floatValues.push_back(parmMap["ogl_alpha"].getFloatValue(0));
+				ms->parms["ogl_apha"] = ps;
+
+				const string name = "unif_alpha";
+				// update the state set for this attribute
+				if (assetInstances.count(hg->getName()) > 0) {
+					osg::StateSet* ss =  hg->getOsgNode(part.geo.id, part.geo.object.id)->getDrawable(part.id)->getOrCreateStateSet();
+					osg::Uniform* u =  ss->getOrCreateUniform(name, osg::Uniform::Type::FLOAT, 1);
+					u->set(ps.floatValues[0]);
+					ss->getUniformList()[name].second = osg::StateAttribute::ON | osg::StateAttribute::PROTECTED | 
+						osg::StateAttribute::OVERRIDE;
+
+					// set as transparent
+					if (ps.floatValues[0] < 0.95) {
+						ss->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
+						ss->setMode(GL_BLEND, osg::StateAttribute::ON | osg::StateAttribute::PROTECTED | 
+						osg::StateAttribute::OVERRIDE);
+					} else {
+						ss->setRenderingHint(osg::StateSet::OPAQUE_BIN);
+						ss->setMode(GL_BLEND, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED | 
+						osg::StateAttribute::OVERRIDE);
+					}
+				}
+			}
+
+			omsg("process_materials:   looking for shininess");
+			if (parmMap.count("ogl_rough")) {
+				ofmsg("process_materials:   has shininess, value is %1%", %parmMap["ogl_rough"].getFloatValue(0));
+				ParmStruct ps;
+				ps.type = parmMap["ogl_rough"].info().type;
+				ps.floatValues.push_back(parmMap["ogl_rough"].getFloatValue(0));
+				ms->parms["ogl_rough"] = ps;
+			}
+
+			if (diffuseMapParmId >= 0) {
+
+				omsg("process_materials:   diffuse map found..");
+				// NOTE this works if the image is a png
+				ENSURE_SUCCESS(session,  HAPI_RenderTextureToImage(
+					session,
+					mat_info.nodeId,
+					diffuseMapParmId));
+
+
+				HAPI_ImageInfo image_info;
+				ENSURE_SUCCESS(session,  HAPI_GetImageInfo(
+					session,
+					mat_info.nodeId,
+					&image_info));
+
+				String packing;
+				switch (image_info.packing) {
+					case HAPI_IMAGE_PACKING_UNKNOWN:
+					packing = "HAPI_IMAGE_PACKING_UNKNOWN";
+					break;
+					case HAPI_IMAGE_PACKING_SINGLE:
+					packing = "HAPI_IMAGE_PACKING_SINGLE";
+					break;
+					case HAPI_IMAGE_PACKING_DUAL:
+					packing = "HAPI_IMAGE_PACKING_DUAL";
+					break;
+					case HAPI_IMAGE_PACKING_RGB:
+					packing = "HAPI_IMAGE_PACKING_RGB";
+					break;
+					case HAPI_IMAGE_PACKING_BGR:
+					packing = "HAPI_IMAGE_PACKING_BGR";
+					break;
+					case HAPI_IMAGE_PACKING_RGBA:
+					packing = "HAPI_IMAGE_PACKING_RGBA";
+					break;
+					case HAPI_IMAGE_PACKING_ABGR:
+					packing = "HAPI_IMAGE_PACKING_ABGR";
+					break;
+					case HAPI_IMAGE_PACKING_MAX:
+					packing = "HAPI_IMAGE_PACKING_MAX";
+					break;
+					default:
+					break;
+				}
+
+				// set things
+				// As of HE3.1 for Houdini 16.5.405, setImageInfo does nothing, so lets ignore
+				// image_info.packing = HAPI_IMAGE_PACKING_RGBA;
+				// image_info.dataFormat = HAPI_IMAGE_DATA_INT8;
+				// image_info.interleaved = true; // RGBRGBRGB..
+
+
+				// ENSURE_SUCCESS(session,  HAPI_SetImageInfo(
+				// 	session,
+				// 	mat_info.nodeId,
+				// 	&image_info));
+
+
+				ofmsg("process_materials:   width %1% height: %2% format: %3% dataFormat: %4% packing %5% interleaved %6% gamma %7%",
+					%image_info.xRes
+					%image_info.yRes
+					%get_string(session, image_info.imageFileFormatNameSH)
+					%image_info.dataFormat
+					%packing
+					%image_info.interleaved
+					%image_info.gamma
+				);
+
+				// ---------
+
+				HAPI_StringHandle imageSH;
+
+				int planeCount = 0;
+
+				ENSURE_SUCCESS(session,  HAPI_GetImagePlaneCount(
+					session,
+					mat_info.nodeId,
+					&planeCount
+				));
+
+				ofmsg("process_materials:   image plane count: %1%", %planeCount);
+
+				ENSURE_SUCCESS(session,  HAPI_GetImagePlanes(
+					session,
+					mat_info.nodeId,
+					&imageSH,
+					planeCount
+				));
+
+				int imgBufSize = -1;
+
+				// get image planes into a buffer as RAW, so no mistakes
+				// Could eventually optimise this..
+				ENSURE_SUCCESS(session,  HAPI_ExtractImageToMemory(
+					session,
+					mat_info.nodeId,
+					HAPI_RAW_FORMAT_NAME,
+					"C A", /* image planes */
+					&imgBufSize
+				));
+
+				char *myBuffer = new char[imgBufSize];
+
+				// put into a buffer
+				ENSURE_SUCCESS(session,  HAPI_GetImageMemoryBuffer(
+					session,
+					mat_info.nodeId,
+					myBuffer,
+					imgBufSize
+				));
+
+				Ref<PixelData> pd = PixelData::create(image_info.xRes, image_info.yRes, PixelData::FormatRgba);
+
+				// manually set each pixel. Slow, but definitely correct
+				// would be better to dump all pixel data
+				pd->beginPixelAccess();
+				for (int ii = 0; ii < image_info.xRes; ++ii) {
+					for (int jj = 0; jj < image_info.yRes; ++jj) {
+						int offset = 4 * ((image_info.yRes * ii) + jj);
+						int r = static_cast<int>(static_cast<unsigned char>(myBuffer[offset + 0]));
+						int g = static_cast<int>(static_cast<unsigned char>(myBuffer[offset + 1]));
+						int b = static_cast<int>(static_cast<unsigned char>(myBuffer[offset + 2]));
+						int a = static_cast<int>(static_cast<unsigned char>(myBuffer[offset + 3]));
+
+						// y and x are swapped, account for it accordingly
+						pd->setPixel(jj, ii,
+							r,
+							g,
+							b,
+							a
+						);
+					}
+				}
+				pd->endPixelAccess();
+				pd->setDirty(true);
+
+				// testing whether it's read properly
+				// ImageUtils::saveImage("/tmp/spaceship1.jpg", pd, ImageUtils::FormatJpeg);
+
+				// load into a pixelData bufferObject
+				// this works!
+				// Ref<PixelData> refPd = ImageUtils::decode((void *) myBuffer, image_info.xRes * image_info.yRes * 4);
+				// pds.push_back(ImageUtils::decode((void *) myBuffer, image_info.xRes * image_info.yRes * 4));
+				// pds.push_back(myBuffer);
+				// pds.push_back(pd);
+
+				// TODO: general case for texture names (diffuse, spec, env, etc)
+				// osg::Texture2D* texture = mySceneManager->createTexture(diffuseMapName, pds[pds.size() - 1]);
+				osg::Texture2D* texture = mySceneManager->createTexture(diffuseMapName, pd);
+				ParmStruct ps;
+				ps.type = parmMap["diffuseMapName"].info().type;
+				ps.stringValues.push_back(parmMap["diffuseMapName"].getStringValue(0));
+				ms->parms["diffuseMapName"] = ps;
+
+
+				// need to set wrap modes too
+				osg::Texture::WrapMode textureWrapMode;
+				textureWrapMode = osg::Texture::REPEAT;
+
+				texture->setWrap(osg::Texture2D::WRAP_R, textureWrapMode);
+				texture->setWrap(osg::Texture2D::WRAP_S, textureWrapMode);
+				texture->setWrap(osg::Texture2D::WRAP_T, textureWrapMode);
+
+				// Update materials on each instance of this asset
+				if (assetInstances.count(hg->getName()) > 0) {
+					// update diffuse map texture
+					ofmsg("process_materials:   updating %1%'s texture %2%", %hg->getName() %diffuseMapName);
+					assetInstances[hg->getName()]->getMaterial()->setDiffuseTexture(diffuseMapName);
+				}
+			}
+
+			if (normalMapParmId >= 0) {
+
+				omsg("process_materials:   normal map found..");
+				// NOTE this works if the image is a png
+				ENSURE_SUCCESS(session,  HAPI_RenderTextureToImage(
+					session,
+					mat_info.nodeId,
+					normalMapParmId));
+
+
+				HAPI_ImageInfo image_info;
+				ENSURE_SUCCESS(session,  HAPI_GetImageInfo(
+					session,
+					mat_info.nodeId,
+					&image_info));
+
+				String packing;
+				switch (image_info.packing) {
+					case HAPI_IMAGE_PACKING_UNKNOWN:
+					packing = "HAPI_IMAGE_PACKING_UNKNOWN";
+					break;
+					case HAPI_IMAGE_PACKING_SINGLE:
+					packing = "HAPI_IMAGE_PACKING_SINGLE";
+					break;
+					case HAPI_IMAGE_PACKING_DUAL:
+					packing = "HAPI_IMAGE_PACKING_DUAL";
+					break;
+					case HAPI_IMAGE_PACKING_RGB:
+					packing = "HAPI_IMAGE_PACKING_RGB";
+					break;
+					case HAPI_IMAGE_PACKING_BGR:
+					packing = "HAPI_IMAGE_PACKING_BGR";
+					break;
+					case HAPI_IMAGE_PACKING_RGBA:
+					packing = "HAPI_IMAGE_PACKING_RGBA";
+					break;
+					case HAPI_IMAGE_PACKING_ABGR:
+					packing = "HAPI_IMAGE_PACKING_ABGR";
+					break;
+					case HAPI_IMAGE_PACKING_MAX:
+					packing = "HAPI_IMAGE_PACKING_MAX";
+					break;
+					default:
+					break;
+				}
+
+				// set things
+				// As of HE3.1 for Houdini 16.5.405, setImageInfo does nothing, so lets ignore
+				// image_info.packing = HAPI_IMAGE_PACKING_RGBA;
+				// image_info.dataFormat = HAPI_IMAGE_DATA_INT8;
+				// image_info.interleaved = true; // RGBRGBRGB..
+
+
+				// ENSURE_SUCCESS(session,  HAPI_SetImageInfo(
+				// 	session,
+				// 	mat_info.nodeId,
+				// 	&image_info));
+
+
+				ofmsg("process_materials:   width %1% height: %2% format: %3% dataFormat: %4% packing %5% interleaved %6% gamma %7%",
+					%image_info.xRes
+					%image_info.yRes
+					%get_string(session, image_info.imageFileFormatNameSH)
+					%image_info.dataFormat
+					%packing
+					%image_info.interleaved
+					%image_info.gamma
+				);
+
+				// ---------
+
+				HAPI_StringHandle imageSH;
+
+				int planeCount = 0;
+
+				ENSURE_SUCCESS(session,  HAPI_GetImagePlaneCount(
+					session,
+					mat_info.nodeId,
+					&planeCount
+				));
+
+				ofmsg("process_materials:   image plane count: %1%", %planeCount);
+
+				ENSURE_SUCCESS(session,  HAPI_GetImagePlanes(
+					session,
+					mat_info.nodeId,
+					&imageSH,
+					planeCount
+				));
+
+				int imgBufSize = -1;
+
+				// get image planes into a buffer as RAW, so no mistakes
+				// Could eventually optimise this..
+				ENSURE_SUCCESS(session,  HAPI_ExtractImageToMemory(
+					session,
+					mat_info.nodeId,
+					HAPI_RAW_FORMAT_NAME,
+					"C A", /* image planes */
+					&imgBufSize
+				));
+
+				char *myBuffer = new char[imgBufSize];
+
+				// put into a buffer
+				ENSURE_SUCCESS(session,  HAPI_GetImageMemoryBuffer(
+					session,
+					mat_info.nodeId,
+					myBuffer,
+					imgBufSize
+				));
+
+				Ref<PixelData> pd = PixelData::create(image_info.xRes, image_info.yRes, PixelData::FormatRgba);
+
+				// manually set each pixel. Slow, but definitely correct
+				// would be better to dump all pixel data
+				pd->beginPixelAccess();
+				for (int ii = 0; ii < image_info.xRes; ++ii) {
+					for (int jj = 0; jj < image_info.yRes; ++jj) {
+						int offset = 4 * ((image_info.yRes * ii) + jj);
+						int r = static_cast<int>(static_cast<unsigned char>(myBuffer[offset + 0]));
+						int g = static_cast<int>(static_cast<unsigned char>(myBuffer[offset + 1]));
+						int b = static_cast<int>(static_cast<unsigned char>(myBuffer[offset + 2]));
+						int a = static_cast<int>(static_cast<unsigned char>(myBuffer[offset + 3]));
+
+						// y and x are swapped, account for it accordingly
+						pd->setPixel(jj, ii,
+							r,
+							g,
+							b,
+							a
+						);
+					}
+				}
+				pd->endPixelAccess();
+				pd->setDirty(true);
+
+				osg::Texture2D* texture = mySceneManager->createTexture(normalMapName, pd);
+				ParmStruct ps;
+				ps.type = parmMap["normalMapName"].info().type;
+				ps.stringValues.push_back(parmMap["normalMapName"].getStringValue(0));
+				ms->parms["normalMapName"] = ps;
+
+
+				// need to set wrap modes too
+				osg::Texture::WrapMode textureWrapMode;
+				textureWrapMode = osg::Texture::REPEAT;
+
+				texture->setWrap(osg::Texture2D::WRAP_R, textureWrapMode);
+				texture->setWrap(osg::Texture2D::WRAP_S, textureWrapMode);
+				texture->setWrap(osg::Texture2D::WRAP_T, textureWrapMode);
+
+				// Update materials on each instance of this asset
+				if (assetInstances.count(hg->getName()) > 0) {
+					// update normal map texture
+					ofmsg("process_materials:   updating %1%'s normal map to %2%", %hg->getName() %normalMapName);
+					assetInstances[hg->getName()]->getMaterial()->setNormalTexture(normalMapName);
+				}
+			}
+
+			assetMaterialParms[part.geo.object.asset.name()].push_back(*ms);
+
+		} else {
+			ofmsg("process_materials:   Could not get material %1% for %2%", %i %hg->getName());
+		}
+	}
+
+}
 
 void HoudiniEngine::process_float_attrib(
     const hapi::Part &part, HAPI_AttributeOwner attrib_owner,
@@ -916,6 +1538,27 @@ void HoudiniEngine::process_attrib(
     // Get the attribute values.
     HAPI_AttributeInfo attrib_info = part.attribInfo(attrib_owner, attrib_name);
     float *attrib_data = part.getNewFloatAttribData(attrib_info, attrib_name);
+
+// 	cout << attrib_name << " (" << attrib_info.tupleSize << ")" << endl;
+
+	vals.clear();
+	vals.resize(attrib_info.count);
+    for (int elem_index=0; elem_index < attrib_info.count; ++elem_index) {
+		vals[elem_index] = attrib_data[elem_index];
+    }
+
+    delete [] attrib_data;
+}
+
+void HoudiniEngine::process_attrib(
+    const hapi::Part &part, HAPI_AttributeOwner attrib_owner,
+    const char *attrib_name, vector<int>& vals)
+{
+	// useHAPI_AttributeInfo::storage for the data type
+
+    // Get the attribute values.
+    HAPI_AttributeInfo attrib_info = part.attribInfo(attrib_owner, attrib_name);
+    int *attrib_data = part.getNewIntAttribData(attrib_info, attrib_name);
 
 // 	cout << attrib_name << " (" << attrib_info.tupleSize << ")" << endl;
 
