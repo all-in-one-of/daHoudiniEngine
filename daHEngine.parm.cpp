@@ -204,17 +204,17 @@ HoudiniParameterList* HoudiniEngine::loadParameters(const String& asset_name)
         return it->second;
     } else {
         ofmsg("Proceeding to load asset: %1%", %asset_name);
-        parameters = new HoudiniParameterList(); 
+        parameters = new HoudiniParameterList();
         assetParamLists[asset_name] = parameters;
     }
 
 	std::vector<hapi::Parm> parms = myAsset->parms();
 
     for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); ++i) {
-        
+
         if (i->info().type != HAPI_PARMTYPE_FOLDERLIST) {
 
-            HoudiniParameter* parameter = new HoudiniParameter(i->info().id); 
+            HoudiniParameter* parameter = new HoudiniParameter(i->info().id);
 
             parameter->setParentId(i->info().parentId);
             parameter->setType(i->info().type);
@@ -230,10 +230,8 @@ HoudiniParameterList* HoudiniEngine::loadParameters(const String& asset_name)
 }
 
 // fetches parameters in a dict of name:value
-boost::python::dict HoudiniEngine::getParameters(const String& asset_name) 
+boost::python::dict HoudiniEngine::getParameters(const String& asset_name)
 {
-	int asset_id = assetNameToIds[asset_name];
-
     boost::python::dict d;
 
     // only run on master
@@ -282,7 +280,7 @@ boost::python::dict HoudiniEngine::getParameters(const String& asset_name)
                 }
                 break;
             case HAPI_PARMTYPE_STRING:
-            case HAPI_PARMTYPE_PATH_FILE: 
+            case HAPI_PARMTYPE_PATH_FILE:
             case HAPI_PARMTYPE_PATH_FILE_GEO:
             case HAPI_PARMTYPE_PATH_FILE_IMAGE:
             case HAPI_PARMTYPE_NODE:
@@ -310,7 +308,7 @@ boost::python::dict HoudiniEngine::getParameters(const String& asset_name)
                 d[it->name()] = it->info().type;
                 break;
             }
-    }   
+    }
 
     return d;
 }
@@ -335,7 +333,7 @@ boost::python::object HoudiniEngine::getParameterValue(const String& asset_name,
     }
 
     std::vector<hapi::Parm> parms = myAsset->parms();
-    
+
     for (vector<hapi::Parm>::iterator it = parms.begin(); it < parms.end(); ++it) {
         if (it->name() == parm_name) {
 
@@ -377,7 +375,7 @@ boost::python::object HoudiniEngine::getParameterValue(const String& asset_name,
                     break;
                 }
                 // continue through, it's ok!
-            case HAPI_PARMTYPE_PATH_FILE: 
+            case HAPI_PARMTYPE_PATH_FILE:
             case HAPI_PARMTYPE_PATH_FILE_GEO:
             case HAPI_PARMTYPE_PATH_FILE_IMAGE:
             case HAPI_PARMTYPE_NODE:
@@ -422,7 +420,7 @@ void HoudiniEngine::setParameterValue(const String& asset_name, const String& pa
         ofwarn("No asset of name %1%", %asset_name);
         return;
 
-    }    
+    }
 
     std::vector<hapi::Parm> parms = myAsset->parms();
 
@@ -528,7 +526,7 @@ void HoudiniEngine::setParameterValue(const String& asset_name, const String& pa
                     } // otherwise, fall through and try the int way of doing it
                 }
                 // continue through, it's ok!
-            case HAPI_PARMTYPE_PATH_FILE: 
+            case HAPI_PARMTYPE_PATH_FILE:
             case HAPI_PARMTYPE_PATH_FILE_GEO:
             case HAPI_PARMTYPE_PATH_FILE_IMAGE:
             case HAPI_PARMTYPE_NODE:
@@ -602,7 +600,7 @@ void HoudiniEngine::insertMultiparmInstance(const String& asset_name, const Stri
         ofwarn("No asset of name %1%", %asset_name);
         return;
 
-    }    
+    }
 
     std::vector<hapi::Parm> parms = myAsset->parms();
     for (vector<hapi::Parm>::iterator it = parms.begin(); it < parms.end(); ++it) {
@@ -629,7 +627,7 @@ void HoudiniEngine::removeMultiparmInstance(const String& asset_name, const Stri
         ofwarn("No asset of name %1%", %asset_name);
         return;
 
-    }    
+    }
 
     std::vector<hapi::Parm> parms = myAsset->parms();
     for (vector<hapi::Parm>::iterator it = parms.begin(); it < parms.end(); ++it) {
@@ -659,7 +657,7 @@ boost::python::list HoudiniEngine::getParameterChoices(const String& asset_name,
         ofwarn("No asset of name %1%", %asset_name);
         return myList;
 
-    }    
+    }
 
     std::vector<hapi::Parm> parms = myAsset->parms();
     for (vector<hapi::Parm>::iterator it = parms.begin(); it < parms.end(); ++it) {
@@ -695,7 +693,7 @@ int HoudiniEngine::getIntegerParameterValue(const String& asset_name, int param_
         std::vector<hapi::Parm> parms = myAsset->parms();
 
         for (vector<hapi::Parm>::iterator it = parms.begin(); it < parms.end(); ++it) {
-            
+
             if (it->info().id == param_id) {
                 return it->getIntValue(sub_index);
             }
@@ -703,7 +701,7 @@ int HoudiniEngine::getIntegerParameterValue(const String& asset_name, int param_
     }
 }
 
-void HoudiniEngine::setIntegerParameterValue(const String& asset_name, int param_id, int sub_index, int value) 
+void HoudiniEngine::setIntegerParameterValue(const String& asset_name, int param_id, int sub_index, int value)
 {
     // only run on master
 	if (!SystemManager::instance()->isMaster()) {
@@ -722,7 +720,7 @@ void HoudiniEngine::setIntegerParameterValue(const String& asset_name, int param
         std::vector<hapi::Parm> parms = myAsset->parms();
 
         for (vector<hapi::Parm>::iterator it = parms.begin(); it < parms.end(); ++it) {
-            
+
             if (it->info().id == param_id) {
                 it->setIntValue(sub_index, value);
                 break;
@@ -753,7 +751,7 @@ float HoudiniEngine::getFloatParameterValue(const String& asset_name, int param_
         std::vector<hapi::Parm> parms = myAsset->parms();
 
         for (vector<hapi::Parm>::iterator it = parms.begin(); it < parms.end(); ++it) {
-            
+
             if (it->info().id == param_id) {
                 return it->getFloatValue(sub_index);
             }
@@ -761,7 +759,7 @@ float HoudiniEngine::getFloatParameterValue(const String& asset_name, int param_
     }
 }
 
-void HoudiniEngine::setFloatParameterValue(const String& asset_name, int param_id, int sub_index, float value) 
+void HoudiniEngine::setFloatParameterValue(const String& asset_name, int param_id, int sub_index, float value)
 {
     // only run on master
 	if (!SystemManager::instance()->isMaster()) {
@@ -780,7 +778,7 @@ void HoudiniEngine::setFloatParameterValue(const String& asset_name, int param_i
         std::vector<hapi::Parm> parms = myAsset->parms();
 
         for (vector<hapi::Parm>::iterator it = parms.begin(); it < parms.end(); ++it) {
-            
+
             if (it->info().id == param_id) {
                 it->setFloatValue(sub_index, value);
                 break;
@@ -811,7 +809,7 @@ String HoudiniEngine::getStringParameterValue(const String& asset_name, int para
         std::vector<hapi::Parm> parms = myAsset->parms();
 
         for (vector<hapi::Parm>::iterator it = parms.begin(); it < parms.end(); ++it) {
-            
+
             if (it->info().id == param_id) {
                 return it->getStringValue(sub_index);
             }
@@ -819,7 +817,7 @@ String HoudiniEngine::getStringParameterValue(const String& asset_name, int para
     }
 }
 
-void HoudiniEngine::setStringParameterValue(const String& asset_name, int param_id, int sub_index, const String& value) 
+void HoudiniEngine::setStringParameterValue(const String& asset_name, int param_id, int sub_index, const String& value)
 {
     // only run on master
 	if (!SystemManager::instance()->isMaster()) {
@@ -838,7 +836,7 @@ void HoudiniEngine::setStringParameterValue(const String& asset_name, int param_
         std::vector<hapi::Parm> parms = myAsset->parms();
 
         for (vector<hapi::Parm>::iterator it = parms.begin(); it < parms.end(); ++it) {
-            
+
             if (it->info().id == param_id) {
                 it->setStringValue(sub_index, value.c_str());
                 break;
@@ -857,7 +855,7 @@ Container* HoudiniEngine::getParmBase(int i, int asset_id) {
     return ((HoudiniUiParm*) uiParms[asset_id][i].get())->getContainer();
 }
 
-void HoudiniEngine::doIt(int asset_id) { 
+void HoudiniEngine::doIt(int asset_id) {
     Container* base = ((HoudiniUiParm*) uiParms[asset_id][uiParms[asset_id].size() - 1].get())->getContainer();
     uiParms[asset_id].pop_back();
     ofmsg("%1% refcount %2%", %base->getName() %base->refCount());
@@ -896,13 +894,13 @@ void HoudiniEngine::printParms(int asset_id) {
             case HAPI_PARMTYPE_LABEL: t = "LAB";  break;
             case HAPI_PARMTYPE_SEPARATOR: t = "SEP";  break;
         }
-        ofmsg("PARM %1% (%2%) %3%x%4% name: %5% (%6%)", 
+        ofmsg("PARM %1% (%2%) %3%x%4% name: %5% (%6%)",
             %myParm.info().id
             %myParm.info().parentId
-            %t 
+            %t
             %myParm.info().size
             %myParm.name()
-            %myParm.label() 
+            %myParm.label()
         );
         for (int i = 0; i < myParm.info().size; ++i) {
             if (myParm.info().type == HAPI_PARMTYPE_INT) {
@@ -933,11 +931,11 @@ void HoudiniEngine::printParms(int asset_id) {
                         myParm.info().choiceListType == HAPI_CHOICELISTTYPE_NORMAL ||
                         myParm.info().choiceListType == HAPI_CHOICELISTTYPE_MINI) {
                         for (int j = 0; j < myParm.choices.size(); ++j) {
-                            ofmsg("  choice %1% (%2%): %3% (%4%)", 
-                                %j 
+                            ofmsg("  choice %1% (%2%): %3% (%4%)",
+                                %j
                                 %myParm.choices[j].info().parentParmId
                                 %myParm.choices[j].value()
-                                %myParm.choices[j].label() 
+                                %myParm.choices[j].label()
                             );
                         }
                     } else {
@@ -1001,8 +999,8 @@ void HoudiniEngine::printParms(int asset_id) {
                         default:
                             break;
                     }
-                    ofmsg("  choiceindex: %1% count: %2%", 
-                        %myParm.info().choiceIndex  
+                    ofmsg("  choiceindex: %1% count: %2%",
+                        %myParm.info().choiceIndex
                         %myParm.info().choiceCount
                     );
                     // display as a selection menu
@@ -1010,11 +1008,11 @@ void HoudiniEngine::printParms(int asset_id) {
                         myParm.info().choiceListType == HAPI_CHOICELISTTYPE_NORMAL ||
                         myParm.info().choiceListType == HAPI_CHOICELISTTYPE_MINI) {
                         for (int j = 0; j < myParm.choices.size(); ++j) {
-                            ofmsg("  choice %1% (%2%): %3% (%4%)", 
-                                %j 
+                            ofmsg("  choice %1% (%2%): %3% (%4%)",
+                                %j
                                 %myParm.choices[j].info().parentParmId
                                 %myParm.choices[j].value()
-                                %myParm.choices[j].label() 
+                                %myParm.choices[j].label()
                             );
                         }
                     } else {// display as a text box which can be filled in by preset selections
@@ -1035,6 +1033,6 @@ void HoudiniEngine::printParms(int asset_id) {
                 );
             }
         }
-    
+
     }
 }

@@ -106,11 +106,8 @@ BOOST_PYTHON_MODULE(daHEngine)
 		// dict of parameter names:types for a given asset
 		// get/set parms by name (and by index?)
 		// TODO: multiple set parms for a given cook
-		// TODO: insert/remove multiparm instance..
 		// this should only return parameter names
 		PYAPI_METHOD(HoudiniEngine, getParameters)
-		// TODO
-		// PYAPI_METHOD(HoudiniEngine, getParameterValues)
 		PYAPI_METHOD(HoudiniEngine, getParameterValue)
 		PYAPI_METHOD(HoudiniEngine, setParameterValue)
 		PYAPI_METHOD(HoudiniEngine, insertMultiparmInstance)
@@ -120,7 +117,7 @@ BOOST_PYTHON_MODULE(daHEngine)
 		// Assets
 		// list of available assets
  		PYAPI_METHOD(HoudiniEngine, getAvailableAssets)
-		
+
 		// extras
         PYAPI_METHOD(HoudiniEngine, doIt)
         PYAPI_METHOD(HoudiniEngine, test)
@@ -496,14 +493,14 @@ int HoudiniEngine::instantiateAssetById(int asset_id)
 	return asset_id;
 }
 
-// TODO: geometry should be instantiated like this:
-//    asset node+
+// Geometry is instantiated like this:
+//    asset node+ (HoudiniAsset)
 //     |
-//     o- object node+ (HoudiniAsset)
+//     o- object node+ (Transforms)
 //         |
-//         o- geo node+ (HoudiniAsset or osg nodes)
+//         o- geo node+ (Nodes to display)
 //             |
-//             o- part node+ (drawables as part of geo, no transforms)
+//             o- part node+ (As drawables under a geometry)
 HoudiniAsset* HoudiniEngine::instantiateGeometry(const String& asset)
 {
 	ofmsg("instantiateGeometry: %1% assets available", %myAssetCount);

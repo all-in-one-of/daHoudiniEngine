@@ -308,7 +308,7 @@ void HoudiniEngine::process_geo(const hapi::Geo &geo, const int objIndex, const 
 	}
 }
 
-// TODO: expand on this..
+// TODO: expand on this.. (to do with curve rendering)
 Vector3f bez(float t, Vector3f a, Vector3f b) {
 	return Vector3f(
 		a[0] + t *(b[0] - a[0]),
@@ -319,6 +319,7 @@ Vector3f bez(float t, Vector3f a, Vector3f b) {
 
 // TODO: incrementally update the geometry?
 // send a new version, and still have the old version?
+//     write it out to a file based on a hash of parameters
 void HoudiniEngine::process_part(const hapi::Part &part, const int objIndex, const int geoIndex, const int partIndex, HoudiniGeometry* hg)
 {
 	ofmsg("process_part: processing %1%", %part.name());
@@ -853,6 +854,7 @@ void HoudiniEngine::process_part(const hapi::Part &part, const int objIndex, con
 		omsg("process_part:     Volume (TODO)");
 	}
 
+	// todo: check out some geometry shaders for this..
 	if (part.info().type == HAPI_PARTTYPE_BOX) {
 		omsg("process_part:     Box (TODO)");
 	}

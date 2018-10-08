@@ -194,8 +194,7 @@ namespace houdiniEngine {
 		    const char *attrib_name, vector<int>& vals
 		);
 
-		// from HAPI
-
+		// from HAPI 3.1
 // 		CreateInProcessSession (HAPI_Session *session);
 // 		StartThriftSocketServer (const HAPI_ThriftServerOptions *options, int port, HAPI_ProcessId *process_id);
 // 		CreateThriftSocketSession (HAPI_Session *session, const char *host_name, int port);
@@ -413,8 +412,6 @@ namespace houdiniEngine {
         HoudiniParameterList* loadParameters(const String& asset_name);
 
 		// python methods for HAPI Parameters
-		// TODO: make get/set parameter values take either int or string arguments
-		// do that here or in the boost::python method exposing
 		boost::python::dict getParameters(const String& asset_name);
 		void setParameterValue(const String& asset_name, const String& parm_name, boost::python::object value);
 		boost::python::object getParameterValue(const String& asset_name, const String& parm_name);
@@ -456,7 +453,7 @@ namespace houdiniEngine {
 		Container* getContainerForAsset(int n);
 		Container* getHoudiniCont() { return houdiniCont; };
 		Container* getStagingCont() { return stagingCont; };
-		
+
 
 	private:
 
@@ -467,7 +464,7 @@ namespace houdiniEngine {
 	private:
 		//helper function
 		void removeConts(Container* cont);
-		
+
 		SceneManager* mySceneManager;
 
 		// Scene editor. This will be used to manipulate the object.
@@ -574,10 +571,10 @@ namespace houdiniEngine {
 		HAPI_Session* session;
 
 		int myAssetCount;
-		
+
 		// build a list of widgets to remove
 		Vector<Widget* > removeTheseWidgets;
-		
+
 		static HoudiniEngine* myInstance;
 
 		HAPI_CookOptions myCookOptions;
