@@ -114,7 +114,12 @@ void HoudiniEngine::printGraph(const String& asset_name) {
 		ofmsg("%1%", %amp.first);
 
 		for (int i = 0; i < amp.second.size(); ++i) {
-			ofmsg("  mat id: %1%, part id: %2%", %amp.second[i].matId %amp.second[i].partId);
+			ofmsg("  mat id: %1%, part: %2% geo: %3% obj: %4%", 
+				%amp.second[i].matId 
+				%amp.second[i].partId
+				%amp.second[i].geoId
+				%amp.second[i].objId
+			);
 			ologaddnewline(false);
 			foreach(PS::Item ps, amp.second[i].parms) {
 				ofmsg("    %1%:%2% ", %ps.first %ps.second.type);
@@ -160,8 +165,8 @@ void HoudiniEngine::process_asset(const hapi::Asset &asset)
     vector<hapi::Object> objects = asset.objects();
 	vector<HAPI_Transform> objTransforms = asset.transforms();
 
-	ofmsg("process_assets: clear %1% materials", %assetMaterialParms[s].size());
-	assetMaterialParms[s].clear();
+	// ofmsg("process_assets: clear %1% materials", %assetMaterialParms[s].size());
+	// assetMaterialParms[s].clear();
 
 	ofmsg("process_assets: %1%: %2% objects %3% transforms", %asset.name() %objects.size() %objTransforms.size());
 
@@ -820,8 +825,25 @@ void HoudiniEngine::process_part(const hapi::Part &part, const int objIndex, con
 
 		hg->addPrimitiveOsg(myType, prev_faceCountIndex, curr_index - prev_faceCountIndex, partIndex, geoIndex, objIndex);
 
+		// transparency override
+		osg::StateSet* ss =  hg->getOsgNode(geoIndex, objIndex)->getDrawable(partIndex)->getOrCreateStateSet();
+		hg->setTransparent(has_point_alphas, partIndex, geoIndex, objIndex);
+
 		// Material handling
 		process_materials(part, hg);
+
+		// set transparency state set on this part if there are any alphas
+		if (has_point_alphas) {
+			ofmsg("process_part:   setting part %1% as transparent", %partIndex);
+			ss->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
+			ss->setMode(GL_BLEND, osg::StateAttribute::ON | osg::StateAttribute::PROTECTED | 
+			osg::StateAttribute::OVERRIDE);
+		} else {
+			ofmsg("process_part:   setting part %1% as opaque", %partIndex);
+			ss->setRenderingHint(osg::StateSet::OPAQUE_BIN);
+			ss->setMode(GL_BLEND, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED | 
+			osg::StateAttribute::OVERRIDE);
+		}
 
 		hg->dirty();
 
@@ -841,13 +863,12 @@ void HoudiniEngine::process_part(const hapi::Part &part, const int objIndex, con
 
 }
 
-// TODO:
 // get the part id from the Part, 
 // use it to make a stateset for the relevant Geode in the HG
 // set the various parms according to their names:
 //     eg: diff -> Material.setDiffuseColour()
 //     or if a uniform, add uniform to the stateset
-//     shader should end up propogating changes.. right?
+//     shader should end up propogating changes
 void HoudiniEngine::process_materials(const hapi::Part &part, HoudiniGeometry* hg) {
 	bool all_same = false;
 
@@ -875,7 +896,8 @@ void HoudiniEngine::process_materials(const hapi::Part &part, HoudiniGeometry* h
 		ofmsg("process_materials:   material %1% %2%", %i %mat_ids[i]);
 	}
 
-	assetMaterialParms[part.geo.object.asset.name()].clear();
+	// don't clear..
+	// assetMaterialParms[part.geo.object.asset.name()].clear();
 
 	for (int i = 0; i < mat_ids.size(); ++i) {
 
@@ -895,8 +917,32 @@ void HoudiniEngine::process_materials(const hapi::Part &part, HoudiniGeometry* h
 
 			hapi::Node matNode(mat_info.nodeId, session);
 
-			MatStruct ms;
-			ms.matId = mat_info.nodeId;
+			MatStruct* ms = NULL;
+
+			for (int j = 0; j < assetMaterialParms[hg->getName()].size(); ++j) {
+				if (assetMaterialParms[hg->getName()][j].matId == mat_info.nodeId) {
+					ms = &assetMaterialParms[hg->getName()][j];
+					break;
+				}
+			}
+
+			if (ms == NULL) {
+				ms = new MatStruct();
+			}
+
+			ms->matId = mat_info.nodeId;
+			ms->partId = part.id;
+			ms->geoId = part.geo.id;
+			ms->objId = part.geo.object.id;
+
+			ofmsg("process_materials:   set matId of %1% on part %2%, geo %3% object %4% of asset %5%",
+				%mat_info.nodeId
+				%part.id
+				%part.geo.id
+				%part.geo.object.id
+				%hg->getName()
+			);
+			hg->setMatId(mat_info.nodeId, part.id, part.geo.id, part.geo.object.id);
 
 			std::map<std::string, hapi::Parm> parmMap = matNode.parmMap();
 
@@ -939,19 +985,52 @@ void HoudiniEngine::process_materials(const hapi::Part &part, HoudiniGeometry* h
 				}
 			}
 
-			omsg("process_materials:   looking for ambient colour");
-			if (parmMap.count("ogl_amb")) {
-				ofmsg("process_materials:   has ambient, value is %1%,%2%,%3%", 
-					%parmMap["ogl_amb"].getFloatValue(0)
-					%parmMap["ogl_amb"].getFloatValue(1)
-					%parmMap["ogl_amb"].getFloatValue(2)
+			// omsg("process_materials:   looking for ambient colour");
+			// if (parmMap.count("ogl_amb")) {
+			// 	ofmsg("process_materials:   has ambient, value is %1%,%2%,%3%", 
+			// 		%parmMap["ogl_amb"].getFloatValue(0)
+			// 		%parmMap["ogl_amb"].getFloatValue(1)
+			// 		%parmMap["ogl_amb"].getFloatValue(2)
+			// 	);
+			// 	ParmStruct ps;
+			// 	ps.type = parmMap["ogl_amb"].info().type;
+			// 	ps.floatValues.push_back(parmMap["ogl_amb"].getFloatValue(0));
+			// 	ps.floatValues.push_back(parmMap["ogl_amb"].getFloatValue(1));
+			// 	ps.floatValues.push_back(parmMap["ogl_amb"].getFloatValue(2));
+			// 	ms->parms["ogl_amb"] = ps;
+
+			// 	// update the state set for this attribute
+			// 	if (assetInstances.count(hg->getName()) > 0) {
+			// 		osg::StateSet* ss =  hg->getOsgNode(part.geo.id, part.geo.object.id)->getDrawable(part.id)->getOrCreateStateSet();
+			// 		Ref<osg::Material> mat = static_cast<osg::Material*>(ss->getAttribute(osg::StateAttribute::MATERIAL));
+			// 		if (mat == NULL) {
+			// 			mat = new osg::Material();
+			// 		}
+			// 		mat->setAmbient(osg::Material::FRONT_AND_BACK, osg::Vec4(
+			// 			ps.floatValues[0],
+			// 			ps.floatValues[1],
+			// 			ps.floatValues[2],
+			// 			1.0
+			// 		));
+			// 		ss->setAttributeAndModes(mat, 
+			// 			osg::StateAttribute::ON | osg::StateAttribute::PROTECTED | 
+			// 			osg::StateAttribute::OVERRIDE);
+			// 	}
+			// }
+
+			omsg("process_materials:   looking for emission colour");
+			if (parmMap.count("ogl_emit")) {
+				ofmsg("process_materials:   has emission, value is %1%,%2%,%3%", 
+					%parmMap["ogl_emit"].getFloatValue(0)
+					%parmMap["ogl_emit"].getFloatValue(1)
+					%parmMap["ogl_emit"].getFloatValue(2)
 				);
 				ParmStruct ps;
-				ps.type = parmMap["ogl_amb"].info().type;
-				ps.floatValues.push_back(parmMap["ogl_amb"].getFloatValue(0));
-				ps.floatValues.push_back(parmMap["ogl_amb"].getFloatValue(1));
-				ps.floatValues.push_back(parmMap["ogl_amb"].getFloatValue(2));
-				ms.parms["ogl_amb"] = ps;
+				ps.type = parmMap["ogl_emit"].info().type;
+				ps.floatValues.push_back(parmMap["ogl_emit"].getFloatValue(0));
+				ps.floatValues.push_back(parmMap["ogl_emit"].getFloatValue(1));
+				ps.floatValues.push_back(parmMap["ogl_emit"].getFloatValue(2));
+				ms->parms["ogl_emit"] = ps;
 
 				// update the state set for this attribute
 				if (assetInstances.count(hg->getName()) > 0) {
@@ -960,7 +1039,7 @@ void HoudiniEngine::process_materials(const hapi::Part &part, HoudiniGeometry* h
 					if (mat == NULL) {
 						mat = new osg::Material();
 					}
-					mat->setAmbient(osg::Material::FRONT_AND_BACK, osg::Vec4(
+					mat->setEmission(osg::Material::FRONT_AND_BACK, osg::Vec4(
 						ps.floatValues[0],
 						ps.floatValues[1],
 						ps.floatValues[2],
@@ -984,7 +1063,7 @@ void HoudiniEngine::process_materials(const hapi::Part &part, HoudiniGeometry* h
 				ps.floatValues.push_back(parmMap["ogl_diff"].getFloatValue(0));
 				ps.floatValues.push_back(parmMap["ogl_diff"].getFloatValue(1));
 				ps.floatValues.push_back(parmMap["ogl_diff"].getFloatValue(2));
-				ms.parms["ogl_diff"] = ps;
+				ms->parms["ogl_diff"] = ps;
 
 				// update the state set for this attribute
 				if (assetInstances.count(hg->getName()) > 0) {
@@ -1005,38 +1084,38 @@ void HoudiniEngine::process_materials(const hapi::Part &part, HoudiniGeometry* h
 				}
 			}
 
-			omsg("process_materials:   looking for specular colour");
-			if (parmMap.count("ogl_spec")) {
-				ofmsg("has specular, value is %1%,%2%,%3%", 
-					%parmMap["ogl_spec"].getFloatValue(0)
-					%parmMap["ogl_spec"].getFloatValue(1)
-					%parmMap["ogl_spec"].getFloatValue(2)
-				);
-				ParmStruct ps;
-				ps.type = parmMap["ogl_spec"].info().type;
-				ps.floatValues.push_back(parmMap["ogl_spec"].getFloatValue(0));
-				ps.floatValues.push_back(parmMap["ogl_spec"].getFloatValue(1));
-				ps.floatValues.push_back(parmMap["ogl_spec"].getFloatValue(2));
-				ms.parms["ogl_spec"] = ps;
+			// omsg("process_materials:   looking for specular colour");
+			// if (parmMap.count("ogl_spec")) {
+			// 	ofmsg("has specular, value is %1%,%2%,%3%", 
+			// 		%parmMap["ogl_spec"].getFloatValue(0)
+			// 		%parmMap["ogl_spec"].getFloatValue(1)
+			// 		%parmMap["ogl_spec"].getFloatValue(2)
+			// 	);
+			// 	ParmStruct ps;
+			// 	ps.type = parmMap["ogl_spec"].info().type;
+			// 	ps.floatValues.push_back(parmMap["ogl_spec"].getFloatValue(0));
+			// 	ps.floatValues.push_back(parmMap["ogl_spec"].getFloatValue(1));
+			// 	ps.floatValues.push_back(parmMap["ogl_spec"].getFloatValue(2));
+			// 	ms->parms["ogl_spec"] = ps;
 
-				// update the state set for this attribute
-				if (assetInstances.count(hg->getName()) > 0) {
-					osg::StateSet* ss =  hg->getOsgNode(part.geo.id, part.geo.object.id)->getDrawable(part.id)->getOrCreateStateSet();
-					Ref<osg::Material> mat = static_cast<osg::Material*>(ss->getAttribute(osg::StateAttribute::MATERIAL));
-					if (mat == NULL) {
-						mat = new osg::Material();
-					}
-					mat->setSpecular(osg::Material::FRONT_AND_BACK, osg::Vec4(
-						ps.floatValues[0],
-						ps.floatValues[1],
-						ps.floatValues[2],
-						1.0
-					));
-					ss->setAttributeAndModes(mat, 
-						osg::StateAttribute::ON | osg::StateAttribute::PROTECTED | 
-						osg::StateAttribute::OVERRIDE);
-				}
-			}
+			// 	// update the state set for this attribute
+			// 	if (assetInstances.count(hg->getName()) > 0) {
+			// 		osg::StateSet* ss =  hg->getOsgNode(part.geo.id, part.geo.object.id)->getDrawable(part.id)->getOrCreateStateSet();
+			// 		Ref<osg::Material> mat = static_cast<osg::Material*>(ss->getAttribute(osg::StateAttribute::MATERIAL));
+			// 		if (mat == NULL) {
+			// 			mat = new osg::Material();
+			// 		}
+			// 		mat->setSpecular(osg::Material::FRONT_AND_BACK, osg::Vec4(
+			// 			ps.floatValues[0],
+			// 			ps.floatValues[1],
+			// 			ps.floatValues[2],
+			// 			1.0
+			// 		));
+			// 		ss->setAttributeAndModes(mat, 
+			// 			osg::StateAttribute::ON | osg::StateAttribute::PROTECTED | 
+			// 			osg::StateAttribute::OVERRIDE);
+			// 	}
+			// }
 
 			omsg("process_materials:   looking for alpha material colour");
 			if (parmMap.count("ogl_alpha")) {
@@ -1044,7 +1123,28 @@ void HoudiniEngine::process_materials(const hapi::Part &part, HoudiniGeometry* h
 				ParmStruct ps;
 				ps.type = parmMap["ogl_alpha"].info().type;
 				ps.floatValues.push_back(parmMap["ogl_alpha"].getFloatValue(0));
-				ms.parms["ogl_apha"] = ps;
+				ms->parms["ogl_apha"] = ps;
+
+				const string name = "unif_alpha";
+				// update the state set for this attribute
+				if (assetInstances.count(hg->getName()) > 0) {
+					osg::StateSet* ss =  hg->getOsgNode(part.geo.id, part.geo.object.id)->getDrawable(part.id)->getOrCreateStateSet();
+					osg::Uniform* u =  ss->getOrCreateUniform(name, osg::Uniform::Type::FLOAT, 1);
+					u->set(ps.floatValues[0]);
+					ss->getUniformList()[name].second = osg::StateAttribute::ON | osg::StateAttribute::PROTECTED | 
+						osg::StateAttribute::OVERRIDE;
+
+					// set as transparent
+					if (ps.floatValues[0] < 0.95) {
+						ss->setRenderingHint(osg::StateSet::TRANSPARENT_BIN);
+						ss->setMode(GL_BLEND, osg::StateAttribute::ON | osg::StateAttribute::PROTECTED | 
+						osg::StateAttribute::OVERRIDE);
+					} else {
+						ss->setRenderingHint(osg::StateSet::OPAQUE_BIN);
+						ss->setMode(GL_BLEND, osg::StateAttribute::OFF | osg::StateAttribute::PROTECTED | 
+						osg::StateAttribute::OVERRIDE);
+					}
+				}
 			}
 
 			omsg("process_materials:   looking for shininess");
@@ -1053,7 +1153,7 @@ void HoudiniEngine::process_materials(const hapi::Part &part, HoudiniGeometry* h
 				ParmStruct ps;
 				ps.type = parmMap["ogl_rough"].info().type;
 				ps.floatValues.push_back(parmMap["ogl_rough"].getFloatValue(0));
-				ms.parms["ogl_rough"] = ps;
+				ms->parms["ogl_rough"] = ps;
 			}
 
 			if (diffuseMapParmId >= 0) {
@@ -1209,7 +1309,7 @@ void HoudiniEngine::process_materials(const hapi::Part &part, HoudiniGeometry* h
 				ParmStruct ps;
 				ps.type = parmMap["diffuseMapName"].info().type;
 				ps.stringValues.push_back(parmMap["diffuseMapName"].getStringValue(0));
-				ms.parms["diffuseMapName"] = ps;
+				ms->parms["diffuseMapName"] = ps;
 
 
 				// need to set wrap modes too
@@ -1369,7 +1469,7 @@ void HoudiniEngine::process_materials(const hapi::Part &part, HoudiniGeometry* h
 				ParmStruct ps;
 				ps.type = parmMap["normalMapName"].info().type;
 				ps.stringValues.push_back(parmMap["normalMapName"].getStringValue(0));
-				ms.parms["normalMapName"] = ps;
+				ms->parms["normalMapName"] = ps;
 
 
 				// need to set wrap modes too
@@ -1388,7 +1488,7 @@ void HoudiniEngine::process_materials(const hapi::Part &part, HoudiniGeometry* h
 				}
 			}
 
-			assetMaterialParms[part.geo.object.asset.name()].push_back(ms);
+			assetMaterialParms[part.geo.object.asset.name()].push_back(*ms);
 
 		} else {
 			ofmsg("process_materials:   Could not get material %1% for %2%", %i %hg->getName());

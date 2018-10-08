@@ -523,6 +523,8 @@ HoudiniAsset* HoudiniEngine::instantiateGeometry(const String& asset)
 
 	if (assetInstances.count(asset) == 0) {
 		assetInstances[asset] = new HoudiniAsset(mySceneManager, asset);
+		omsg("instantiateGeometry: applying default material on newly instantiated object..");
+		assetInstances[asset]->setEffect("houdini");
 	}
 
 	// TODO: make this general
@@ -533,14 +535,13 @@ HoudiniAsset* HoudiniEngine::instantiateGeometry(const String& asset)
 	// make a houdini-specific shader that encompasses all these parameters..
 	if (assetMaterialParms.count(asset)) {
 
-		omsg("instantiateGeometry: applying default material on newly instantiated object..");
-		assetInstances[asset]->setEffect("houdini");
 
 		if (assetMaterialParms[asset].size() > 0) {
 			ofmsg("instantiateGeometry: setting %1% material(s) on newly instantiated object..", %assetMaterialParms[asset].size() );
 		}
 
 		for (int i = 0; i < assetMaterialParms[asset].size(); ++i) {
+			Color emit;
 			Color amb;
 			Color c;
 			Color spec;
@@ -550,24 +551,37 @@ HoudiniAsset* HoudiniEngine::instantiateGeometry(const String& asset)
 			float shininess = 1.0;
 			bool isTransparent = false;
 
-			if (assetMaterialParms[asset][i].parms.count("ogl_amb")) {
-				amb[0] = assetMaterialParms[asset][i].parms["ogl_amb"].floatValues[0];
-				amb[1] = assetMaterialParms[asset][i].parms["ogl_amb"].floatValues[1];
-				amb[2] = assetMaterialParms[asset][i].parms["ogl_amb"].floatValues[2];
+			// NB: This overwrites shader info set elsewhere so ignoring it for now..
+			// if (assetMaterialParms[asset][i].parms.count("ogl_amb")) {
+			// 	amb[0] = assetMaterialParms[asset][i].parms["ogl_amb"].floatValues[0];
+			// 	amb[1] = assetMaterialParms[asset][i].parms["ogl_amb"].floatValues[1];
+			// 	amb[2] = assetMaterialParms[asset][i].parms["ogl_amb"].floatValues[2];
+			// 	amb[3] = 1;
+			// }
+
+			if (assetMaterialParms[asset][i].parms.count("ogl_emit")) {
+				emit[0] = assetMaterialParms[asset][i].parms["ogl_emit"].floatValues[0];
+				emit[1] = assetMaterialParms[asset][i].parms["ogl_emit"].floatValues[1];
+				emit[2] = assetMaterialParms[asset][i].parms["ogl_emit"].floatValues[2];
+				emit[3] = 1;
 			}
 
 			if (assetMaterialParms[asset][i].parms.count("ogl_diff")) {
 				c[0] = assetMaterialParms[asset][i].parms["ogl_diff"].floatValues[0];
 				c[1] = assetMaterialParms[asset][i].parms["ogl_diff"].floatValues[1];
 				c[2] = assetMaterialParms[asset][i].parms["ogl_diff"].floatValues[2];
+				c[3] = 1;
 			}
 
-			if (assetMaterialParms[asset][i].parms.count("ogl_spec")) {
-				spec[0] = assetMaterialParms[asset][i].parms["ogl_spec"].floatValues[0];
-				spec[1] = assetMaterialParms[asset][i].parms["ogl_spec"].floatValues[1];
-				spec[2] = assetMaterialParms[asset][i].parms["ogl_spec"].floatValues[2];
-			}
+			// NB: This overwrites shader info set elsewhere so ignoring it for now..
+			// if (assetMaterialParms[asset][i].parms.count("ogl_spec")) {
+			// 	spec[0] = assetMaterialParms[asset][i].parms["ogl_spec"].floatValues[0];
+			// 	spec[1] = assetMaterialParms[asset][i].parms["ogl_spec"].floatValues[1];
+			// 	spec[2] = assetMaterialParms[asset][i].parms["ogl_spec"].floatValues[2];
+			// 	spec[3] = 1;
+			// }
 
+			// approximate transparency
 			if (assetMaterialParms[asset][i].parms.count("ogl_alpha")) {
 				alpha = assetMaterialParms[asset][i].parms["ogl_alpha"].floatValues[0];
 				isTransparent = alpha < 0.95;
@@ -577,9 +591,10 @@ HoudiniAsset* HoudiniEngine::instantiateGeometry(const String& asset)
 				shininess = assetMaterialParms[asset][i].parms["ogl_rough"].floatValues[0];
 			}
 
-			String effect = ostr("houdini %2%-d %1% -s %3%", 
-				%c.toString()
+			String effect = ostr("houdini %1%-d %2% -e %3% -s %4%",
 				%(isTransparent ? "-t -a -D " : "")
+				%c.toString()
+				%emit.toString()
 				%shininess
 			);
 			ofmsg("instantiateGeometry: about to set effect '%1%'", %effect);
@@ -629,7 +644,7 @@ void HoudiniEngine::initialize()
 				HAPI_ThriftServerOptions thrift_server_options;
 				thrift_server_options.autoClose = true;
 				thrift_server_options.timeoutMs = 5000;
-				
+
 				int port = env_port ? atoi(env_port) : 7788;
 
 				if (!env_host) {

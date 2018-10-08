@@ -99,6 +99,7 @@ int HoudiniGeometry::addDrawable(const int count, const int geodeIndex, const in
 		hobjs[objIndex].hgeoms[geodeIndex].hparts.back().geometry->setUseVertexBufferObjects(true);
 		hobjs[objIndex].hgeoms[geodeIndex].hparts.back().geometry->setVertexArray(hobjs[objIndex].hgeoms[geodeIndex].hparts.back().vertices);
 		hobjs[objIndex].hgeoms[geodeIndex].geode->addDrawable(hobjs[objIndex].hgeoms[geodeIndex].hparts.back().geometry);
+		hobjs[objIndex].hgeoms[geodeIndex].hparts.back().transparent = false;
 	}
 	return hobjs[objIndex].hgeoms[geodeIndex].geode->getNumDrawables();
 }

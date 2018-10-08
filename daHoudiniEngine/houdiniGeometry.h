@@ -99,6 +99,9 @@ namespace houdiniEngine {
 		Ref<osg::Vec3Array> normals;
 		Ref<osg::Vec3Array> uvs;
  		Ref<osg::Geometry> geometry;
+		int matId; // material id used by this part
+		// TODO: change this to a stateset
+		bool transparent; // whether this part should be transparent
 	} HPart;
 
 	typedef struct {
@@ -437,6 +440,22 @@ namespace houdiniEngine {
 		}
 
 		void dirty();
+
+		void setMatId(int value, const int drawableIndex, const int geodeIndex, const int objIndex) {
+			hobjs[objIndex].hgeoms[geodeIndex].hparts[drawableIndex].matId = value;
+		}
+
+		int getMatId(const int drawableIndex, const int geodeIndex, const int objIndex) {
+			return hobjs[objIndex].hgeoms[geodeIndex].hparts[drawableIndex].matId;
+		}
+
+		void setTransparent(bool value, const int drawableIndex, const int geodeIndex, const int objIndex) {
+			hobjs[objIndex].hgeoms[geodeIndex].hparts[drawableIndex].transparent = value;
+		}
+
+		bool isTransparent(const int drawableIndex, const int geodeIndex, const int objIndex) {
+			return hobjs[objIndex].hgeoms[geodeIndex].hparts[drawableIndex].transparent;
+		}
 
 	private:
 		vector < HObj > hobjs;

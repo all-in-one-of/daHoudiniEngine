@@ -554,21 +554,18 @@ namespace houdiniEngine {
 			Vector<String> stringValues;
 		} ParmStruct;
 
-		// material container.. 
-		// TODO: better way to do this? By reusing code?
+		// material container..
+		// TODO: better way to do this?
 		typedef struct {
 			int matId;
 			int partId;
+			int geoId;
+			int objId;
 			Dictionary<String, ParmStruct> parms;
 		} MatStruct;
         // asset name to material parms
-		// TODO: this is not enough.. needs more than a string..
-		// needs whatever parms can be..
         // eg: assetMaterialParms["cluster1"][4]["ogl_diff"]
         Dictionary < String, Vector< MatStruct > > assetMaterialParms;
-		// the asset name to node ids for materials
-		// eg: assetMaterialNodeIds["cluster1"] = [1, 5, 8];
-        Dictionary < String, Vector< int > > assetMaterialNodeIds;
 
 		// logging
 		bool myLogEnabled;
