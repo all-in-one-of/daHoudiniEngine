@@ -181,6 +181,11 @@ void HoudiniEngine::createParms(const int asset_id, Container* assetCont)
 
 HoudiniParameterList* HoudiniEngine::loadParameters(const String& asset_name)
 {
+    // only run on master
+	if (!SystemManager::instance()->isMaster()) {
+		ofmsg("getParameters: Not running on %1%", %SystemManager::instance()->getHostname());
+		return NULL;
+	}
 
 	int asset_id = assetNameToIds[asset_name];
     // shouldn't be cached, should fetch new each time
@@ -230,6 +235,14 @@ boost::python::dict HoudiniEngine::getParameters(const String& asset_name)
 	int asset_id = assetNameToIds[asset_name];
 
     boost::python::dict d;
+
+    // only run on master
+	if (!SystemManager::instance()->isMaster()) {
+		ofmsg("getParameters: Not running on %1%", %SystemManager::instance()->getHostname());
+		return d;
+	}
+	int asset_id = assetNameToIds[asset_name];
+
 
 	hapi::Asset* myAsset = new hapi::Asset(asset_id, session);
 
@@ -304,6 +317,12 @@ boost::python::dict HoudiniEngine::getParameters(const String& asset_name)
 
 boost::python::object HoudiniEngine::getParameterValue(const String& asset_name, const String& parm_name)
 {
+    // only run on master
+	if (!SystemManager::instance()->isMaster()) {
+		ofmsg("getParameterValue: Not running on %1%", %SystemManager::instance()->getHostname());
+		return boost::python::object();
+	}
+
     int asset_id = assetNameToIds[asset_name];
 
     // shouldn't be cached, should fetch new each time
@@ -389,6 +408,12 @@ boost::python::object HoudiniEngine::getParameterValue(const String& asset_name,
 
 void HoudiniEngine::setParameterValue(const String& asset_name, const String& parm_name, boost::python::object value)
 {
+    // only run on master
+	if (!SystemManager::instance()->isMaster()) {
+		ofmsg("setParameterValue: Not running on %1%", %SystemManager::instance()->getHostname());
+		return;
+	}
+
     int asset_id = assetNameToIds[asset_name];
     // shouldn't be cached, should fetch new each time
 	hapi::Asset* myAsset = new hapi::Asset(asset_id, session);
@@ -562,6 +587,13 @@ void HoudiniEngine::setParameterValue(const String& asset_name, const String& pa
 }
 
 void HoudiniEngine::insertMultiparmInstance(const String& asset_name, const String& parm_name, int pos) {
+
+    // only run on master
+	if (!SystemManager::instance()->isMaster()) {
+		ofmsg("insertMultiparmInstance: Not running on %1%", %SystemManager::instance()->getHostname());
+		return;
+	}
+
     int asset_id = assetNameToIds[asset_name];
     // shouldn't be cached, should fetch new each time
 	hapi::Asset* myAsset = new hapi::Asset(asset_id, session);
@@ -582,6 +614,13 @@ void HoudiniEngine::insertMultiparmInstance(const String& asset_name, const Stri
     }
 }
 void HoudiniEngine::removeMultiparmInstance(const String& asset_name, const String& parm_name, int pos) {
+
+    // only run on master
+	if (!SystemManager::instance()->isMaster()) {
+		ofmsg("removeMultiparmInstance: Not running on %1%", %SystemManager::instance()->getHostname());
+		return;
+	}
+
     int asset_id = assetNameToIds[asset_name];
     // shouldn't be cached, should fetch new each time
 	hapi::Asset* myAsset = new hapi::Asset(asset_id, session);
@@ -605,6 +644,12 @@ void HoudiniEngine::removeMultiparmInstance(const String& asset_name, const Stri
 
 boost::python::list HoudiniEngine::getParameterChoices(const String& asset_name, const String& parm_name) {
     boost::python::list myList;
+
+    // only run on master
+	if (!SystemManager::instance()->isMaster()) {
+		ofmsg("getParameterChoices: Not running on %1%", %SystemManager::instance()->getHostname());
+		return myList;
+	}
 
     int asset_id = assetNameToIds[asset_name];
     // shouldn't be cached, should fetch new each time
@@ -632,6 +677,12 @@ boost::python::list HoudiniEngine::getParameterChoices(const String& asset_name,
 
 int HoudiniEngine::getIntegerParameterValue(const String& asset_name, int param_id, int sub_index)
 {
+    // only run on master
+	if (!SystemManager::instance()->isMaster()) {
+		ofmsg("getIntegerParameterValue: Not running on %1%", %SystemManager::instance()->getHostname());
+		return 0;
+	}
+
 	int asset_id = assetNameToIds[asset_name];
     // shouldn't be cached, should fetch new each time
 	hapi::Asset* myAsset = new hapi::Asset(asset_id, session);
@@ -654,6 +705,12 @@ int HoudiniEngine::getIntegerParameterValue(const String& asset_name, int param_
 
 void HoudiniEngine::setIntegerParameterValue(const String& asset_name, int param_id, int sub_index, int value) 
 {
+    // only run on master
+	if (!SystemManager::instance()->isMaster()) {
+		ofmsg("setIntegerParameterValue: Not running on %1%", %SystemManager::instance()->getHostname());
+		return;
+	}
+
 	int asset_id = assetNameToIds[asset_name];
     // shouldn't be cached, should fetch new each time
 	hapi::Asset* myAsset = new hapi::Asset(asset_id, session);
@@ -678,6 +735,12 @@ void HoudiniEngine::setIntegerParameterValue(const String& asset_name, int param
 
 float HoudiniEngine::getFloatParameterValue(const String& asset_name, int param_id, int sub_index)
 {
+    // only run on master
+	if (!SystemManager::instance()->isMaster()) {
+		ofmsg("getFloatParameterValue: Not running on %1%", %SystemManager::instance()->getHostname());
+		return 0;
+	}
+
 	int asset_id = assetNameToIds[asset_name];
     // shouldn't be cached, should fetch new each time
 	hapi::Asset* myAsset = new hapi::Asset(asset_id, session);
@@ -700,6 +763,12 @@ float HoudiniEngine::getFloatParameterValue(const String& asset_name, int param_
 
 void HoudiniEngine::setFloatParameterValue(const String& asset_name, int param_id, int sub_index, float value) 
 {
+    // only run on master
+	if (!SystemManager::instance()->isMaster()) {
+		ofmsg("setFloatParameterValue: Not running on %1%", %SystemManager::instance()->getHostname());
+		return;
+	}
+
 	int asset_id = assetNameToIds[asset_name];
     // shouldn't be cached, should fetch new each time
 	hapi::Asset* myAsset = new hapi::Asset(asset_id, session);
@@ -724,6 +793,12 @@ void HoudiniEngine::setFloatParameterValue(const String& asset_name, int param_i
 
 String HoudiniEngine::getStringParameterValue(const String& asset_name, int param_id, int sub_index)
 {
+    // only run on master
+	if (!SystemManager::instance()->isMaster()) {
+		ofmsg("getStringParameterValue: Not running on %1%", %SystemManager::instance()->getHostname());
+		return "";
+	}
+
 	int asset_id = assetNameToIds[asset_name];
     // shouldn't be cached, should fetch new each time
 	hapi::Asset* myAsset = new hapi::Asset(asset_id, session);
@@ -746,6 +821,12 @@ String HoudiniEngine::getStringParameterValue(const String& asset_name, int para
 
 void HoudiniEngine::setStringParameterValue(const String& asset_name, int param_id, int sub_index, const String& value) 
 {
+    // only run on master
+	if (!SystemManager::instance()->isMaster()) {
+		ofmsg("setStringParameterValue: Not running on %1%", %SystemManager::instance()->getHostname());
+		return;
+	}
+
 	int asset_id = assetNameToIds[asset_name];
     // shouldn't be cached, should fetch new each time
 	hapi::Asset* myAsset = new hapi::Asset(asset_id, session);
@@ -784,6 +865,12 @@ void HoudiniEngine::doIt(int asset_id) {
 }
 
 void HoudiniEngine::printParms(int asset_id) {
+    // only run on master
+	if (!SystemManager::instance()->isMaster()) {
+		ofmsg("printParms: Not running on %1%", %SystemManager::instance()->getHostname());
+		return;
+	}
+
     hapi::Asset* asset = new hapi::Asset(asset_id, session);
     if (asset == NULL) {
         ofmsg("No asset with id %1%", %asset_id);
