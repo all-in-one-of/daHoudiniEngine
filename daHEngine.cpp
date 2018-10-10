@@ -168,11 +168,6 @@ BOOST_PYTHON_MODULE(daHEngine)
         PYAPI_METHOD(HoudiniParameter, getName)
         PYAPI_METHOD(HoudiniParameter, getLabel);
 
-    // HoudiniParameterList
-    PYAPI_REF_BASE_CLASS(HoudiniParameterList)
-        PYAPI_METHOD(HoudiniParameterList, size)
-        PYAPI_REF_GETTER(HoudiniParameterList, getParameter);
-
 	// HAPI_ParmTypes
 	enum_<HAPI_ParmType>("ParmType")
 		.value("Int", HAPI_ParmType::HAPI_PARMTYPE_INT)

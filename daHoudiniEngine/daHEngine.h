@@ -120,7 +120,6 @@ namespace houdiniEngine {
 #endif
 	//forward references
 	class HE_API HoudiniGeometry;
-	class HE_API HoudiniParameterList;
 	class HE_API HoudiniUiParm;
 
 	class BillboardCallback;
@@ -416,8 +415,6 @@ namespace houdiniEngine {
 		void createParms(const int asset_id, Container* assetCont);
 		void initializeParameters(const String& asset_name);
 
-        HoudiniParameterList* loadParameters(const String& asset_name);
-
 		// python methods for HAPI Parameters
 		boost::python::dict getParameters(const String& asset_name);
 		void setParameterValue(const String& asset_name, const String& parm_name, boost::python::object value);
@@ -549,7 +546,6 @@ namespace houdiniEngine {
 
 		// asset name to id
 		Dictionary < String, int > assetNameToIds;
-        Dictionary<String, HoudiniParameterList*> assetParamLists;
 
 		// parm value container..
 		typedef struct {

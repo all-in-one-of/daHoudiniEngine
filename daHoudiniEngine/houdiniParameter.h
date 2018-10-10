@@ -63,28 +63,6 @@ namespace houdiniEngine {
             string label;
     };
 
-    class HoudiniParameterList: public ReferenceType
-    {
-        public:
-
-            HoudiniParameterList();
-            
-            int
-            size() { return parameters.size(); }
-
-            HoudiniParameter*
-            getParameter(const int index) { return parameters.at(index); }
-
-            void
-            addParameter(HoudiniParameter* parameter) { parameters.push_back(parameter); }
-
-            void
-            print();
-
-        private:
-
-            vector<HoudiniParameter*> parameters;
-    };
 };
 
 #endif

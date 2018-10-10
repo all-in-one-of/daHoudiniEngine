@@ -180,56 +180,6 @@ void HoudiniEngine::createParms(const int asset_id, Container* assetCont)
 	}
 }
 
-HoudiniParameterList* HoudiniEngine::loadParameters(const String& asset_name)
-{
-    // only run on master
-	if (!SystemManager::instance()->isMaster()) {
-		hflog("[HoudiniEngine::loadParameters] Not running on %1%", %SystemManager::instance()->getHostname());
-		return NULL;
-	}
-
-	int asset_id = assetNameToIds[asset_name];
-    // shouldn't be cached, should fetch new each time
-	hapi::Asset* myAsset = new hapi::Asset(asset_id, session);
-
-    if (myAsset == NULL) {
-        ofwarn("[HoudiniEngine::loadParameters] No asset of name %1%", %asset_name);
-        return NULL;
-    }
-
-    HoudiniParameterList* parameters = 0;
-    Dictionary<String, HoudiniParameterList*>::iterator it = assetParamLists.find(asset_name);
-
-    if (it != assetParamLists.end()) {
-        ofmsg("[HoudiniEngine::loadParameters] already loaded: %1%", %asset_name);
-        return it->second;
-    } else {
-        ofmsg("[HoudiniEngine::loadParameters] loading asset: %1%", %asset_name);
-        parameters = new HoudiniParameterList();
-        assetParamLists[asset_name] = parameters;
-    }
-
-	std::vector<hapi::Parm> parms = myAsset->parms();
-
-    for (vector<hapi::Parm>::iterator i = parms.begin(); i < parms.end(); ++i) {
-
-        if (i->info().type != HAPI_PARMTYPE_FOLDERLIST) {
-
-            HoudiniParameter* parameter = new HoudiniParameter(i->info().id);
-
-            parameter->setParentId(i->info().parentId);
-            parameter->setType(i->info().type);
-            parameter->setSize(i->info().size);
-            parameter->setName(i->name());
-            parameter->setLabel(i->label());
-
-            parameters->addParameter(parameter);
-        }
-    }
-
-    return parameters;
-}
-
 // fetches parameters in a dict of name:value
 boost::python::dict HoudiniEngine::getParameters(const String& asset_name)
 {
