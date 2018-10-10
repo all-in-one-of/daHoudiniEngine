@@ -68,6 +68,9 @@ either expressed or implied, of the Data Arena Project.
 
 #include "daHoudiniEngine/houdiniAsset.h"
 
+#define hlog(msg) if(HoudiniEngine::isLoggingEnabled()) olog(StringUtils::logLevel, msg)
+#define hflog(fmt, args) if(HoudiniEngine::isLoggingEnabled()) oflog(StringUtils::logLevel, fmt, args)
+
 #include <stdlib.h>
 #include <iostream>
 #include <string>
@@ -86,16 +89,16 @@ namespace houdiniEngine {
 	#define ENSURE_SUCCESS(session, result) \
 	    if ((result) != HAPI_RESULT_SUCCESS) \
 	    { \
-		ofmsg("failure at %1%:%2%", %__FILE__ %__LINE__); \
-		ofmsg("%1% '%2%'", %hapi::Failure::lastErrorMessage(session) %result);\
+		oferror("failure at %1%:%2%", %__FILE__ %__LINE__); \
+		oferror("%1% '%2%'", %hapi::Failure::lastErrorMessage(session) %result);\
 		exit(1); \
 	    }
 
 	#define ENSURE_COOK_SUCCESS(session, result) \
 	    if ((result) != HAPI_STATE_READY) \
 	    { \
-		ofmsg("cook failure at %1%:%2%", %__FILE__ %__LINE__); \
-		ofmsg("%1% '%2%'", %hapi::Failure::lastCookErrorMessage(session) %result);\
+		oferror("cook failure at %1%:%2%", %__FILE__ %__LINE__); \
+		oferror("%1% '%2%'", %hapi::Failure::lastCookErrorMessage(session) %result);\
 		exit(1); \
 	    }
 
@@ -105,12 +108,12 @@ namespace houdiniEngine {
 	{
 	public:
 		RefAsset(int nodeid, HAPI_Session* mySession) : Asset(nodeid, mySession)
-		{ ofmsg("Constructing refAsset of id %1%", %nodeid); }
+		{ oflog(Debug, "[RefAsset] from id %1%", %nodeid); }
 		RefAsset(const hapi::Asset &asset) : hapi::Asset(asset)
-		{ ofmsg("Constructing refAsset from asset %1%", %asset.name()); }
+		{ oflog(Debug, "[RefAsset] from asset %1%", %asset.name()); }
 
 		~RefAsset()
-		{ ofmsg("Destructing refAsset of id %1%", %nodeid); }
+		{ oflog(Debug, "[~RefAsset] id %1%", %nodeid); }
 
 	};
 
@@ -131,6 +134,10 @@ namespace houdiniEngine {
 
 #if DA_ENABLE_HENGINE > 0
 		static HoudiniEngine* instance() { return myInstance; }
+
+		// log level for Houdini Engine
+		// StringUtils::Verbose when logging enabled
+		static StringUtils::LogLevel logLevel;
 
 		// >>>> subclassed modules
 		//! Convenience method to create the module, register and initialize it.
@@ -442,6 +449,7 @@ namespace houdiniEngine {
 		HAPI_CookOptions getCookOptions() { return myCookOptions; };
 
 		void setLoggingEnabled(const bool toggle);
+		bool isLoggingEnabled() { return HoudiniEngine::myLogEnabled; };
 
 		void showMappings();
 
@@ -565,7 +573,7 @@ namespace houdiniEngine {
         Dictionary < String, Vector< MatStruct > > assetMaterialParms;
 
 		// logging
-		bool myLogEnabled;
+		static bool myLogEnabled;
 
 		// session
 		HAPI_Session* session;

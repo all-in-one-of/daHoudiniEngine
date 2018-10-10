@@ -72,6 +72,7 @@ using namespace houdiniEngine;
 HoudiniGeometry::HoudiniGeometry(const String& name):
 	ModelGeometry(name)
 {
+	oflog(Debug, "[HoudiniGeometry] %1%", %myName);
 	// create geometry and geodes to hold the data
 	myNode = new osg::Group();
 

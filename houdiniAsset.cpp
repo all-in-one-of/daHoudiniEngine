@@ -22,7 +22,7 @@ HoudiniAsset::HoudiniAsset(SceneManager* scene, const String& modelName):
 	}
 	else
 	{
-		ofwarn("HoudiniAsset::HoudiniAsset: could not create static object: model not found - %1%", %modelName);
+		ofwarn("[HoudiniAsset] could not create static object: model not found - %1%", %modelName);
 	}
 }
 

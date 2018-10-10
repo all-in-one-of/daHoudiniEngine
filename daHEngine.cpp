@@ -48,6 +48,10 @@ daHEngine
 #endif
 #include <daHoudiniEngine/loaderTools.h>
 
+// set custom log level separate of Omegalib
+StringUtils::LogLevel HoudiniEngine::logLevel = StringUtils::Verbose;
+
+bool HoudiniEngine::myLogEnabled = false;
 
 using namespace houdiniEngine;
 
@@ -94,6 +98,7 @@ BOOST_PYTHON_MODULE(daHEngine)
  		PYAPI_METHOD(HoudiniEngine, cook)
  		PYAPI_METHOD(HoudiniEngine, getCookOptions)
  		PYAPI_METHOD(HoudiniEngine, setCookOptions)
+ 		PYAPI_METHOD(HoudiniEngine, isLoggingEnabled)
  		PYAPI_METHOD(HoudiniEngine, setLoggingEnabled)
  		PYAPI_METHOD(HoudiniEngine, showMappings)
  		PYAPI_REF_GETTER(HoudiniEngine, getContainerForAsset)
@@ -235,8 +240,8 @@ HoudiniEngine* HoudiniEngine::createAndInitialize()
 	ENSURE_SUCCESS(NULL, HAPI_GetEnvInt(HAPI_ENVINT_VERSION_HOUDINI_ENGINE_MAJOR, &hEngineVersionMajor ));
 
 	if (hEngineVersionMajor < minHEngineVersion || houdiniVersionMajor < minHoudiniVersion) {
-		oerror("Could not find appropriate version of Houdini or Houdini Engine");
-		oferror("Houdini Version: %1% (needed %2%), Houdini Engine Version %2% (needed %4%)",
+		oerror("[HoudiniEngine] Could not find appropriate version of Houdini or Houdini Engine");
+		oferror("[HoudiniEngine] Houdini Version: %1% (needed %2%), Houdini Engine Version %2% (needed %4%)",
 				%houdiniVersionMajor %minHoudiniVersion %hEngineVersionMajor %minHEngineVersion);
 		return NULL;
 	}
@@ -259,7 +264,6 @@ HoudiniEngine::HoudiniEngine():
 
 	EngineModule("HoudiniEngine"),
 	mySceneManager(NULL),
-	myLogEnabled(false),
 	myAssetCount(0)
 {
 	// defaults
@@ -280,14 +284,14 @@ HoudiniEngine::~HoudiniEngine()
 	    try
 	    {
 		    ENSURE_SUCCESS(session, HAPI_Cleanup(session));
-			olog(Verbose, "done HAPI");
+			olog(Verbose, "[~HoudiniEngine] cleanup HAPI");
 			if (session != NULL) {
 				delete session;
 			}
 	    }
 	    catch (hapi::Failure &failure)
 	    {
-			ofwarn("Houdini Failure on cleanup %1%", %failure.lastErrorMessage(session));
+			ofwarn("[~HoudiniEngine] Houdini Failure on cleanup %1%", %failure.lastErrorMessage(session));
 			throw;
 	    }
 	}
@@ -307,7 +311,7 @@ HoudiniEngine::~HoudiniEngine()
 
 	myInstance = NULL;
 
-	omsg("~HoudiniEngine");
+	olog(Verbose, "[~HoudiniEngine]");
 }
 
 #if DA_ENABLE_HENGINE > 0
@@ -336,7 +340,7 @@ int HoudiniEngine::loadAssetLibraryFromFile(const String& otlFile)
 
 	// do this on master only
 	if (!SystemManager::instance()->isMaster()) {
-        omsg("loadAssetLibraryFromFile: Im a slave, not doing this");
+        hlog("[HoudiniEngine::loadAssetLibraryFromFile] Not on slave");
 		return -1;
 	}
 
@@ -347,20 +351,20 @@ int HoudiniEngine::loadAssetLibraryFromFile(const String& otlFile)
             &library_id);
     if (hr != HAPI_RESULT_SUCCESS)
     {
-        ofwarn("Could not load %1%", %otlFile);
-        ofwarn("Result is %1%", %hr);
+        ofwarn("[HoudiniEngine::loadAssetLibraryFromFile] Could not load %1%", %otlFile);
+        ofwarn("[HoudiniEngine::loadAssetLibraryFromFile] Result is %1%", %hr);
 		return assetCount;
     }
 
     ENSURE_SUCCESS(session,  HAPI_GetAvailableAssetCount( session, library_id, &assetCount ) );
 
-	ofmsg("loadAssetLibraryFromFile: %1% assets available", %assetCount);
+	hflog("[HoudiniEngine::loadAssetLibraryFromFile] %1% assets available", %assetCount);
     HAPI_StringHandle* asset_name_sh = new HAPI_StringHandle[assetCount];
     ENSURE_SUCCESS(session,  HAPI_GetAvailableAssets( session, library_id, asset_name_sh, assetCount ) );
 
 	for (int i =0; i < assetCount; ++i) {
 	    std::string asset_name = get_string( session, asset_name_sh[i] );
-		ofmsg("asset %1%: %2%", %(i + 1) %asset_name);
+		hflog("[HoudiniEngine::loadAssetLibraryFromFile] asset %1% name: %2%", %(i + 1) %asset_name);
 	}
 
 	delete[] asset_name_sh;
@@ -380,15 +384,13 @@ int HoudiniEngine::loadAssetLibraryFromFile(const String& otlFile)
 int HoudiniEngine::instantiateAsset(const String& asset_name)
 {
 	if (!SystemManager::instance()->isMaster()) {
-        omsg("instantiateAsset: Im a slave, not doing this");
+        hlog("[HoudiniEngine::instantiateAsset] Not on slave");
 		return -1;
 	}
 
 	int asset_id = -1;
 
 	try {
-
- 	ofmsg("about to instantiate %1%", %asset_name);
 
     ENSURE_SUCCESS(session, HAPI_CreateNode(
 			session,
@@ -399,34 +401,27 @@ int HoudiniEngine::instantiateAsset(const String& asset_name)
             &asset_id ));
 
 	if (asset_id < 0) {
-		ofmsg("unable to instantiate %1%", %asset_name);
+		ofwarn("[HoudiniEngine::instantiateAsset] unable to instantiate %1%", %asset_name);
 		return -1;
 	}
 
- 	ofmsg("instantiated %1%, id: %2%", %asset_name %asset_id);
+ 	hflog("[HoudiniEngine::instantiateAsset] name: %1%, id: %2%", %asset_name %asset_id);
 
 	wait_for_cook();
 
 	assetNameToIds[asset_name] = asset_id;
 
-	omsg("after instantiate cook");
-
-
-
 	Ref <RefAsset> myAsset = new RefAsset(asset_id, session);
 	// TODO: this isn't the right way to do this.. remove
 	instancedHEAssets[asset_id] = myAsset;
-	omsg("about to process asset");
     process_asset(*myAsset.get());
-	omsg("processed assets, about to create menu");
 
 	createMenu(asset_id);
-	omsg("created menu");
 	updateGeos = true;
 
 	} catch (hapi::Failure &failure)
 	{
-		ofwarn("%1%", %failure.lastErrorMessage(session));
+		ofwarn("[HoudiniEngine::instantiateAsset] %1%", %failure.lastErrorMessage(session));
 		throw;
 	}
 
@@ -436,7 +431,7 @@ int HoudiniEngine::instantiateAsset(const String& asset_name)
 int HoudiniEngine::instantiateAssetById(int asset_id)
 {
 	if (!SystemManager::instance()->isMaster()) {
-		omsg("instantiateAssetById: not loading, not slave");
+		hlog("[HoudiniEngine::instantiateAssetById] Not on slave");
 		return -1;
 	}
 
@@ -444,16 +439,11 @@ int HoudiniEngine::instantiateAssetById(int asset_id)
 
     ENSURE_SUCCESS(session,  HAPI_GetAvailableAssetCount( session, library_id, &assetCount ) );
 
-	ofmsg("instantiateAssetById: %1% assets available", %assetCount);
+	hflog("[HoudiniEngine::instantiateAssetById] %1% assets available", %assetCount);
     HAPI_StringHandle* asset_name_sh = new HAPI_StringHandle[assetCount];
     ENSURE_SUCCESS(session,  HAPI_GetAvailableAssets( session, library_id, asset_name_sh, assetCount ) );
 
 	std::string asset_name;
-
-	for (int i =0; i < assetCount; ++i) {
-	    asset_name = get_string( session, asset_name_sh[i] );
-		ofmsg("%3%asset %1%: %2%", %(i + 1) %asset_name %(i == asset_id ? "*" : ""));
-	}
 
 	asset_name = get_string( session, asset_name_sh[asset_id]);
 
@@ -466,11 +456,13 @@ int HoudiniEngine::instantiateAssetById(int asset_id)
             &asset_id ));
 
 	if (asset_id < 0) {
-		ofmsg("unable to instantiate %1%", %asset_name);
+		ofwarn("[HoudiniEngine::instantiateAssetById] unable to instantiate %1%", %asset_name);
 
 		delete [] asset_name_sh;
 		return -1;
 	}
+
+ 	hflog("[HoudiniEngine::instantiateAssetById] name %1%, id: %2%", %asset_name %asset_id);
 
 	wait_for_cook();
 
@@ -479,10 +471,6 @@ int HoudiniEngine::instantiateAssetById(int asset_id)
 	instancedHEAssets[asset_id] = myAsset;
 
 	assetNameToIds[asset_name] = asset_id;
-
-	// asset_id is now NOT the same as the id defined in the library
-	// is this important?
- 	ofmsg("Instantiated %1%, id: %2%", %myAsset.get()->name() %asset_id);
 
     process_asset(*myAsset.get());
 
@@ -503,14 +491,12 @@ int HoudiniEngine::instantiateAssetById(int asset_id)
 //             o- part node+ (As drawables under a geometry)
 HoudiniAsset* HoudiniEngine::instantiateGeometry(const String& asset)
 {
-	ofmsg("instantiateGeometry: %1% assets available", %myAssetCount);
+	hflog("[HoudiniEngine::instantiateGeometry] %1% assets available", %myAssetCount);
 
 	int asset_id = assetNameToIds[asset];
 
 
 	if (myHoudiniGeometrys[asset] == NULL) {
-		ofwarn("instantiateGeometry: No model of %1%.. creating", %asset);
-
 		HoudiniGeometry* hg = HoudiniGeometry::create(asset);
 		myHoudiniGeometrys[asset] = hg;
 		if (mySceneManager->getModel(asset) == NULL) {
@@ -520,7 +506,6 @@ HoudiniAsset* HoudiniEngine::instantiateGeometry(const String& asset)
 
 	if (assetInstances.count(asset) == 0) {
 		assetInstances[asset] = new HoudiniAsset(mySceneManager, asset);
-		omsg("instantiateGeometry: applying default material on newly instantiated object..");
 		assetInstances[asset]->setEffect("houdini");
 	}
 
@@ -532,9 +517,8 @@ HoudiniAsset* HoudiniEngine::instantiateGeometry(const String& asset)
 	// make a houdini-specific shader that encompasses all these parameters..
 	if (assetMaterialParms.count(asset)) {
 
-
 		if (assetMaterialParms[asset].size() > 0) {
-			ofmsg("instantiateGeometry: setting %1% material(s) on newly instantiated object..", %assetMaterialParms[asset].size() );
+			hflog("[HoudiniEngine::instantiateGeometry] setting %1% material(s) on newly instantiated object..", %assetMaterialParms[asset].size() );
 		}
 
 		for (int i = 0; i < assetMaterialParms[asset].size(); ++i) {
@@ -594,7 +578,6 @@ HoudiniAsset* HoudiniEngine::instantiateGeometry(const String& asset)
 				%emit.toString()
 				%shininess
 			);
-			ofmsg("instantiateGeometry: about to set effect '%1%'", %effect);
 			assetInstances[asset]->setEffect(effect);
 
 			if (assetMaterialParms[asset][i].parms.count("diffuseMapName")) {
@@ -613,7 +596,7 @@ HoudiniAsset* HoudiniEngine::instantiateGeometry(const String& asset)
 
 		}
 	} else {
-		ofmsg("instantiateGeometry: %1% does not have materials", %asset);
+		hflog("[HoudiniEngine::instantiateGeometry] %1% does not have materials", %asset);
 	}
 
 	return assetInstances[asset];
@@ -647,11 +630,13 @@ void HoudiniEngine::initialize()
 				if (!env_host) {
 					HAPI_StartThriftSocketServer( &thrift_server_options, port, /*&process_id*/ NULL );
 					env_host = "localhost";
+					oflog(Debug, "[HoudiniEngine::initialize] Created Thrift Socket Server on %1%:%2%", %env_host %port);
 				}
 
 				HAPI_CreateThriftSocketSession(session, env_host, port);
-
-				cout << "Connected to " << env_host << ":" << port << endl;
+				oflog(Debug, "[HoudiniEngine::initialize] Created Thrift Socket Session to %1%:%2%", %env_host %port);
+			} else {
+				owarn("[HoudiniEngine::initialize] No session defined..");
 			}
 
 
@@ -666,6 +651,7 @@ void HoudiniEngine::initialize()
 				/*image_dso_search_path=*/ NULL,
 				/*audio_dso_search_path=*/ NULL
 			));
+			omsg("[HoudiniEngine] Houdini Engine Initialized.");
 	    }
 	    catch (hapi::Failure &failure)
 	    {

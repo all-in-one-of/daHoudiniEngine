@@ -81,7 +81,7 @@ public:
     }
 
     // Retrieve details about the last non-successful HAPI_CookAsset() or
-    // HAPI_InstantiateAsset() function call.    
+    // HAPI_InstantiateAsset() function call.
     static std::string lastCookErrorMessage(HAPI_Session* session)
     {
 	int buffer_length;
@@ -137,7 +137,7 @@ static std::string getString(HAPI_Session* session, int string_handle)
 // TODO:
 // based on https://www.sidefx.com/docs/hengine/_h_a_p_i__assets.html
 // there may be a need to include a Node class?
-// assets are nodes, 
+// assets are nodes,
 // objects are transform nodes, can contain object nodes or sops (geos)
 // geos are nodes, they contain parts to render
 //     usually, using getDisplayGeoInfo() gets what you want to show
@@ -290,7 +290,7 @@ public:
     std::string filePath() const
     { return getString(session, info().filePathSH); }
 
-    HAPI_Transform getTransform( 
+    HAPI_Transform getTransform(
         HAPI_RSTOrder rst_order, int relative_to_node_id) const
     {
 	HAPI_Transform result;
@@ -353,9 +353,9 @@ public:
     {
 	if (!this->_info)
 	{
-		std::cout << "Object: No info, fetching.." << std::endl;
-		std::cout << "Object:   asset id: " << this->asset.nodeid << std::endl;
-		std::cout << "Object:   object id: " << this->id << std::endl;
+		// std::cout << "Object: No info, fetching.." << std::endl;
+		// std::cout << "Object:   asset id: " << this->asset.nodeid << std::endl;
+		// std::cout << "Object:   object id: " << this->id << std::endl;
         _info = new HAPI_ObjectInfo();
 		// this doesn't work!!
 // 		throwOnFailure(HAPI_GetObjectInfo(
@@ -364,19 +364,19 @@ public:
 // 			_info));
 		// this works..
         int objectCount;
-        throwOnFailure(HAPI_ComposeObjectList( 
+        throwOnFailure(HAPI_ComposeObjectList(
             session, this->asset.nodeid, NULL, &objectCount ));
 
-		throwOnFailure(HAPI_GetComposedObjectList( 
-		session, 
-		this->asset.nodeid, 
-		_info, 
-		this->id, 
+		throwOnFailure(HAPI_GetComposedObjectList(
+		session,
+		this->asset.nodeid,
+		_info,
+		this->id,
 		1));
-		cout << "Object: Check some info.." << std::endl << 
-		"Object:   nodeId: " << _info->nodeId << std::endl << 
-		"Object:   isVisible: " << _info->isVisible << std::endl << 
-		"Object:   instancer: "<< _info->isInstancer << std::endl;
+		// cout << "Object: Check some info.." << std::endl <<
+		// "Object:   nodeId: " << _info->nodeId << std::endl <<
+		// "Object:   isVisible: " << _info->isVisible << std::endl <<
+		// "Object:   instancer: "<< _info->isInstancer << std::endl;
 	}
 	return *this->_info;
     }
@@ -439,8 +439,8 @@ public:
     {
 	if (!this->_info)
 	{
-		std::cout << "Geo: no info, fetching.." << std::endl;
-		std::cout << "Geo:   with object id " << this->object.info().nodeId << std::endl;
+		// std::cout << "Geo: no info, fetching.." << std::endl;
+		// std::cout << "Geo:   with object id " << this->object.info().nodeId << std::endl;
 	    this->_info = new HAPI_GeoInfo();
 	    throwOnFailure(HAPI_GetDisplayGeoInfo(
 		session,
@@ -465,7 +465,7 @@ private:
 // TODO parts:
 // put in getFaceCounts, getVertexList, getGroupMembership
 // xyz points are actually point attributes, convenience function for it?
-// 
+//
 class Part
 {
 public:
@@ -504,12 +504,12 @@ public:
 	if (!this->_info)
 	{
 	    this->_info = new HAPI_PartInfo();
-		std::cout << "Part: no info, fetching.." << std::endl;
-		std::cout << "Part:   with geo's nodeid " << this->geo.info().nodeId << std::endl;
+		// std::cout << "Part: no info, fetching.." << std::endl;
+		// std::cout << "Part:   with geo's nodeid " << this->geo.info().nodeId << std::endl;
 	    throwOnFailure(HAPI_GetPartInfo(
 		    session,
-		    this->geo.info().nodeId, 
-            this->id, 
+		    this->geo.info().nodeId,
+            this->id,
             this->_info ));
 	}
 	return *this->_info;
@@ -537,7 +537,7 @@ public:
 
 	throwOnFailure(HAPI_GetAttributeNames(
 		session,
-	    this->geo.info().nodeId, 
+	    this->geo.info().nodeId,
 	    this->id, attrib_owner, &attrib_names_sh[0], num_attribs));
 
 	for (int attrib_index=0; attrib_index < int(attrib_names_sh.size());
@@ -567,7 +567,7 @@ public:
 	float *result = new float[attrib_info.count * attrib_info.tupleSize];
 	throwOnFailure(HAPI_GetAttributeFloatData(
 		session,
-	    this->geo.info().nodeId, 
+	    this->geo.info().nodeId,
 	    this->id, attrib_name, &attrib_info, /*stride=*/-1,
         result, /*start=*/0, attrib_info.count));
 	return result;
@@ -583,7 +583,7 @@ public:
 	int *result = new int[attrib_info.count * attrib_info.tupleSize];
 	throwOnFailure(HAPI_GetAttributeIntData(
 		session,
-	    this->geo.info().nodeId, 
+	    this->geo.info().nodeId,
 	    this->id, attrib_name, &attrib_info, /*stride=*/-1,
         result, /*start=*/0, attrib_info.count));
 	return result;
@@ -601,7 +601,7 @@ private:
 
 class ParmChoice;
 
-// todo: 
+// todo:
 // get only folders of parms
 // implement the radio button thing
 // implement parameter presets (https://www.sidefx.com/docs/hengine/_h_a_p_i__parameters.html#HAPI_Parameters_Presets)
@@ -737,13 +737,13 @@ inline std::vector<Object> Asset::objects() const
     std::vector<Object> result;
 
     int objectCount;
-    throwOnFailure(HAPI_ComposeObjectList( 
+    throwOnFailure(HAPI_ComposeObjectList(
         session, nodeid, NULL, &objectCount ));
 
     for (int object_id=0; object_id < objectCount; ++object_id) {
 	    result.push_back(Object(*this, object_id));
     }
-    std::cout << "Asset: getting " << result.size() << " objects" << std::endl;
+    // std::cout << "Asset: getting " << result.size() << " objects" << std::endl;
     return result;
 }
 
@@ -754,20 +754,20 @@ inline std::vector< HAPI_Transform > Asset::transforms() const
         session, nodeid, NULL, &object_count ));
     std::vector< HAPI_ObjectInfo > object_infos( object_count );
     throwOnFailure(HAPI_GetComposedObjectList(
-        this->session, 
-        this->nodeid, 
-        object_infos.data(), 
-        0, 
+        this->session,
+        this->nodeid,
+        object_infos.data(),
+        0,
         object_count ));
     std::vector< HAPI_Transform > result( object_count );
     throwOnFailure(HAPI_GetComposedObjectTransforms(
-        this->session, 
-        this->nodeid, 
-        HAPI_RSTORDER_DEFAULT, 
-        result.data(), 
-        0, 
+        this->session,
+        this->nodeid,
+        HAPI_RSTORDER_DEFAULT,
+        result.data(),
+        0,
         object_count ));
-    std::cout << "Object: getting " <<  object_count << " transforms" << std::endl;
+    // std::cout << "Object: getting " <<  object_count << " transforms" << std::endl;
 
     return result;
 }
@@ -827,7 +827,7 @@ inline std::vector<Geo> Object::geos() const
 }
 inline Geo Object::displayGeo() const
 {
-    std::cout << "Object: fetching display geo" << std::endl;
+    // std::cout << "Object: fetching display geo" << std::endl;
     return Geo(*this, 0);
 
 }
@@ -835,7 +835,7 @@ inline Geo Object::displayGeo() const
 inline std::vector<Part> Geo::parts() const
 {
     std::vector<Part> result;
-    std::cout << "Geo: getting parts for geo with id " << this->id << " part count is " << info().partCount << std::endl;
+    // std::cout << "Geo: getting parts for geo with id " << this->id << " part count is " << info().partCount << std::endl;
     for (int part_id=0; part_id < info().partCount; ++part_id)
 	result.push_back(Part(*this, part_id));
     return result;
@@ -849,7 +849,7 @@ inline std::vector< HAPI_NodeId > Part::materialNodeIdsOnFaces(bool &all_same) c
 		geo.info().nodeId,
 		id,
 		&all_same /* are_all_the_same*/,
-		result.data(), 
+		result.data(),
 		0, info().faceCount ));
     return result;
 }

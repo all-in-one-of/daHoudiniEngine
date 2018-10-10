@@ -97,7 +97,7 @@ void HoudiniEngine::cook_one(hapi::Asset* asset)
 {
     if (asset != NULL) {
 
-        ofmsg("cooking %1%..", %asset->name());
+        hflog("[HoudiniEngine::cook_one] cooking %1%..", %asset->name());
 
         asset->cook(&myCookOptions);
         wait_for_cook();

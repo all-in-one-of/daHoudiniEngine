@@ -56,7 +56,7 @@ void HoudiniEngine::createMenu(const int asset_id)
 	std::string asset_name = myAsset->name();
 
 	if (myAsset == NULL) {
-		ofwarn("No asset of name %1%", %asset_name);
+		ofwarn("[HoudiniEngine::createMenu] No asset of name %1%", %asset_name);
 	}
 
 	// button to choose this asset
@@ -82,7 +82,8 @@ void HoudiniEngine::createMenu(const int asset_id)
 	// cast to an int that is the same size as void*
 	assetButton->setUserData((void *)(intptr_t)assetContSize); // point to the container to use in assetConts
 
-    omsg("about to create Parms, but removed for now..");
+    // no longer create parms here
+    // TODO: add distributing parms code
     // createParms(asset_id, assetCont);
 }
 
@@ -183,7 +184,7 @@ HoudiniParameterList* HoudiniEngine::loadParameters(const String& asset_name)
 {
     // only run on master
 	if (!SystemManager::instance()->isMaster()) {
-		ofmsg("getParameters: Not running on %1%", %SystemManager::instance()->getHostname());
+		hflog("[HoudiniEngine::loadParameters] Not running on %1%", %SystemManager::instance()->getHostname());
 		return NULL;
 	}
 
@@ -192,7 +193,7 @@ HoudiniParameterList* HoudiniEngine::loadParameters(const String& asset_name)
 	hapi::Asset* myAsset = new hapi::Asset(asset_id, session);
 
     if (myAsset == NULL) {
-        ofwarn("No asset of name %1%", %asset_name);
+        ofwarn("[HoudiniEngine::loadParameters] No asset of name %1%", %asset_name);
         return NULL;
     }
 
@@ -200,10 +201,10 @@ HoudiniParameterList* HoudiniEngine::loadParameters(const String& asset_name)
     Dictionary<String, HoudiniParameterList*>::iterator it = assetParamLists.find(asset_name);
 
     if (it != assetParamLists.end()) {
-        ofmsg("Asset already loaded: %1%", %asset_name);
+        ofmsg("[HoudiniEngine::loadParameters] already loaded: %1%", %asset_name);
         return it->second;
     } else {
-        ofmsg("Proceeding to load asset: %1%", %asset_name);
+        ofmsg("[HoudiniEngine::loadParameters] loading asset: %1%", %asset_name);
         parameters = new HoudiniParameterList();
         assetParamLists[asset_name] = parameters;
     }
@@ -236,7 +237,7 @@ boost::python::dict HoudiniEngine::getParameters(const String& asset_name)
 
     // only run on master
 	if (!SystemManager::instance()->isMaster()) {
-		ofmsg("getParameters: Not running on %1%", %SystemManager::instance()->getHostname());
+		hflog("[HoudiniEngine::getParameters] Not running on %1%", %SystemManager::instance()->getHostname());
 		return d;
 	}
 	int asset_id = assetNameToIds[asset_name];
@@ -245,7 +246,7 @@ boost::python::dict HoudiniEngine::getParameters(const String& asset_name)
 	hapi::Asset* myAsset = new hapi::Asset(asset_id, session);
 
     if (myAsset == NULL) {
-        ofwarn("No asset of name %1%", %asset_name);
+        ofwarn("[HoudiniEngine::getParameters] No asset of name %1%", %asset_name);
         return d;
 
     }
@@ -317,7 +318,7 @@ boost::python::object HoudiniEngine::getParameterValue(const String& asset_name,
 {
     // only run on master
 	if (!SystemManager::instance()->isMaster()) {
-		ofmsg("getParameterValue: Not running on %1%", %SystemManager::instance()->getHostname());
+		hflog("[HoudiniEngine::getParameterValue] Not running on %1%", %SystemManager::instance()->getHostname());
 		return boost::python::object();
 	}
 
@@ -327,7 +328,7 @@ boost::python::object HoudiniEngine::getParameterValue(const String& asset_name,
 	hapi::Asset* myAsset = new hapi::Asset(asset_id, session);
 
     if (myAsset == NULL) {
-        ofwarn("No asset of name %1%", %asset_name);
+        ofwarn("[HoudiniEngine::getParameterValue] No asset of name %1%", %asset_name);
         return boost::python::object();
 
     }
@@ -408,7 +409,7 @@ void HoudiniEngine::setParameterValue(const String& asset_name, const String& pa
 {
     // only run on master
 	if (!SystemManager::instance()->isMaster()) {
-		ofmsg("setParameterValue: Not running on %1%", %SystemManager::instance()->getHostname());
+		hflog("[HoudiniEngine::setParameterValue] Not running on %1%", %SystemManager::instance()->getHostname());
 		return;
 	}
 
@@ -417,7 +418,7 @@ void HoudiniEngine::setParameterValue(const String& asset_name, const String& pa
 	hapi::Asset* myAsset = new hapi::Asset(asset_id, session);
 
     if (myAsset == NULL) {
-        ofwarn("No asset of name %1%", %asset_name);
+        ofwarn("[HoudiniEngine::setParameterValue] No asset of name %1%", %asset_name);
         return;
 
     }
@@ -458,7 +459,7 @@ void HoudiniEngine::setParameterValue(const String& asset_name, const String& pa
                 if (it->info().size > 1) {
                     boost::python::list myList = (boost::python::list) value;
                     if (boost::python::len(myList) != it->info().size) {
-                        ofwarn("incorrect number of args, got %1%, expected %2%",
+                        ofwarn("[HoudiniEngine::setParameterValue] incorrect number of args, got %1%, expected %2%",
                             %boost::python::len(myList)
                             %it->info().size
                         );
@@ -474,7 +475,7 @@ void HoudiniEngine::setParameterValue(const String& asset_name, const String& pa
                     if (intVal.check()) {
                         it->setIntValue(0, intVal);
                     } else {
-                        ofwarn("'%1%' not an integer value", %value);
+                        ofwarn("[HoudiniEngine::setParameterValue] '%1%' not an integer value", %value);
                     }
                     break;
                 }
@@ -485,7 +486,7 @@ void HoudiniEngine::setParameterValue(const String& asset_name, const String& pa
                 if (it->info().size > 1) {
                     boost::python::list myList = (boost::python::list) value;
                     if (boost::python::len(myList) != it->info().size) {
-                        ofwarn("incorrect number of args, got %1%, expected %2%",
+                        ofwarn("[HoudiniEngine::setParameterValue] incorrect number of args, got %1%, expected %2%",
                             %boost::python::len(myList)
                             %it->info().size
                         );
@@ -501,7 +502,7 @@ void HoudiniEngine::setParameterValue(const String& asset_name, const String& pa
                     if (floatVal.check()) {
                         it->setFloatValue(0, floatVal);
                     } else {
-                        ofwarn("'%1%' not a float value", %value);
+                        ofwarn("[HoudiniEngine::setParameterValue] '%1%' not a float value", %value);
                     }
                     break;
                 }
@@ -534,7 +535,7 @@ void HoudiniEngine::setParameterValue(const String& asset_name, const String& pa
                 if (it->info().size > 1) {
                     boost::python::list myList = (boost::python::list) value;
                     if (boost::python::len(myList) != it->info().size) {
-                        ofwarn("incorrect number of args, got %1%, expected %2%",
+                        ofwarn("[HoudiniEngine::setParameterValue] incorrect number of args, got %1%, expected %2%",
                             %boost::python::len(myList)
                             %it->info().size
                         );
@@ -550,7 +551,7 @@ void HoudiniEngine::setParameterValue(const String& asset_name, const String& pa
                     if (stringVal.check()) {
                         it->setStringValue(0, stringVal);
                     } else {
-                        ofwarn("'%1%' not a string value", %value);
+                        ofwarn("[HoudiniEngine::setParameterValue] '%1%' not a string value", %value);
                     }
                     break;
                 }
@@ -588,7 +589,7 @@ void HoudiniEngine::insertMultiparmInstance(const String& asset_name, const Stri
 
     // only run on master
 	if (!SystemManager::instance()->isMaster()) {
-		ofmsg("insertMultiparmInstance: Not running on %1%", %SystemManager::instance()->getHostname());
+		hflog("[HoudiniEngine::insertMultiparmInstance] Not running on %1%", %SystemManager::instance()->getHostname());
 		return;
 	}
 
@@ -597,7 +598,7 @@ void HoudiniEngine::insertMultiparmInstance(const String& asset_name, const Stri
 	hapi::Asset* myAsset = new hapi::Asset(asset_id, session);
 
     if (myAsset == NULL) {
-        ofwarn("No asset of name %1%", %asset_name);
+        ofwarn("[HoudiniEngine::insertMultiparmInstance] No asset of name %1%", %asset_name);
         return;
 
     }
@@ -615,7 +616,7 @@ void HoudiniEngine::removeMultiparmInstance(const String& asset_name, const Stri
 
     // only run on master
 	if (!SystemManager::instance()->isMaster()) {
-		ofmsg("removeMultiparmInstance: Not running on %1%", %SystemManager::instance()->getHostname());
+		hflog("[HoudiniEngine::removeMultiparmInstance] Not running on %1%", %SystemManager::instance()->getHostname());
 		return;
 	}
 
@@ -624,7 +625,7 @@ void HoudiniEngine::removeMultiparmInstance(const String& asset_name, const Stri
 	hapi::Asset* myAsset = new hapi::Asset(asset_id, session);
 
     if (myAsset == NULL) {
-        ofwarn("No asset of name %1%", %asset_name);
+        ofwarn("[HoudiniEngine::removeMultiparmInstance] No asset of name %1%", %asset_name);
         return;
 
     }
@@ -645,7 +646,7 @@ boost::python::list HoudiniEngine::getParameterChoices(const String& asset_name,
 
     // only run on master
 	if (!SystemManager::instance()->isMaster()) {
-		ofmsg("getParameterChoices: Not running on %1%", %SystemManager::instance()->getHostname());
+		hflog("[HoudiniEngine::getParameterChoices] Not running on %1%", %SystemManager::instance()->getHostname());
 		return myList;
 	}
 
@@ -654,7 +655,7 @@ boost::python::list HoudiniEngine::getParameterChoices(const String& asset_name,
 	hapi::Asset* myAsset = new hapi::Asset(asset_id, session);
 
     if (myAsset == NULL) {
-        ofwarn("No asset of name %1%", %asset_name);
+        ofwarn("[HoudiniEngine::getParameterChoices] No asset of name %1%", %asset_name);
         return myList;
 
     }
@@ -677,7 +678,7 @@ int HoudiniEngine::getIntegerParameterValue(const String& asset_name, int param_
 {
     // only run on master
 	if (!SystemManager::instance()->isMaster()) {
-		ofmsg("getIntegerParameterValue: Not running on %1%", %SystemManager::instance()->getHostname());
+		hflog("[HoudiniEngine::getIntegerParameterValue] Not running on %1%", %SystemManager::instance()->getHostname());
 		return 0;
 	}
 
@@ -686,7 +687,7 @@ int HoudiniEngine::getIntegerParameterValue(const String& asset_name, int param_
 	hapi::Asset* myAsset = new hapi::Asset(asset_id, session);
 
     if (myAsset == NULL) {
-        ofwarn("No asset of name %1%", %asset_name);
+        ofwarn("[HoudiniEngine::getIntegerParameterValue] No asset of name %1%", %asset_name);
         return 0;
 
     } else {
@@ -705,7 +706,7 @@ void HoudiniEngine::setIntegerParameterValue(const String& asset_name, int param
 {
     // only run on master
 	if (!SystemManager::instance()->isMaster()) {
-		ofmsg("setIntegerParameterValue: Not running on %1%", %SystemManager::instance()->getHostname());
+		hflog("[HoudiniEngine::setIntegerParameterValue] Not running on %1%", %SystemManager::instance()->getHostname());
 		return;
 	}
 
@@ -714,7 +715,7 @@ void HoudiniEngine::setIntegerParameterValue(const String& asset_name, int param
 	hapi::Asset* myAsset = new hapi::Asset(asset_id, session);
 
     if (myAsset == NULL) {
-        ofwarn("No asset of name %1%", %asset_name);
+        ofwarn("[HoudiniEngine::setIntegerParameterValue] No asset of name %1%", %asset_name);
 
     } else {
         std::vector<hapi::Parm> parms = myAsset->parms();
@@ -735,7 +736,7 @@ float HoudiniEngine::getFloatParameterValue(const String& asset_name, int param_
 {
     // only run on master
 	if (!SystemManager::instance()->isMaster()) {
-		ofmsg("getFloatParameterValue: Not running on %1%", %SystemManager::instance()->getHostname());
+		hflog("[HoudiniEngine::getFloatParameterValue] Not running on %1%", %SystemManager::instance()->getHostname());
 		return 0;
 	}
 
@@ -744,7 +745,7 @@ float HoudiniEngine::getFloatParameterValue(const String& asset_name, int param_
 	hapi::Asset* myAsset = new hapi::Asset(asset_id, session);
 
     if (myAsset == NULL) {
-        ofwarn("No asset of name %1%", %asset_name);
+        ofwarn("[HoudiniEngine::getFloatParameterValue] No asset of name %1%", %asset_name);
         return 0;
 
     } else {
@@ -763,7 +764,7 @@ void HoudiniEngine::setFloatParameterValue(const String& asset_name, int param_i
 {
     // only run on master
 	if (!SystemManager::instance()->isMaster()) {
-		ofmsg("setFloatParameterValue: Not running on %1%", %SystemManager::instance()->getHostname());
+		hflog("[HoudiniEngine::setFloatParameterValue] Not running on %1%", %SystemManager::instance()->getHostname());
 		return;
 	}
 
@@ -772,7 +773,7 @@ void HoudiniEngine::setFloatParameterValue(const String& asset_name, int param_i
 	hapi::Asset* myAsset = new hapi::Asset(asset_id, session);
 
     if (myAsset == NULL) {
-        ofwarn("No asset of name %1%", %asset_name);
+        ofwarn("[HoudiniEngine::setFloatParameterValue] No asset of name %1%", %asset_name);
 
     } else {
         std::vector<hapi::Parm> parms = myAsset->parms();
@@ -793,7 +794,7 @@ String HoudiniEngine::getStringParameterValue(const String& asset_name, int para
 {
     // only run on master
 	if (!SystemManager::instance()->isMaster()) {
-		ofmsg("getStringParameterValue: Not running on %1%", %SystemManager::instance()->getHostname());
+		hflog("[HoudiniEngine::getStringParameterValue] Not running on %1%", %SystemManager::instance()->getHostname());
 		return "";
 	}
 
@@ -802,7 +803,7 @@ String HoudiniEngine::getStringParameterValue(const String& asset_name, int para
 	hapi::Asset* myAsset = new hapi::Asset(asset_id, session);
 
     if (myAsset == NULL) {
-        ofwarn("No asset of name %1%", %asset_name);
+        ofwarn("[HoudiniEngine::getStringParameterValue] No asset of name %1%", %asset_name);
         return "";
 
     } else {
@@ -821,7 +822,7 @@ void HoudiniEngine::setStringParameterValue(const String& asset_name, int param_
 {
     // only run on master
 	if (!SystemManager::instance()->isMaster()) {
-		ofmsg("setStringParameterValue: Not running on %1%", %SystemManager::instance()->getHostname());
+		hflog("[HoudiniEngine::setStringParameterValue] Not running on %1%", %SystemManager::instance()->getHostname());
 		return;
 	}
 
@@ -830,7 +831,7 @@ void HoudiniEngine::setStringParameterValue(const String& asset_name, int param_
 	hapi::Asset* myAsset = new hapi::Asset(asset_id, session);
 
     if (myAsset == NULL) {
-        ofwarn("No asset of name %1%", %asset_name);
+        ofwarn("[HoudiniEngine::setStringParameterValue] No asset of name %1%", %asset_name);
 
     } else {
         std::vector<hapi::Parm> parms = myAsset->parms();
@@ -865,15 +866,16 @@ void HoudiniEngine::doIt(int asset_id) {
 void HoudiniEngine::printParms(int asset_id) {
     // only run on master
 	if (!SystemManager::instance()->isMaster()) {
-		ofmsg("printParms: Not running on %1%", %SystemManager::instance()->getHostname());
+		hflog("[HoudiniEngine::printParms] Not running on %1%", %SystemManager::instance()->getHostname());
 		return;
 	}
 
     hapi::Asset* asset = new hapi::Asset(asset_id, session);
     if (asset == NULL) {
-        ofmsg("No asset with id %1%", %asset_id);
+        ofwarn("[HoudiniEngine::printParms] No asset with id %1%", %asset_id);
+        return;
     }
-    ofmsg("asset has %1% parms", %asset->nodeInfo().parmCount);
+    ofmsg("[HoudiniEngine::printParms] asset has %1% parms", %asset->nodeInfo().parmCount);
     std::vector<hapi::Parm> parms = asset->parms();
     foreach (hapi::Parm myParm, parms) {
         String t = "";
@@ -894,7 +896,7 @@ void HoudiniEngine::printParms(int asset_id) {
             case HAPI_PARMTYPE_LABEL: t = "LAB";  break;
             case HAPI_PARMTYPE_SEPARATOR: t = "SEP";  break;
         }
-        ofmsg("PARM %1% (%2%) %3%x%4% name: %5% (%6%)",
+        ofmsg("[HoudiniEngine::printParms] PARM %1% (%2%) %3%x%4% name: %5% (%6%)",
             %myParm.info().id
             %myParm.info().parentId
             %t
@@ -908,30 +910,30 @@ void HoudiniEngine::printParms(int asset_id) {
                 if (myParm.info().choiceCount > 0) {
                     switch (myParm.info().choiceListType) {
                         case HAPI_CHOICELISTTYPE_NONE:
-                            omsg("choice list type is NONE");
+                            omsg("[HoudiniEngine::printParms] choice list type is NONE");
                             break;
                         case HAPI_CHOICELISTTYPE_NORMAL:
-                            omsg("choice list type is NORMAL");
+                            omsg("[HoudiniEngine::printParms] choice list type is NORMAL");
                             break;
                         case HAPI_CHOICELISTTYPE_MINI:
-                            omsg("choice list type is MINI");
+                            omsg("[HoudiniEngine::printParms] choice list type is MINI");
                             break;
                         case HAPI_CHOICELISTTYPE_REPLACE:
-                            omsg("choice list type is REPLACE");
+                            omsg("[HoudiniEngine::printParms] choice list type is REPLACE");
                             break;
                         case HAPI_CHOICELISTTYPE_TOGGLE:
-                            omsg("choice list type is TOGGLE");
+                            omsg("[HoudiniEngine::printParms] choice list type is TOGGLE");
                             break;
                         default:
                             break;
                     }
-                    ofmsg("  choiceindex: %1% count: %2%", %myParm.info().choiceIndex  %myParm.info().choiceCount);
+                    ofmsg("[HoudiniEngine::printParms]   choiceindex: %1% count: %2%", %myParm.info().choiceIndex  %myParm.info().choiceCount);
                     // display as a selection menu
                     if (myParm.info().choiceListType == HAPI_CHOICELISTTYPE_NONE ||
                         myParm.info().choiceListType == HAPI_CHOICELISTTYPE_NORMAL ||
                         myParm.info().choiceListType == HAPI_CHOICELISTTYPE_MINI) {
                         for (int j = 0; j < myParm.choices.size(); ++j) {
-                            ofmsg("  choice %1% (%2%): %3% (%4%)",
+                            ofmsg("[HoudiniEngine::printParms]   choice %1% (%2%): %3% (%4%)",
                                 %j
                                 %myParm.choices[j].info().parentParmId
                                 %myParm.choices[j].value()
@@ -943,18 +945,18 @@ void HoudiniEngine::printParms(int asset_id) {
                         // same as if there was no parmChoice count
                         // TODO: add the menu as well..
                         if (myParm.info().hasUIMin && myParm.info().hasUIMax) {
-                            ofmsg("  UImin %1% UImax %2%", %myParm.info().UIMin %myParm.info().UIMax);
+                            ofmsg("[HoudiniEngine::printParms]   UImin %1% UImax %2%", %myParm.info().UIMin %myParm.info().UIMax);
                         } else {
-                            if (myParm.info().hasMin) ofmsg("  min %1%", %myParm.info().min);
-                            if (myParm.info().hasMax) ofmsg("  max %1%", %myParm.info().max);
+                            if (myParm.info().hasMin) ofmsg("[HoudiniEngine::printParms]   min %1%", %myParm.info().min);
+                            if (myParm.info().hasMax) ofmsg("[HoudiniEngine::printParms]   max %1%", %myParm.info().max);
                         }
                     }
                 } else {
                     if (myParm.info().hasUIMin && myParm.info().hasUIMax) {
-                        ofmsg("  UImin %1% UImax %2%", %myParm.info().UIMin %myParm.info().UIMax);
+                        ofmsg("[HoudiniEngine::printParms]   UImin %1% UImax %2%", %myParm.info().UIMin %myParm.info().UIMax);
                     } else {
-                        if (myParm.info().hasMin) ofmsg("  min %1%", %myParm.info().min);
-                        if (myParm.info().hasMax) ofmsg("  max %1%", %myParm.info().max);
+                        if (myParm.info().hasMin) ofmsg("[HoudiniEngine::printParms]   min %1%", %myParm.info().min);
+                        if (myParm.info().hasMax) ofmsg("[HoudiniEngine::printParms]   max %1%", %myParm.info().max);
                     }
                 }
 
@@ -968,10 +970,10 @@ void HoudiniEngine::printParms(int asset_id) {
                        myParm.info().type == HAPI_PARMTYPE_COLOR) {
                 float val = myParm.getFloatValue(i);
                 if (myParm.info().hasUIMin && myParm.info().hasUIMax) {
-                    ofmsg("  UImin %1% UImax %2%", %myParm.info().UIMin %myParm.info().UIMax);
+                    ofmsg("[HoudiniEngine::printParms]   UImin %1% UImax %2%", %myParm.info().UIMin %myParm.info().UIMax);
                 } else {
-                    if (myParm.info().hasMin) ofmsg("  min %1%", %myParm.info().min);
-                    if (myParm.info().hasMax) ofmsg("  max %1%", %myParm.info().max);
+                    if (myParm.info().hasMin) ofmsg("[HoudiniEngine::printParms]   min %1%", %myParm.info().min);
+                    if (myParm.info().hasMax) ofmsg("[HoudiniEngine::printParms]   max %1%", %myParm.info().max);
                 }
 
             } else if (myParm.info().type == HAPI_PARMTYPE_STRING ||
@@ -982,24 +984,24 @@ void HoudiniEngine::printParms(int asset_id) {
                 if (myParm.info().choiceCount > 0) {
                     switch (myParm.info().choiceListType) {
                         case HAPI_CHOICELISTTYPE_NONE:
-                            omsg("choice list type is NONE");
+                            omsg("[HoudiniEngine::printParms] choice list type is NONE");
                             break;
                         case HAPI_CHOICELISTTYPE_NORMAL:
-                            omsg("choice list type is NORMAL");
+                            omsg("[HoudiniEngine::printParms] choice list type is NORMAL");
                             break;
                         case HAPI_CHOICELISTTYPE_MINI:
-                            omsg("choice list type is MINI");
+                            omsg("[HoudiniEngine::printParms] choice list type is MINI");
                             break;
                         case HAPI_CHOICELISTTYPE_REPLACE:
-                            omsg("choice list type is REPLACE");
+                            omsg("[HoudiniEngine::printParms] choice list type is REPLACE");
                             break;
                         case HAPI_CHOICELISTTYPE_TOGGLE:
-                            omsg("choice list type is TOGGLE");
+                            omsg("[HoudiniEngine::printParms] choice list type is TOGGLE");
                             break;
                         default:
                             break;
                     }
-                    ofmsg("  choiceindex: %1% count: %2%",
+                    ofmsg("[HoudiniEngine::printParms]   choiceindex: %1% count: %2%",
                         %myParm.info().choiceIndex
                         %myParm.info().choiceCount
                     );
@@ -1008,7 +1010,7 @@ void HoudiniEngine::printParms(int asset_id) {
                         myParm.info().choiceListType == HAPI_CHOICELISTTYPE_NORMAL ||
                         myParm.info().choiceListType == HAPI_CHOICELISTTYPE_MINI) {
                         for (int j = 0; j < myParm.choices.size(); ++j) {
-                            ofmsg("  choice %1% (%2%): %3% (%4%)",
+                            ofmsg("[HoudiniEngine::printParms]   choice %1% (%2%): %3% (%4%)",
                                 %j
                                 %myParm.choices[j].info().parentParmId
                                 %myParm.choices[j].value()
@@ -1018,15 +1020,15 @@ void HoudiniEngine::printParms(int asset_id) {
                     } else {// display as a text box which can be filled in by preset selections
                         // same as if there was no parmChoice count
                         // TODO: add the menu as well..
-                        omsg ("  skipped");
+                        omsg ("[HoudiniEngine::printParms]   skipped");
                     }
                 } else {
-                    ofmsg("  textbox text: %1%", %val);
+                    ofmsg("[HoudiniEngine::printParms]   textbox text: %1%", %val);
                 }
             } else if (myParm.info().type == HAPI_PARMTYPE_SEPARATOR) {
-                omsg("----------");
+                omsg("[HoudiniEngine::printParms] ----------");
             } else if (myParm.info().type == HAPI_PARMTYPE_MULTIPARMLIST) {
-                ofmsg("multiparm, instance length %1%, instance count %2%, instance offset %3%",
+                ofmsg("[HoudiniEngine::printParms] multiparm, instance length %1%, instance count %2%, instance offset %3%",
                     %myParm.info().instanceLength
                     %myParm.info().instanceCount
                     %myParm.info().instanceStartOffset

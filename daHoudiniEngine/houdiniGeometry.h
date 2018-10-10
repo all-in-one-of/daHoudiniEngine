@@ -227,6 +227,9 @@ namespace houdiniEngine {
 
 		HoudiniGeometry(const String& name);
 
+		~HoudiniGeometry()
+		{ oflog(Debug, "[~HoudiniGeometry] %1%", %myName); }
+
 		//! Adds a vertex and return its index.
 		int addVertex(
 			const Vector3f& v,
