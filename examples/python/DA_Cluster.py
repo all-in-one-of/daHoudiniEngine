@@ -51,35 +51,51 @@ print "loaded everything, running.."
 if isMaster():
     myParms = he.getParameters('cluster1')
     for parm in myParms.keys():
-        print parm, myParms[parm]
+        print "Parameter {}: {}".format(parm, myParms[parm])
+
+    csvPath = "/local/examples/hsdh/HSDH_example.csv"
 
     # examples of getting/setting parms
-    he.setParameterValue('cluster1', 'filename', "/local/examples/hsdh/HSDH_example.csv")
+    print "Setting maxrows and filename.."
     he.setParameterValue('cluster1', 'maxrows', 1)
-    he.setParameterValue('cluster1', 'tShowMetaball', 0)
+    he.setParameterValue('cluster1', 'filename', csvPath)
 
     # set parameters based on menu items
-    print he.getParameterChoices('cluster1', 'nVal')
+    he.cook()
     #choice lists can be set by index (value) or by Label
-    he.setParameterValue('cluster1', 'nVal', 2) # 'LGA Name'
-    he.setParameterValue('cluster1', 'xVal', 9) # 'Total Contracts'
-    he.setParameterValue('cluster1', 'yVal', 'Population') # 10
-    he.setParameterValue('cluster1', 'zVal', 'SEIFA Index') # 3
-    he.setParameterValue('cluster1', 'cVal', 3) # SEIFA
+    # multiple parameters can be set at the same time from a dict
+    he.setParameterValues('cluster1', {
+        'nVal': 2, # 'LGA Name'
+        'xVal': 9, # 'Total Contracts'
+        'yVal': 'Population', # 10
+        'zVal': 'SEIFA Index', # 3
+        'cVal': 3 # SEIFA
+    })
+    print "Column choices are", he.getParameterChoices('cluster1', 'nVal')
 
     # add a parm instance!
     he.insertMultiparmInstance('cluster1', 'colRamp', 2)
 
     # set colours!
-    he.setParameterValue('cluster1', 'colRamp1c', [0.8,0.1,0.1]) # Red
-    he.setParameterValue('cluster1', 'colRamp2c', [0.1,0.8,0.1]) # Green
-    he.setParameterValue('cluster1', 'colRamp2pos', 0.5)
-    he.setParameterValue('cluster1', 'colRamp3c', [0.1,0.1,0.8]) # Blue
-    he.setParameterValue('cluster1', 'colRamp3pos', 1.0)
-    he.setParameterValue('cluster1', 'maxrows', 25)
+    print "Setting colours.."
+    he.setParameterValues('cluster1', {
+        'tUsePointCols': 0,
+        'colRamp1c': [0.8,0.1,0.1], # Red
+        'colRamp2c': [0.1,0.8,0.1], # Green
+        'colRamp2pos': 0.5,
+        'colRamp3c': [0.1,0.1,0.8], # Blue
+        'colRamp3pos': 1.0,
+        'maxrows': 25
+    })
 
     # cook all the data (could take some time)
-    he.setParameterValue('cluster1', 'usemaxrows', 0)
+    print "Using all rows"
+    # False tells Houdini Engine not to cook on parm set, default is True
+    he.setParameterValue('cluster1', 'usemaxrows', 0, False)
+
+    # cook all assets
+    print "Cooking.."
+    he.cook()
 
 ## On run
 if __name__ == "__main__":
