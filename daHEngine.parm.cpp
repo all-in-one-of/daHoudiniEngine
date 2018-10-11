@@ -355,7 +355,7 @@ boost::python::object HoudiniEngine::getParameterValue(const String& asset_name,
     return boost::python::object();
 }
 
-void HoudiniEngine::setParameterValue(const String& asset_name, const String& parm_name, boost::python::object value)
+void HoudiniEngine::setParameterValue(const String& asset_name, const String& parm_name, boost::python::object value, const bool cookOnSet)
 {
     // only run on master
 	if (!SystemManager::instance()->isMaster()) {
@@ -377,8 +377,6 @@ void HoudiniEngine::setParameterValue(const String& asset_name, const String& pa
 
     for (vector<hapi::Parm>::iterator it = parms.begin(); it < parms.end(); ++it) {
         if (it->name() == parm_name) {
-
-            bool doCook = true;
 
             switch (it->info().type) {
             case HAPI_PARMTYPE_INT:
@@ -521,16 +519,55 @@ void HoudiniEngine::setParameterValue(const String& asset_name, const String& pa
             case HAPI_PARMTYPE_LABEL:
             case HAPI_PARMTYPE_SEPARATOR:
             default:
-                doCook = false;
-                break;
+                return;
             }
 
-            if (doCook) {
+            if (cookOnSet) {
                 cook_one(myAsset);
             }
 
             return;
         }
+    }
+
+}
+
+void HoudiniEngine::setParameterValues(const String& asset_name, const boost::python::dict values, const bool cookOnSet)
+{
+    // only run on master
+	if (!SystemManager::instance()->isMaster()) {
+		hflog("[HoudiniEngine::setParameterValues] Not running on %1%", %SystemManager::instance()->getHostname());
+		return;
+	}
+
+    int asset_id = assetNameToIds[asset_name];
+    // shouldn't be cached, should fetch new each time
+	hapi::Asset* myAsset = new hapi::Asset(asset_id, session);
+
+    if (myAsset == NULL) {
+        ofwarn("[HoudiniEngine::setParameterValues] No asset of name %1%", %asset_name);
+        return;
+
+    }
+
+    std::vector<hapi::Parm> parms = myAsset->parms();
+
+    boost::python::list keys = values.keys();
+
+    for (int i =0; i < len(keys); ++i) {
+        boost::python::extract<std::string> extracted_key(keys[i]);
+
+        if(!extracted_key.check()) {
+            oerror("[HoudiniEngine::setParameterValues] Bad Key in dict");
+            return;
+        }
+        std::string key = extracted_key;
+        
+        setParameterValue(asset_name, key, values[key], false);
+    }
+
+    if (cookOnSet) {
+        cook_one(myAsset);
     }
 
 }

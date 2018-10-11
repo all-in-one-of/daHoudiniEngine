@@ -417,7 +417,18 @@ namespace houdiniEngine {
 
 		// python methods for HAPI Parameters
 		boost::python::dict getParameters(const String& asset_name);
-		void setParameterValue(const String& asset_name, const String& parm_name, boost::python::object value);
+		void setParameterValue(const String& asset_name, const String& parm_name, boost::python::object value, const bool cookOnSet=true);
+		void setParameterValues(const String& asset_name, const boost::python::dict values, const bool cookOnSet=true);
+		// thin wrappers
+		void spv(const String& asset_name, const String& parm_name, boost::python::object value) {
+			const bool t = true;
+			setParameterValue(asset_name, parm_name, value, t);
+		};
+		void spvs(const String& asset_name, const boost::python::dict values) {
+			const bool t = true;
+			setParameterValues(asset_name, values, t);
+		};
+
 		boost::python::object getParameterValue(const String& asset_name, const String& parm_name);
 		void insertMultiparmInstance(const String& asset_name, const String& parm_name, int pos);
 		void removeMultiparmInstance(const String& asset_name, const String& parm_name, int pos);
