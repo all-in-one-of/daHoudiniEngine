@@ -59,7 +59,7 @@ if isMaster():
     he.setParameterValue('cluster1', 'tShowMetaball', 0)
 
     # set parameters based on menu items
-    print he.getParameterChoices('clister1', 'nVal')
+    print he.getParameterChoices('cluster1', 'nVal')
     #choice lists can be set by index (value) or by Label
     he.setParameterValue('cluster1', 'nVal', 2) # 'LGA Name'
     he.setParameterValue('cluster1', 'xVal', 9) # 'Total Contracts'
