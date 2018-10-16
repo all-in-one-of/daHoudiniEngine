@@ -48,14 +48,15 @@ daHEngine
 #endif
 #include <daHoudiniEngine/loaderTools.h>
 
+
+using namespace houdiniEngine;
+
+#if DA_ENABLE_HENGINE > 0
 // set custom log level separate of Omegalib
 StringUtils::LogLevel HoudiniEngine::logLevel = StringUtils::Verbose;
 
 bool HoudiniEngine::myLogEnabled = false;
 
-using namespace houdiniEngine;
-
-#if DA_ENABLE_HENGINE > 0
 HoudiniEngine* HoudiniEngine::myInstance = NULL;
 #endif
 
@@ -173,29 +174,29 @@ BOOST_PYTHON_MODULE(daHEngine)
 
 	// HAPI_ParmTypes
 	enum_<HAPI_ParmType>("ParmType")
-		.value("Int", HAPI_ParmType::HAPI_PARMTYPE_INT)
+		.value("Int", HAPI_PARMTYPE_INT)
 		.value("Multiparmlist", HAPI_PARMTYPE_MULTIPARMLIST)
 		.value("Toggle", HAPI_PARMTYPE_TOGGLE)
 		.value("Button", HAPI_PARMTYPE_BUTTON)
 
-		.value("Float", HAPI_ParmType::HAPI_PARMTYPE_FLOAT)
-		.value("Color", HAPI_ParmType::HAPI_PARMTYPE_COLOR)
+		.value("Float", HAPI_PARMTYPE_FLOAT)
+		.value("Color", HAPI_PARMTYPE_COLOR)
 
-		.value("String", HAPI_ParmType::HAPI_PARMTYPE_STRING)
-		.value("PathFile", HAPI_ParmType::HAPI_PARMTYPE_PATH_FILE)
-		.value("PathFileGeo", HAPI_ParmType::HAPI_PARMTYPE_PATH_FILE_GEO)
-		.value("PathFileImage", HAPI_ParmType::HAPI_PARMTYPE_PATH_FILE_IMAGE)
+		.value("String", HAPI_PARMTYPE_STRING)
+		.value("PathFile", HAPI_PARMTYPE_PATH_FILE)
+		.value("PathFileGeo", HAPI_PARMTYPE_PATH_FILE_GEO)
+		.value("PathFileImage", HAPI_PARMTYPE_PATH_FILE_IMAGE)
 
-		.value("Node", HAPI_ParmType::HAPI_PARMTYPE_NODE)
+		.value("Node", HAPI_PARMTYPE_NODE)
 
-		.value("Folderlist", HAPI_ParmType::HAPI_PARMTYPE_FOLDERLIST)
-		.value("FolderlistRadio", HAPI_ParmType::HAPI_PARMTYPE_FOLDERLIST_RADIO)
+		.value("Folderlist", HAPI_PARMTYPE_FOLDERLIST)
+		.value("FolderlistRadio", HAPI_PARMTYPE_FOLDERLIST_RADIO)
 
-		.value("Folder", HAPI_ParmType::HAPI_PARMTYPE_FOLDER)
-		.value("Label", HAPI_ParmType::HAPI_PARMTYPE_LABEL)
-		.value("Separator", HAPI_ParmType::HAPI_PARMTYPE_SEPARATOR)
+		.value("Folder", HAPI_PARMTYPE_FOLDER)
+		.value("Label", HAPI_PARMTYPE_LABEL)
+		.value("Separator", HAPI_PARMTYPE_SEPARATOR)
 
-		.value("Max", HAPI_ParmType::HAPI_PARMTYPE_MAX)
+		.value("Max", HAPI_PARMTYPE_MAX)
 	;
 
 	// HAPI_CookOptions
@@ -293,7 +294,6 @@ HoudiniEngine::~HoudiniEngine()
 			throw;
 	    }
 	}
-#endif
 
 	mySceneManager = NULL;
 	myEditor = NULL;
@@ -308,6 +308,8 @@ HoudiniEngine::~HoudiniEngine()
 	removeTheseWidgets.clear();
 
 	myInstance = NULL;
+
+#endif
 
 	olog(Verbose, "[~HoudiniEngine]");
 }
@@ -504,7 +506,7 @@ HoudiniAsset* HoudiniEngine::instantiateGeometry(const String& asset)
 
 	if (assetInstances.count(asset) == 0) {
 		assetInstances[asset] = new HoudiniAsset(mySceneManager, asset);
-		assetInstances[asset]->setEffect("houdini");
+		assetInstances[asset]->setEffect("daHoudiniEngine/common/houdini");
 	}
 
 	// TODO: make this general
@@ -570,7 +572,7 @@ HoudiniAsset* HoudiniEngine::instantiateGeometry(const String& asset)
 				shininess = assetMaterialParms[asset][i].parms["ogl_rough"].floatValues[0];
 			}
 
-			String effect = ostr("houdini %1%-d %2% -e %3% -s %4%",
+			String effect = ostr("daHoudiniEngine/common/houdini %1%-d %2% -e %3% -s %4%",
 				%(isTransparent ? "-t -a -D " : "")
 				%c.toString()
 				%emit.toString()

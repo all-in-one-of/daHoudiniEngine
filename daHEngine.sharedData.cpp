@@ -709,7 +709,7 @@ void HoudiniEngine::updateSharedData(SharedIStream& in)
 									// update the state set for this attribute
 									if (assetInstances.count(hg->getName()) > 0) {
 										const string name = "unif_alpha";
-										osg::Uniform* u =  ss->getOrCreateUniform(name, osg::Uniform::Type::FLOAT, 1);
+										osg::Uniform* u =  ss->getOrCreateUniform(name, osg::Uniform::FLOAT, 1);
 										u->set(ms->parms["ogl_apha"].floatValues[0]);
 
 										ss->getUniformList()[name].second = osg::StateAttribute::ON | osg::StateAttribute::PROTECTED |

@@ -1131,7 +1131,7 @@ void HoudiniEngine::process_materials(const hapi::Part &part, HoudiniGeometry* h
 				// update the state set for this attribute
 				if (assetInstances.count(hg->getName()) > 0) {
 					osg::StateSet* ss =  hg->getOsgNode(part.geo.id, part.geo.object.id)->getDrawable(part.id)->getOrCreateStateSet();
-					osg::Uniform* u =  ss->getOrCreateUniform(name, osg::Uniform::Type::FLOAT, 1);
+					osg::Uniform* u =  ss->getOrCreateUniform(name, osg::Uniform::FLOAT, 1);
 					u->set(ps.floatValues[0]);
 					ss->getUniformList()[name].second = osg::StateAttribute::ON | osg::StateAttribute::PROTECTED | 
 						osg::StateAttribute::OVERRIDE;
