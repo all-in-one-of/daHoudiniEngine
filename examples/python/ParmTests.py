@@ -1,5 +1,5 @@
-from daHEngine import *
 from cyclops import *
+from daHEngine import *
 from omegaToolkit import *
 
 # Create a sub-menu that will contain the multiple columns
